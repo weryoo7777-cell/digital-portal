@@ -1,0 +1,101 @@
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import os from 'os';
+import {defineConfig, Plugin} from 'vite';
+
+function corporateApiPlugin(): Plugin {
+  return {
+    name: 'corporate-api-plugin',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url?.startsWith('/api/')) {
+          return next();
+        }
+
+        const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        res.setHeader('Content-Type', 'application/json');
+
+        if (url.pathname === '/api/client-info') {
+          const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
+          const clientIp = rawForwarded.split(',')[0].trim() || req.socket.remoteAddress || '192.168.1.105';
+          const userAgent = (req.headers['user-agent'] as string) || 'Mozilla/5.0';
+          
+          const networkInterfaces = os.networkInterfaces();
+          let serverLanIp = '10.10.20.1';
+          for (const name of Object.keys(networkInterfaces)) {
+            for (const iface of networkInterfaces[name] || []) {
+              if (iface.family === 'IPv4' && !iface.internal) {
+                serverLanIp = iface.address;
+                break;
+              }
+            }
+          }
+
+          res.statusCode = 200;
+          return res.end(JSON.stringify({
+            status: 'success',
+            clientIp: clientIp.replace('::ffff:', ''),
+            serverLanIp,
+            gatewayIp: '192.168.1.1',
+            dnsServer: '192.168.1.2 (qs-dc01.qisheng.local)',
+            domainJoined: true,
+            domainName: 'qisheng.local',
+            serverHostname: os.hostname() || 'QS-CORE-SRV01',
+            userAgent,
+            timestamp: new Date().toISOString(),
+            intranetVlan: 'VLAN 10 - HQ Workstations',
+          }));
+        }
+
+        if (url.pathname === '/api/system-health') {
+          res.statusCode = 200;
+          return res.end(JSON.stringify({
+            status: 'healthy',
+            services: [
+              { id: 'gw', name: 'Corporate Gateway (MikroTik CCR2004)', status: 'online', latency: 2, uptime: '99.99%' },
+              { id: 'ad', name: 'Active Directory / Entra ID Sync', status: 'online', latency: 4, uptime: '99.98%' },
+              { id: 'erp', name: 'Express & Central ERP Server', status: 'online', latency: 5, uptime: '99.95%' },
+              { id: 'ocr', name: 'DataForge OCR Engine Cluster', status: 'online', latency: 18, uptime: '99.89%' },
+              { id: 'rd', name: 'RD e-Filing Thai Tax Gateway', status: 'online', latency: 42, uptime: '99.70%' },
+              { id: 'vpn', name: 'HQ WireGuard/IPsec VPN Hub', status: 'online', latency: 6, uptime: '99.99%' }
+            ],
+            checkedAt: new Date().toISOString()
+          }));
+        }
+
+        if (url.pathname === '/api/auth/sso') {
+          res.statusCode = 200;
+          return res.end(JSON.stringify({
+            authenticated: true,
+            provider: 'Microsoft Entra ID (Azure AD)',
+            tenantId: 'qisheng-corp-prod-tenant',
+            ssoSession: 'valid'
+          }));
+        }
+
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: 'Endpoint not found' }));
+      });
+    }
+  };
+}
+
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss(), corporateApiPlugin()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});
+

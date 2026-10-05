@@ -1,0 +1,6 @@
+{
+  "name": "QISHENG Digital Portal",
+  "description": "Enterprise Application Hub & Corporate Digital Workplace Portal with SSO, RBAC, Client Machine Info, and System Status Monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -54,16 +54,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 text-slate-800 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-slate-800 dark:text-slate-100 my-8">
         {/* Language switch at top right */}
         {onToggleLanguage && (
           <div className="absolute top-6 right-6">
             <button
               onClick={onToggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors"
             >
-              <Globe2 className="w-3.5 h-3.5 text-[#1E60D5]" />
+              <Globe2 className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
               <span>{language === 'TH' ? 'TH' : 'EN'}</span>
             </button>
           </div>
@@ -71,7 +71,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Brand Lockup */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-blue-200 bg-blue-50 p-1 shadow-sm mb-3 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 p-1 shadow-sm mb-3 flex items-center justify-center">
             <img 
               src={QISHENG_LOGO} 
               alt="QISHENG Logo" 
@@ -81,27 +81,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 (e.currentTarget as HTMLElement).style.display = 'none';
               }}
             />
-            <span className="font-extrabold text-[#1E60D5] text-2xl tracking-wider">QS</span>
+            <span className="font-extrabold text-[#1E60D5] dark:text-blue-400 text-2xl tracking-wider">QS</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">QISHENG</h1>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#1E60D5] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">QISHENG</h1>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#1E60D5] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/80 px-2 py-0.5 rounded-md">
               Digital Portal
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1 font-medium">Enterprise Employee Intranet</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Corporate Single Sign-On Gateway</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Enterprise Employee Intranet</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Corporate Single Sign-On Gateway</p>
         </div>
 
         {/* Loading overlay when authenticating */}
         {isAuthenticating ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-3 text-center">
             <div className="w-8 h-8 border-2 border-[#1E60D5] border-t-transparent rounded-full animate-spin" />
-            <div className="text-sm font-bold text-slate-800">
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
               {language === 'TH' ? 'กำลังเชื่อมต่อ SSO...' : 'Authenticating SSO...'}
             </div>
-            <div className="text-xs text-slate-500 font-mono">{authProviderName}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{authProviderName}</div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -110,7 +110,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {/* Microsoft Entra ID */}
               <button
                 onClick={() => handleSsoLogin('EntraID')}
-                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 transition-all shadow-2xs hover:border-slate-300"
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all shadow-2xs hover:border-slate-300 dark:hover:border-slate-600"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21">
                   <rect x="1" y="1" width="9" height="9" fill="#f25022" />
@@ -124,7 +124,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {/* Google Workspace */}
               <button
                 onClick={() => handleSsoLogin('GoogleWorkspace')}
-                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 transition-all shadow-2xs hover:border-slate-300"
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all shadow-2xs hover:border-slate-300 dark:hover:border-slate-600"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -139,10 +139,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Divider */}
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
+                <div className="w-full border-t border-slate-200 dark:border-slate-800" />
               </div>
               <div className="relative flex justify-center text-[11px] uppercase">
-                <span className="bg-white px-3 text-slate-400 font-mono font-medium">
+                <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 dark:text-slate-500 font-mono font-medium">
                   {language === 'TH' ? 'หรือเลือกทดสอบโปรไฟล์ตามบทบาท (RBAC)' : 'Or Test RBAC Demo Roles'}
                 </span>
               </div>
@@ -154,23 +154,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <button
                   key={user.id}
                   onClick={() => handleQuickSelect(user)}
-                  className="w-full flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 text-left transition-all group shadow-2xs"
+                  className="w-full flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-blue-50/60 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 text-left transition-all group shadow-2xs"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-100 border border-blue-200 shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 shrink-0">
                       <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-slate-800 group-hover:text-[#1E60D5]">
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400">
                         {user.name}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
                         {language === 'TH' ? user.departmentTh : user.department}
                       </div>
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                     {user.role}
                   </span>
                 </button>
@@ -178,8 +178,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             {/* Security Guarantee */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Protected by Active Directory Domain Services & TLS 1.3</span>
             </div>
           </div>

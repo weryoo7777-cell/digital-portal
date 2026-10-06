@@ -20,18 +20,26 @@ import { CorporateAnnouncement } from '../types';
 interface AnnouncementsViewProps {
   announcements: CorporateAnnouncement[];
   language: 'TH' | 'EN';
+  readAnnouncementIds?: string[];
+  onMarkAsRead?: (id: string) => void;
+  onMarkAllAsRead?: () => void;
   onAddWelcomeAnnouncement?: () => void;
 }
 
 export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ 
   announcements, 
   language,
+  readAnnouncementIds = [],
+  onMarkAsRead,
+  onMarkAllAsRead,
   onAddWelcomeAnnouncement 
 }) => {
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState<boolean>(false);
   const [activeAnn, setActiveAnn] = useState<CorporateAnnouncement | null>(null);
+
+  const unreadCount = announcements.filter(a => !readAnnouncementIds.includes(a.id)).length;
 
   const announcementCategories = [
     { id: 'all', labelTh: 'ทั้งหมด', labelEn: 'All Notices', count: announcements.length },
@@ -72,21 +80,21 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in pb-12">
       {/* 1. Professional Empty State when announcements list is completely empty */}
       {announcements.length === 0 ? (
-        <div className="py-16 sm:py-20 px-6 text-center rounded-3xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center justify-center space-y-4 max-w-xl mx-auto my-6 animate-in fade-in">
+        <div className="py-16 sm:py-20 px-6 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col items-center justify-center space-y-4 max-w-xl mx-auto my-6 animate-in fade-in">
           <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1E60D5] shadow-xs">
-              <Bell className="w-8 h-8 text-[#1E60D5]" strokeWidth={1.75} />
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400 shadow-xs">
+              <Bell className="w-8 h-8 text-[#1E60D5] dark:text-blue-400" strokeWidth={1.75} />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-slate-500">
-              <FileText className="w-3.5 h-3.5 text-slate-500" />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             </div>
           </div>
 
           <div className="space-y-1.5 max-w-md">
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
               {language === 'TH' ? 'ยังไม่มีประกาศใหม่ในขณะนี้' : 'No new announcements at this time'}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {language === 'TH' 
                 ? 'ติดตามข่าวสาร สารสนเทศ และประกาศสำคัญขององค์กรได้ที่นี่' 
                 : 'Stay tuned for official company news, updates, and corporate notices.'}
@@ -96,9 +104,9 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           {onAddWelcomeAnnouncement && (
             <button
               onClick={onAddWelcomeAnnouncement}
-              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-[#1E60D5] text-[#1E60D5] hover:text-white text-xs font-bold transition-all shadow-2xs group cursor-pointer"
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-[#1E60D5] dark:hover:bg-[#1E60D5] text-[#1E60D5] dark:text-blue-300 hover:text-white text-xs font-bold transition-all shadow-2xs group cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#1E60D5] group-hover:text-white transition-colors" />
+              <Sparkles className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400 group-hover:text-white transition-colors" />
               <span>{language === 'TH' ? 'โหลดประกาศต้อนรับเริ่มต้น' : 'Load Welcome Notice'}</span>
             </button>
           )}
@@ -116,7 +124,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                   className={`w-9 h-9 rounded-xl border transition-all shadow-2xs flex items-center justify-center shrink-0 relative ${
                     selectedTag !== 'all'
                       ? 'bg-[#1E60D5] text-white border-[#1E60D5] shadow-xs'
-                      : 'bg-white text-slate-700 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                   title={
                     selectedTag !== 'all'
@@ -127,7 +135,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 >
                   <Filter className="w-4 h-4" />
                   {selectedTag !== 'all' && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
                   )}
                 </button>
 
@@ -141,8 +149,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
                 {/* Filter Dropdown - rendered in front with high z-index */}
                 {filterDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-2.5 animate-in fade-in zoom-in-95">
-                    <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl dark:shadow-slate-950/80 p-2.5 animate-in fade-in zoom-in-95">
+                    <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       {language === 'TH' ? 'เลือกหมวดหมู่ที่ต้องการกรอง' : 'Select Category to Filter'}
                     </div>
                     <div className="space-y-1 mt-1 max-h-80 overflow-y-auto">
@@ -155,15 +163,15 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left ${
                             selectedTag === cat.id
-                              ? 'bg-blue-50 text-[#1E60D5]'
-                              : 'text-slate-700 hover:bg-slate-50'
+                              ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                         >
                           <span>{language === 'TH' ? cat.labelTh : cat.labelEn}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
                             selectedTag === cat.id
                               ? 'bg-[#1E60D5] text-white'
-                              : 'bg-slate-100 text-slate-600'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                           }`}>
                             {cat.count}
                           </span>
@@ -196,73 +204,102 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               })()}
             </div>
 
-            {/* Search input */}
-            <div className="relative min-w-[200px] sm:w-64 shrink-0">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={language === 'TH' ? 'ค้นหาประกาศ, ข่าวสาร...' : 'Search notices...'}
-                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E60D5] transition-colors shadow-2xs"
-              />
+            {/* Right: Search and Mark All Read */}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && onMarkAllAsRead && (
+                <button
+                  onClick={onMarkAllAsRead}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
+                  title={language === 'TH' ? 'ทำเครื่องหมายว่าอ่านแล้วทั้งหมด' : 'Mark all as read'}
+                >
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="hidden sm:inline">{language === 'TH' ? 'อ่านทั้งหมดแล้ว' : 'Mark all read'}</span>
+                </button>
+              )}
+
+              {/* Search input */}
+              <div className="relative min-w-[180px] sm:w-64 shrink-0">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={language === 'TH' ? 'ค้นหาประกาศ, ข่าวสาร...' : 'Search notices...'}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 
           {/* Announcements List */}
           {filtered.length > 0 ? (
             <div className="space-y-3.5">
-              {filtered.map((ann) => (
-                <div
-                  key={ann.id}
-                  onClick={() => setActiveAnn(ann)}
-                  className="p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all group"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
-                          ann.priority === 'urgent'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : ann.priority === 'high'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-blue-50 text-[#1E60D5] border-blue-200'
-                        }`}>
-                          {ann.tag}
-                        </span>
-                        <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {ann.date}
-                        </span>
-                      </div>
+              {filtered.map((ann) => {
+                const isUnread = !readAnnouncementIds.includes(ann.id);
+                return (
+                  <div
+                    key={ann.id}
+                    onClick={() => {
+                      setActiveAnn(ann);
+                      onMarkAsRead?.(ann.id);
+                    }}
+                    className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all group cursor-pointer ${
+                      isUnread 
+                        ? 'border-blue-200 dark:border-blue-800/80 ring-1 ring-blue-500/20 shadow-xs' 
+                        : 'border-slate-200/90 dark:border-slate-800'
+                    } hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/60`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isUnread && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500 text-white shadow-2xs animate-pulse">
+                              {language === 'TH' ? 'ยังไม่ได้อ่าน' : 'UNREAD'}
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                            ann.priority === 'urgent'
+                              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
+                              : ann.priority === 'high'
+                              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                              : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                          }`}>
+                            {ann.tag}
+                          </span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {ann.date}
+                          </span>
+                        </div>
 
-                      <h3 className="text-base font-bold text-slate-900 group-hover:text-[#1E60D5] transition-colors">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors">
                         {language === 'TH' ? ann.title : ann.titleEn}
                       </h3>
 
-                      <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                         {ann.summary}
                       </p>
 
-                      <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
+                      <div className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 pt-1">
                         <User className="w-3.5 h-3.5" />
                         <span>{ann.author}</span>
                       </div>
                     </div>
 
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#1E60D5] group-hover:translate-x-0.5 transition-all shrink-0 mt-2" />
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0 mt-2" />
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           ) : (
-            <div className="p-12 text-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5">
-              <p className="text-sm font-semibold text-slate-700">
+            <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2.5">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {language === 'TH' ? 'ไม่พบประกาศที่ตรงกับตัวกรองที่เลือก' : 'No announcements match the current filter.'}
               </p>
               <button
                 onClick={() => { setSelectedTag('all'); setSearchQuery(''); }}
-                className="text-xs text-[#1E60D5] font-bold hover:underline"
+                className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
               >
                 {language === 'TH' ? 'ล้างตัวกรองเพื่อแสดงทั้งหมด' : 'Reset filter to show all'}
               </button>
@@ -273,26 +310,26 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
       {/* Announcement Detail Modal */}
       {activeAnn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 text-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 text-[#1E60D5] border border-blue-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 text-slate-800 dark:text-slate-100 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
                 {activeAnn.tag}
               </span>
-              <span className="text-xs font-mono text-slate-400">{activeAnn.date}</span>
+              <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{activeAnn.date}</span>
             </div>
 
-            <h3 className="text-lg font-bold text-slate-900 mb-2">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               {language === 'TH' ? activeAnn.title : activeAnn.titleEn}
             </h3>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
               {activeAnn.summary}
             </p>
 
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
               <span>{language === 'TH' ? 'ผู้ออกประกาศ:' : 'Issued by:'} {activeAnn.author}</span>
-              <span className="text-emerald-700 flex items-center gap-1 font-semibold">
+              <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                 <CheckCircle className="w-3.5 h-3.5" />
                 Verified Notice
               </span>

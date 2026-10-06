@@ -37,7 +37,7 @@ export const HeroClientInfo: React.FC<HeroClientInfoProps> = ({
   });
 
   return (
-    <div className="rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden mb-6">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden mb-6">
       {/* Top Welcome Banner with Glass Office Building Graphic */}
       <div className="relative overflow-hidden bg-gradient-to-r from-blue-900 via-[#1E60D5] to-blue-800 p-6 sm:p-7 text-white">
         {/* Modern Corporate Glass Office Building Backdrop */}

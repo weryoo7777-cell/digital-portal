@@ -130,6 +130,17 @@ export default function App() {
     });
   };
 
+  // Synchronize dark class to documentElement (html) and body
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   const handleSaveAvatar = (newAvatarUrl: string) => {
     setCurrentUser((prev) => {
       const updated = { ...prev, avatar: newAvatarUrl };
@@ -154,6 +165,39 @@ export default function App() {
   const [tickets, setTickets] = useState<HelpdeskTicket[]>(INITIAL_HELPDESK_TICKETS);
   const [roomBookings] = useState<RoomBooking[]>(INITIAL_ROOM_BOOKINGS);
   const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
+
+  // Announcements read tracking
+  const [readAnnouncementIds, setReadAnnouncementIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_read_announcements');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const unreadAnnouncementsCount = announcements.filter(a => !readAnnouncementIds.includes(a.id)).length;
+
+  const handleMarkAnnouncementAsRead = (id: string) => {
+    setReadAnnouncementIds(prev => {
+      if (!prev.includes(id)) {
+        const next = [...prev, id];
+        try {
+          localStorage.setItem('qs_read_announcements', JSON.stringify(next));
+        } catch {}
+        return next;
+      }
+      return prev;
+    });
+  };
+
+  const handleMarkAllAnnouncementsAsRead = () => {
+    const allIds = announcements.map(a => a.id);
+    setReadAnnouncementIds(allIds);
+    try {
+      localStorage.setItem('qs_read_announcements', JSON.stringify(allIds));
+    } catch {}
+  };
 
   // High-Priority Notifications Alert Feed for Right Sidebar
   const highPriorityAlerts = [
@@ -386,12 +430,12 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-[#F4F6F9] text-slate-900'} flex font-sans antialiased transition-colors duration-200`}>
+    <div className={`min-h-screen ${darkMode ? 'dark bg-[#0B0F19] text-slate-100' : 'bg-[#F4F6F9] text-slate-900'} flex font-sans antialiased transition-colors duration-200`}>
       {/* 1. Left Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
-        unreadAnnouncementsCount={announcements.length}
+        unreadAnnouncementsCount={unreadAnnouncementsCount}
         onOpenQuickAction={(action) => setQuickActionModal({ isOpen: true, type: action })}
         onOpenSystemStatus={() => setSystemStatusOpen(true)}
         onOpenGoogleSearch={() => {
@@ -411,7 +455,6 @@ export default function App() {
         <Header
           currentUser={currentUser}
           machineInfo={machineInfo}
-          onSwitchUser={(newUser) => setCurrentUser(newUser)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
@@ -427,9 +470,11 @@ export default function App() {
           darkMode={darkMode}
           onToggleDarkMode={toggleDarkMode}
           announcements={announcements}
+          unreadAnnouncementsCount={unreadAnnouncementsCount}
           onOpenAnnouncements={() => setCurrentTab('announcements')}
           onLogout={() => setIsLoggedIn(false)}
           language={language}
+          onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
           currentTabName={getTabTitle()}
         />
 
@@ -437,15 +482,15 @@ export default function App() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto">
           {/* Real-time Search Filter Results Banner */}
           {searchQuery && (
-            <div className="mb-6 p-4 rounded-2xl bg-white border border-blue-200 shadow-xs flex items-center justify-between">
-              <div className="text-xs text-slate-700">
+            <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs flex items-center justify-between">
+              <div className="text-xs text-slate-700 dark:text-slate-300">
                 {language === 'TH' ? 'ผลการค้นหาสำหรับ:' : 'Search results for:'}{' '}
-                <span className="font-mono text-[#1E60D5] font-bold">"{searchQuery}"</span>{' '}
-                <span className="text-slate-400">({filteredApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})</span>
+                <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold">"{searchQuery}"</span>{' '}
+                <span className="text-slate-400 dark:text-slate-500">({filteredApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})</span>
               </div>
               <button
                 onClick={() => setSearchQuery('')}
-                className="text-xs text-[#1E60D5] hover:underline font-semibold"
+                className="text-xs text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold"
               >
                 {language === 'TH' ? 'ล้างการค้นหา' : 'Clear Search'}
               </button>
@@ -463,14 +508,14 @@ export default function App() {
 
               {/* 2) Frequently Used Apps (Clean Section without Filter or View-All buttons) */}
               <section className="space-y-3.5">
-                <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-[#1E60D5] flex items-center justify-center font-bold">
+                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center font-bold">
                     <Clock className="w-3.5 h-3.5" />
                   </div>
-                  <h2 className="text-base font-bold text-slate-900">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
                     {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
                   </h2>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
                     ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
                   </span>
                 </div>
@@ -490,8 +535,8 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 text-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
-                    <p className="text-xs text-slate-500">
+                  <div className="p-8 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {language === 'TH' ? 'ไม่มีระบบที่บันทึกไว้ในขณะนี้' : 'No applications in list.'}
                     </p>
                   </div>
@@ -500,18 +545,18 @@ export default function App() {
 
                 {/* 3) System Categories (2x4 Category Grid) */}
                 <section className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                      <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
                         <Grid className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <h2 className="text-base font-bold text-slate-900">
+                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
                           {language === 'TH' ? 'หมวดหมู่ระบบงานองค์กร' : 'System Categories'}
                         </h2>
                       </div>
                     </div>
-                    <span className="text-xs text-slate-400 font-medium">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                       2x4 Category Matrix
                     </span>
                   </div>
@@ -524,22 +569,22 @@ export default function App() {
                         <div
                           key={cat.id}
                           onClick={cat.onClick}
-                          className="group p-3.5 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between"
+                          className="group p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/50 cursor-pointer transition-all flex flex-col justify-between"
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
                               <Icon className="w-4 h-4" />
                             </div>
-                            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-transparent dark:border-slate-700">
                               {cat.count}
                             </span>
                           </div>
 
                           <div>
-                            <div className="text-xs font-bold text-slate-900 group-hover:text-[#1E60D5] transition-colors truncate">
+                            <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
                               {language === 'TH' ? cat.nameTh : cat.nameEn}
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                            <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate mt-0.5">
                               {cat.descTh}
                             </div>
                           </div>
@@ -552,15 +597,15 @@ export default function App() {
                 {/* 4) Recent Activity / Updates (Two Columns) */}
                 <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Left Column: Recently Accessed Apps */}
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-[#1E60D5]" />
-                        <h3 className="text-sm font-bold text-slate-900">
+                        <Activity className="w-4 h-4 text-[#1E60D5] dark:text-blue-400" />
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                           {language === 'TH' ? 'ประวัติการเข้าใช้งานล่าสุด' : 'Recent App Activity'}
                         </h3>
                       </div>
-                      <span className="text-[11px] text-slate-400 font-mono">Live Log</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">Live Log</span>
                     </div>
 
                     <div className="space-y-2.5">
@@ -569,22 +614,22 @@ export default function App() {
                         return (
                           <div 
                             key={idx} 
-                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors"
+                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${log.color}`}>
                                 <Icon className="w-3.5 h-3.5" />
                               </div>
                               <div className="min-w-0">
-                                <div className="text-xs font-bold text-slate-800 truncate">
+                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                                   {language === 'TH' ? log.appTh : log.appName}
                                 </div>
-                                <div className="text-[10px] text-slate-400">
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
                                   {log.appName}
                                 </div>
                               </div>
                             </div>
-                            <span className="text-[11px] text-slate-500 font-mono shrink-0">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
                               {log.time}
                             </span>
                           </div>
@@ -594,17 +639,17 @@ export default function App() {
                   </div>
 
                   {/* Right Column: Important Announcements with Status Badges */}
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-amber-500" />
-                        <h3 className="text-sm font-bold text-slate-900">
+                        <Bell className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                           {language === 'TH' ? 'ประกาศสำคัญขององค์กร' : 'Company Announcements'}
                         </h3>
                       </div>
                       <button
                         onClick={() => setCurrentTab('announcements')}
-                        className="text-xs text-[#1E60D5] hover:underline font-semibold"
+                        className="text-xs text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold"
                       >
                         {language === 'TH' ? 'ดูทั้งหมด' : 'View All'}
                       </button>
@@ -615,25 +660,25 @@ export default function App() {
                         <div
                           key={ann.id}
                           onClick={() => setSelectedAnnouncement(ann)}
-                          className="p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer transition-all group"
+                          className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800/70 hover:bg-blue-50/30 dark:hover:bg-slate-800/50 cursor-pointer transition-all group"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
                               ann.priority === 'urgent'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
                                 : ann.tag === 'Tax Deadline'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-blue-50 text-[#1E60D5] border-blue-200'
+                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                                : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
                             }`}>
                               {ann.priority === 'urgent' ? 'Urgent' : ann.tag === 'Tax Deadline' ? 'Notice' : 'News'}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">{ann.date}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{ann.date}</span>
                           </div>
 
-                          <div className="text-xs font-bold text-slate-800 group-hover:text-[#1E60D5] line-clamp-1">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 line-clamp-1">
                             {language === 'TH' ? ann.title : ann.titleEn}
                           </div>
-                          <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
                             {ann.summary}
                           </div>
                         </div>
@@ -669,7 +714,7 @@ export default function App() {
                         className={`w-9 h-9 rounded-xl border transition-all shadow-2xs flex items-center justify-center shrink-0 relative ${
                           selectedCategory !== 'all'
                             ? 'bg-[#1E60D5] text-white border-[#1E60D5] shadow-xs'
-                            : 'bg-white text-slate-700 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                         }`}
                         title={
                           selectedCategory !== 'all'
@@ -680,7 +725,7 @@ export default function App() {
                       >
                         <Filter className="w-4 h-4" />
                         {selectedCategory !== 'all' && (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
                         )}
                       </button>
 
@@ -694,8 +739,8 @@ export default function App() {
 
                       {/* Filter Dropdown Menu - rendered in front with high z-index */}
                       {allAppsFilterDropdownOpen && (
-                        <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-2.5 animate-in fade-in zoom-in-95">
-                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl dark:shadow-slate-950/80 p-2.5 animate-in fade-in zoom-in-95">
+                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                             {language === 'TH' ? 'เลือกหมวดหมู่ที่ต้องการกรอง' : 'Select Category to Filter'}
                           </div>
                           <div className="space-y-1 mt-1 max-h-80 overflow-y-auto">
@@ -708,15 +753,15 @@ export default function App() {
                                 }}
                                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left ${
                                   selectedCategory === cat.id
-                                    ? 'bg-blue-50 text-[#1E60D5]'
-                                    : 'text-slate-700 hover:bg-slate-50'
+                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 }`}
                               >
                                 <span>{language === 'TH' ? cat.labelTh : cat.labelEn}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
                                   selectedCategory === cat.id
                                     ? 'bg-[#1E60D5] text-white'
-                                    : 'bg-slate-100 text-slate-600'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                                 }`}>
                                   {cat.count}
                                 </span>
@@ -727,7 +772,7 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* ปุ่มแสดงชื่อหมวดหมู่ที่เลือก (ถ้าเลือกทั้งหมดจะโชว์ทั้งหมด ถ้าเลือกเมนูอื่นจะเปลี่ยนชื่อเป็นเมนูนั้น) */}
+                    {/* ปุ่มแสดงชื่อหมวดหมู่ที่เลือก */}
                     {(() => {
                       const currentCatObj = allAppsCategories.find(c => c.id === selectedCategory) || allAppsCategories[0];
                       return (
@@ -757,7 +802,7 @@ export default function App() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={language === 'TH' ? 'ค้นหาระบบงานองค์กร...' : 'Filter apps...'}
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E60D5] transition-colors shadow-2xs"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
                     />
                   </div>
                 </div>
@@ -778,13 +823,13 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-12 text-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5">
-                    <p className="text-sm font-semibold text-slate-700">
+                  <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2.5">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                       {language === 'TH' ? 'ไม่พบระบบงานที่ตรงกับตัวกรองที่เลือก' : 'No applications match the current filter.'}
                     </p>
                     <button
                       onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
-                      className="text-xs text-[#1E60D5] font-bold hover:underline"
+                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
                     >
                       {language === 'TH' ? 'ล้างตัวกรองเพื่อแสดงทั้งหมด' : 'Reset filter to show all'}
                     </button>
@@ -810,6 +855,9 @@ export default function App() {
             <AnnouncementsView
               announcements={announcements}
               language={language}
+              readAnnouncementIds={readAnnouncementIds}
+              onMarkAsRead={handleMarkAnnouncementAsRead}
+              onMarkAllAsRead={handleMarkAllAnnouncementsAsRead}
               onAddWelcomeAnnouncement={() => setAnnouncements(CORPORATE_ANNOUNCEMENTS)}
             />
           )}

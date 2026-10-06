@@ -125,22 +125,22 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 text-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-slate-800 dark:text-slate-100 overflow-hidden">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {language === 'TH' ? 'ปุ่มลัดการทำงานด่วน (Quick Actions)' : 'Quick Actions'}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {language === 'TH' 
               ? 'แจ้งซ่อมไอที รีเซ็ตรหัสผ่านพนักงาน หรือยื่นขอสิทธิ์เข้าระบบใหม่' 
               : 'Submit IT tickets, perform self-service password reset, or request system permissions.'}
@@ -148,13 +148,13 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
         </div>
 
         {/* Interactive Segmented Tabs */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl mb-5">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-5">
           <button
             onClick={() => setActiveTab('helpdesk')}
             className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'helpdesk'
-                ? 'bg-white text-[#1E60D5] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <HelpCircle className="w-3.5 h-3.5" />
@@ -165,8 +165,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             onClick={() => setActiveTab('sspr')}
             className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'sspr'
-                ? 'bg-white text-[#1E60D5] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <KeyRound className="w-3.5 h-3.5" />
@@ -177,8 +177,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             onClick={() => setActiveTab('access')}
             className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'access'
-                ? 'bg-white text-[#1E60D5] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -188,8 +188,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
 
         {/* Success Alert */}
         {submittedMessage && (
-          <div className="p-3.5 mb-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2.5 text-xs font-medium animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <div className="p-3.5 mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center gap-2.5 text-xs font-medium animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <span>{submittedMessage}</span>
           </div>
         )}
@@ -198,18 +198,18 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
         {activeTab === 'helpdesk' && (
           <form onSubmit={handleSubmitHelpdesk} className="space-y-3.5">
             {/* Auto-detected client machine badge */}
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Laptop className="w-3.5 h-3.5 text-[#1E60D5]" />
+                <Laptop className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
                 <span>{language === 'TH' ? 'แนบข้อมูลเครื่องอัตโนมัติ:' : 'Auto-attached Machine:'}</span>
               </div>
-              <span className="font-mono text-[#1E60D5] font-bold text-[11px] truncate max-w-[200px]">
+              <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold text-[11px] truncate max-w-[200px]">
                 {machineInfo?.hostname || currentUser.workstationHostname} ({machineInfo?.localIp || currentUser.localIp})
               </span>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'หัวข้อปัญหาที่พบ *' : 'Subject *'}
               </label>
               <input
@@ -218,19 +218,19 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 value={ticketSubject}
                 onChange={(e) => setTicketSubject(e.target.value)}
                 placeholder={language === 'TH' ? 'เช่น เชื่อมต่อ Express Accounting ไม่ได้, ปริ้นไม่ออก' : 'e.g. Cannot connect to Express'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {language === 'TH' ? 'หมวดหมู่อุปกรณ์' : 'Category'}
                 </label>
                 <select
                   value={ticketCategory}
                   onChange={(e) => setTicketCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
                 >
                   <option value="Hardware & Peripheral">Hardware / Printer / จอภาพ</option>
                   <option value="Network & VPN">Network / Wi-Fi / VPN Intranet</option>
@@ -240,13 +240,13 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {language === 'TH' ? 'ระดับความเร่งด่วน' : 'Priority'}
                 </label>
                 <select
                   value={ticketPriority}
                   onChange={(e) => setTicketPriority(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
                 >
                   <option value="Low">Low - ต่ำ (ภายใน 24 ชม.)</option>
                   <option value="Medium">Medium - ปานกลาง (ภายใน 4 ชม.)</option>
@@ -257,7 +257,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'รายละเอียดเพิ่มเติม' : 'Description'}
               </label>
               <textarea
@@ -265,7 +265,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 value={ticketDesc}
                 onChange={(e) => setTicketDesc(e.target.value)}
                 placeholder={language === 'TH' ? 'ระบุรหัสข้อผิดพลาด หรืออาการผิดปกติ...' : 'Provide details...'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               />
             </div>
 
@@ -273,7 +273,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
               </button>
@@ -291,19 +291,19 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
         {/* Tab 2: SSPR - Self-Service Password Reset */}
         {activeTab === 'sspr' && (
           <form onSubmit={handleSubmitSspr} className="space-y-3.5">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-              <div className="flex items-center justify-between text-slate-600">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span>{language === 'TH' ? 'บัญชีพนักงาน:' : 'Employee Account:'}</span>
-                <span className="font-mono text-[#1E60D5] font-bold">{currentUser.email}</span>
+                <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold">{currentUser.email}</span>
               </div>
-              <div className="flex items-center justify-between text-slate-600">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span>{language === 'TH' ? 'รหัสพนักงาน:' : 'Employee ID:'}</span>
-                <span className="font-mono text-slate-800 font-semibold">{currentUser.employeeId}</span>
+                <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{currentUser.employeeId}</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'วิธีการยืนยันตัวตน (MFA Verification)' : 'Verification Method'}
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -312,8 +312,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   onClick={() => setSsprMethod('mfa')}
                   className={`p-2.5 rounded-xl border text-left text-xs transition-colors flex items-center gap-2 ${
                     ssprMethod === 'mfa'
-                      ? 'bg-blue-50 border-blue-300 text-[#1E60D5] font-bold'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-[#1E60D5] dark:text-blue-300 font-bold'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Smartphone className="w-3.5 h-3.5 shrink-0" />
@@ -324,8 +324,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   onClick={() => setSsprMethod('current')}
                   className={`p-2.5 rounded-xl border text-left text-xs transition-colors flex items-center gap-2 ${
                     ssprMethod === 'current'
-                      ? 'bg-blue-50 border-blue-300 text-[#1E60D5] font-bold'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-[#1E60D5] dark:text-blue-300 font-bold'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Lock className="w-3.5 h-3.5 shrink-0" />
@@ -336,7 +336,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
 
             {ssprMethod === 'current' && (
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {language === 'TH' ? 'รหัสผ่านปัจจุบัน *' : 'Current Password *'}
                 </label>
                 <input
@@ -345,7 +345,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
                 />
               </div>
             )}
@@ -358,7 +358,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 onChange={(e) => setUnlockOnly(e.target.checked)}
                 className="rounded border-slate-300 text-[#1E60D5] focus:ring-0"
               />
-              <label htmlFor="unlockOnly" className="text-xs text-slate-700 cursor-pointer font-medium">
+              <label htmlFor="unlockOnly" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
                 {language === 'TH' ? 'ขอปลดล็อกบัญชีเท่านั้น (ไม่เปลี่ยนรหัสผ่าน)' : 'Unlock account only (Keep current password)'}
               </label>
             </div>
@@ -366,7 +366,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             {!unlockOnly && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {language === 'TH' ? 'รหัสผ่านใหม่ (อย่างน้อย 12 ตัวอักษร) *' : 'New Password *'}
                   </label>
                   <input
@@ -375,12 +375,12 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="อย่างน้อย 12 ตัวอักษร มีตัวพิมพ์ใหญ่และตัวเลข"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {language === 'TH' ? 'ยืนยันรหัสผ่านใหม่ *' : 'Confirm New Password *'}
                   </label>
                   <input
@@ -389,7 +389,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -399,7 +399,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
               </button>
@@ -422,13 +422,13 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
         {activeTab === 'access' && (
           <form onSubmit={handleSubmitAccess} className="space-y-3.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'เลือกระบบงานที่ต้องการขอเปิดสิทธิ์ *' : 'Select Target Application *'}
               </label>
               <select
                 value={selectedAppId}
                 onChange={(e) => setSelectedAppId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               >
                 {ENTERPRISE_APPS.map((app) => (
                   <option key={app.id} value={app.id}>
@@ -439,13 +439,13 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'ระยะเวลาที่ต้องการใช้งาน' : 'Access Duration'}
               </label>
               <select
                 value={accessPeriod}
                 onChange={(e) => setAccessPeriod(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               >
                 <option value="Permanent">ถาวร (พนักงานประจำแผนก)</option>
                 <option value="30 Days">ชั่วคราว 30 วัน (โครงการพิเศษ)</option>
@@ -454,7 +454,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === 'TH' ? 'เหตุผลความจำเป็นในการเข้าใช้งาน *' : 'Business Justification *'}
               </label>
               <textarea
@@ -463,7 +463,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 value={accessReason}
                 onChange={(e) => setAccessReason(e.target.value)}
                 placeholder={language === 'TH' ? 'ระบุหน้าที่ความรับผิดชอบ และคำสั่งจากหัวหน้างาน...' : 'Explain the business need...'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#1E60D5]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               />
             </div>
 
@@ -471,7 +471,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
               </button>

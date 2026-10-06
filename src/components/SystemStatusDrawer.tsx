@@ -56,12 +56,12 @@ export const SystemStatusDrawer: React.FC<SystemStatusDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 text-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-slate-800 dark:text-slate-100 overflow-hidden">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -69,14 +69,14 @@ export const SystemStatusDrawer: React.FC<SystemStatusDrawerProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between pr-8 mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-[#1E60D5] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center">
               <Activity className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 {language === 'TH' ? 'ตรวจสอบสถานะระบบและเครือข่ายองค์กร' : 'Infrastructure & Network Monitor'}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {language === 'TH' 
                   ? 'ตรวจสอบความพร้อมของเซิร์ฟเวอร์ฐานข้อมูล เกตเวย์ และระบบคลาวด์ QISHENG' 
                   : 'Real-time uptime and latency status for core internal nodes.'}
@@ -87,52 +87,52 @@ export const SystemStatusDrawer: React.FC<SystemStatusDrawerProps> = ({
 
         {/* Live Bandwidth & Gateway Summary */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] text-slate-500 mb-1 flex items-center gap-1.5 font-medium">
-              <Wifi className="w-3.5 h-3.5 text-[#1E60D5]" />
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+              <Wifi className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
               <span>{language === 'TH' ? 'ความเร็วอินเทอร์เน็ต' : 'Fiber Bandwidth'}</span>
             </div>
-            <div className="font-mono text-sm sm:text-base font-bold text-slate-900">
+            <div className="font-mono text-sm sm:text-base font-bold text-slate-900 dark:text-white">
               1,000 / 1,000
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">Mbps Symmetrical</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Mbps Symmetrical</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] text-slate-500 mb-1 flex items-center gap-1.5 font-medium">
-              <ArrowDownUp className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+              <ArrowDownUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{language === 'TH' ? 'ทราฟฟิกเครือข่าย' : 'Intranet Traffic'}</span>
             </div>
-            <div className="font-mono text-sm sm:text-base font-bold text-emerald-700">
+            <div className="font-mono text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-400">
               418 Mbps
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">Core Trunk Load (42%)</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Core Trunk Load (42%)</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] text-slate-500 mb-1 flex items-center gap-1.5 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               <span>{language === 'TH' ? 'ความพร้อมโดยรวม' : 'Avg. Uptime'}</span>
             </div>
-            <div className="font-mono text-sm sm:text-base font-bold text-purple-700">
+            <div className="font-mono text-sm sm:text-base font-bold text-purple-700 dark:text-purple-300">
               99.98%
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">30-day SLA Target Met</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">30-day SLA Target Met</div>
           </div>
         </div>
 
         {/* Services List */}
-        <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden mb-5 max-h-72 overflow-y-auto">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-5 max-h-72 overflow-y-auto">
           {services.map((svc) => (
-            <div key={svc.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+            <div key={svc.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                 <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span>{svc.name}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">({svc.category})</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">({svc.category})</span>
                   </div>
-                  <div className="font-mono text-[11px] text-slate-500 mt-0.5">
+                  <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     {svc.host}
                   </div>
                 </div>
@@ -140,10 +140,10 @@ export const SystemStatusDrawer: React.FC<SystemStatusDrawerProps> = ({
 
               <div className="flex items-center gap-4 text-right">
                 <div>
-                  <div className="text-xs font-mono font-bold text-emerald-700">
+                  <div className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
                     {svc.latency} ms
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                     {svc.uptime}
                   </div>
                 </div>
@@ -153,18 +153,18 @@ export const SystemStatusDrawer: React.FC<SystemStatusDrawerProps> = ({
         </div>
 
         {/* Footer with Refresh button */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{language === 'TH' ? `ตรวจสอบล่าสุด: ${lastCheck}` : `Last checked: ${lastCheck}`}</span>
           </div>
 
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#1E60D5] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{language === 'TH' ? 'ยิง Ping ทดสอบใหม่' : 'Re-test Latency'}</span>
           </button>
         </div>

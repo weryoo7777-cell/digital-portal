@@ -460,6 +460,14 @@ export default function App() {
                 isLoading={isDetectingMachine}
                 onRefreshInfo={() => runMachineDetection(currentUser)}
                 language={language}
+                onUpdateDeviceName={(name) => {
+                  setCurrentUser(prev => ({ ...prev, workstationHostname: name }));
+                  setMachineInfo(prev => prev ? { ...prev, hostname: name, deviceName: name.replace(/\.qisheng\.local$/i, '') } : null);
+                }}
+                onUpdateLocalIp={(ip) => {
+                  setCurrentUser(prev => ({ ...prev, localIp: ip }));
+                  setMachineInfo(prev => prev ? { ...prev, localIp: ip } : null);
+                }}
               />
 
               {/* 2) Frequently Used Apps (Grid of cards with Filter Button) */}

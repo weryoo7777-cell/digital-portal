@@ -56,8 +56,22 @@ export interface NetworkAdapterInfo {
   mac?: string;
 }
 
+export interface DeviceHardwareSpecs {
+  deviceName: string;
+  domainSuffix?: string;
+  processor: string;
+  installedRam: string;
+  graphicsCard: string;
+  storage: string;
+  deviceId: string;
+  productId: string;
+  systemType: string;
+  penAndTouch: string;
+}
+
 export interface ClientMachineInfo {
   hostname: string;
+  deviceName?: string;
   localIp: string;
   publicIp: string;
   gatewayIp: string;
@@ -81,6 +95,8 @@ export interface ClientMachineInfo {
   corporateLocalIp?: string;
   networkAdapters?: NetworkAdapterInfo[];
   displayMode?: 'real' | 'corporate';
+  deviceSpecs?: DeviceHardwareSpecs;
+  showFqdn?: boolean;
 }
 
 export interface SystemServiceHealth {

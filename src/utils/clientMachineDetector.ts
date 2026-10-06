@@ -1,4 +1,38 @@
-import { ClientMachineInfo, UserProfile } from '../types';
+import { ClientMachineInfo, UserProfile, DeviceHardwareSpecs } from '../types';
+
+export const DEFAULT_DEVICE_SPECS: DeviceHardwareSpecs = {
+  deviceName: 'QISHENG-022',
+  domainSuffix: 'qisheng.local',
+  processor: 'Intel(R) Core(TM) i3-9100 CPU @ 3.60GHz (3.60 GHz)',
+  installedRam: '16.0 GB (15.8 GB usable)',
+  graphicsCard: 'Intel(R) UHD Graphics 630 (128 MB)',
+  storage: '73 GB of 932 GB used',
+  deviceId: '1FCD6E1E-F35D-44D1-A065-5DA078A8061B',
+  productId: '00327-35195-21387-AAOEM',
+  systemType: '64-bit operating system, x64-based processor',
+  penAndTouch: 'No pen or touch input is available for this display',
+};
+
+export function saveCustomDeviceName(name: string, showFqdn?: boolean): void {
+  try {
+    localStorage.setItem('qs_device_name', name.trim());
+    localStorage.setItem('qs_custom_hostname', name.trim());
+    if (typeof showFqdn === 'boolean') {
+      localStorage.setItem('qs_show_fqdn', String(showFqdn));
+    }
+  } catch {}
+}
+
+export function saveDeviceHardwareSpecs(specs: Partial<DeviceHardwareSpecs>): void {
+  try {
+    const current = localStorage.getItem('qs_device_specs');
+    const merged = { ...DEFAULT_DEVICE_SPECS, ...(current ? JSON.parse(current) : {}), ...specs };
+    localStorage.setItem('qs_device_specs', JSON.stringify(merged));
+    if (specs.deviceName) {
+      localStorage.setItem('qs_device_name', specs.deviceName.trim());
+    }
+  } catch {}
+}
 
 export function parseClientEnvironment() {
   const ua = navigator.userAgent;
@@ -138,8 +172,43 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
   // Try WebRTC local IP
   const rtcLocalIp = await detectLocalIpViaWebRTC();
 
+  // 1. Read stored custom device name / hostname
+  let customDeviceName = '';
+  try {
+    const stored = localStorage.getItem('qs_device_name') || localStorage.getItem('qs_custom_hostname');
+    if (stored && stored.trim()) {
+      customDeviceName = stored.trim();
+    }
+  } catch {}
+
+  // 2. Read FQDN display mode preference (default: false so it matches Windows Device name directly)
+  let showFqdn = false;
+  try {
+    const storedFqdn = localStorage.getItem('qs_show_fqdn');
+    if (storedFqdn !== null) {
+      showFqdn = storedFqdn === 'true';
+    }
+  } catch {}
+
+  // 3. Read stored device hardware specs or fallback to DEFAULT_DEVICE_SPECS
+  let deviceSpecs = { ...DEFAULT_DEVICE_SPECS };
+  try {
+    const storedSpecs = localStorage.getItem('qs_device_specs');
+    if (storedSpecs) {
+      deviceSpecs = { ...deviceSpecs, ...JSON.parse(storedSpecs) };
+    }
+  } catch {}
+
+  // Determine effective device name (QISHENG-022 by default)
+  const baseWorkstation = currentUser.workstationHostname
+    ? currentUser.workstationHostname.replace(/\.qisheng\.local$/i, '')
+    : DEFAULT_DEVICE_SPECS.deviceName;
+
+  const effectiveDeviceName = customDeviceName || baseWorkstation || DEFAULT_DEVICE_SPECS.deviceName;
+  deviceSpecs.deviceName = effectiveDeviceName;
+
   // Determine Real Hardware info vs Corporate Mock info
-  const realHostname = serverData?.realHostname || serverData?.serverHostname || 'LOCAL-PC';
+  const realHostname = serverData?.realHostname || effectiveDeviceName;
   const realLocalIp = serverData?.serverLanIp || rtcLocalIp || '192.168.1.100';
 
   // Read saved display mode preference ('real' | 'corporate'), default to 'real' when on localhost
@@ -151,9 +220,10 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     }
   } catch {}
 
-  const activeHostname = savedMode === 'real' && (serverData?.realHostname || isLocal)
-    ? realHostname 
-    : currentUser.workstationHostname;
+  // Active hostname: Format as plain Device Name (QISHENG-022) or FQDN (QISHENG-022.qisheng.local)
+  const activeHostname = showFqdn 
+    ? `${effectiveDeviceName}.${deviceSpecs.domainSuffix || 'qisheng.local'}`
+    : effectiveDeviceName;
 
   const activeLocalIp = savedMode === 'real' && (serverData?.serverLanIp || rtcLocalIp || isLocal)
     ? realLocalIp 
@@ -195,6 +265,7 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
 
   return {
     hostname: activeHostname,
+    deviceName: effectiveDeviceName,
     localIp: activeLocalIp,
     publicIp,
     gatewayIp: defaultGateway,
@@ -217,6 +288,8 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     corporateHostname: currentUser.workstationHostname,
     corporateLocalIp: currentUser.localIp,
     networkAdapters: serverData?.networkAdapters || [],
-    displayMode: savedMode
+    displayMode: savedMode,
+    deviceSpecs,
+    showFqdn
   };
 }

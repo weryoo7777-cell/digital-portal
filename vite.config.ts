@@ -64,7 +64,10 @@ function corporateApiPlugin(): Plugin {
             clientIp === '127.0.0.1' || 
             clientIp === '::1';
 
-          const realHostname = os.hostname() || 'LOCAL-WORKSTATION';
+          const rawHost = os.hostname();
+          const realHostname = (rawHost && !rawHost.includes('ais-') && !rawHost.includes('localhost') && rawHost !== '127.0.0.1')
+            ? rawHost
+            : 'QISHENG-022';
           const gatewayIp = primaryLanIp.includes('.')
             ? `${primaryLanIp.substring(0, primaryLanIp.lastIndexOf('.'))}.1 (Default Gateway)`
             : '192.168.1.1 (Gateway)';

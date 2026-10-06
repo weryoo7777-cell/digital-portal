@@ -18,7 +18,7 @@ export const CORPORATE_USERS: UserProfile[] = [
     position: 'IT Support Specialist',
     employeeId: 'QS-01092',
     avatar: SOMCHAI_AVATAR,
-    workstationHostname: 'QS-BKK-IT-PARAMED.qisheng.local',
+    workstationHostname: 'QISHENG-022',
     assignedVlan: 'VLAN 10 - IT Operations Subnet',
     localIp: '192.168.10.45',
     ssoProvider: 'EntraID'

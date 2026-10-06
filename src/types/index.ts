@@ -49,6 +49,13 @@ export interface EnterpriseApp {
   serverHost?: string;
 }
 
+export interface NetworkAdapterInfo {
+  name: string;
+  ip: string;
+  isPhysical: boolean;
+  mac?: string;
+}
+
 export interface ClientMachineInfo {
   hostname: string;
   localIp: string;
@@ -66,7 +73,14 @@ export interface ClientMachineInfo {
   downlinkSpeed: string;
   latencyMs: number;
   detectedAt: string;
-  detectionMethod: 'WebRTC & Backend Intranet Forwarder' | 'Intranet Agent Simulation';
+  detectionMethod: 'WebRTC & Backend Intranet Forwarder' | 'Intranet Agent Simulation' | 'Host OS Live Detection' | string;
+  isRealLocalhost?: boolean;
+  realHostname?: string;
+  realLocalIp?: string;
+  corporateHostname?: string;
+  corporateLocalIp?: string;
+  networkAdapters?: NetworkAdapterInfo[];
+  displayMode?: 'real' | 'corporate';
 }
 
 export interface SystemServiceHealth {

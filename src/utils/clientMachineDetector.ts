@@ -125,28 +125,82 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     // offline fallback
   }
 
+  // Detect whether running in localhost / local development environment
+  const isLocalhostBrowser = 
+    typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' || 
+     window.location.hostname.startsWith('192.168.') || 
+     window.location.hostname.startsWith('10.'));
+
+  const isLocal = isLocalhostBrowser || !!serverData?.isLocalhost;
+
   // Try WebRTC local IP
   const rtcLocalIp = await detectLocalIpViaWebRTC();
 
-  // If we found a real WebRTC private IP, use it; otherwise use server or user profile assigned IP
-  const localIp = rtcLocalIp || serverData?.clientIp || currentUser.localIp || '192.168.1.108';
-  const publicIp = serverData?.clientIp && !serverData.clientIp.startsWith('192.168.') && !serverData.clientIp.startsWith('127.0.') 
-    ? serverData.clientIp 
-    : '203.144.178.62 (True Super Fiber Corp)';
+  // Determine Real Hardware info vs Corporate Mock info
+  const realHostname = serverData?.realHostname || serverData?.serverHostname || 'LOCAL-PC';
+  const realLocalIp = serverData?.serverLanIp || rtcLocalIp || '192.168.1.100';
+
+  // Read saved display mode preference ('real' | 'corporate'), default to 'real' when on localhost
+  let savedMode: 'real' | 'corporate' = isLocal ? 'real' : 'corporate';
+  try {
+    const stored = localStorage.getItem('qs_machine_display_mode');
+    if (stored === 'real' || stored === 'corporate') {
+      savedMode = stored;
+    }
+  } catch {}
+
+  const activeHostname = savedMode === 'real' && (serverData?.realHostname || isLocal)
+    ? realHostname 
+    : currentUser.workstationHostname;
+
+  const activeLocalIp = savedMode === 'real' && (serverData?.serverLanIp || rtcLocalIp || isLocal)
+    ? realLocalIp 
+    : (rtcLocalIp || currentUser.localIp || '192.168.10.45');
+
+  // Attempt to get real Public IP via public API with fast timeout
+  let detectedPublicIp = serverData?.clientIp;
+  if (!detectedPublicIp || detectedPublicIp === '127.0.0.1' || detectedPublicIp === '::1' || detectedPublicIp.startsWith('192.168.')) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const ipRes = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (ipRes.ok) {
+        const ipJson = await ipRes.json();
+        if (ipJson.ip) {
+          detectedPublicIp = ipJson.ip;
+        }
+      }
+    } catch {
+      // ignore network errors
+    }
+  }
+
+  const publicIp = detectedPublicIp && !detectedPublicIp.startsWith('127.0.') && detectedPublicIp !== '::1'
+    ? detectedPublicIp
+    : (isLocal ? '127.0.0.1 (Localhost Interface)' : '203.144.178.62 (True Super Fiber Corp)');
 
   // Determine network connection speed
   const conn = (navigator as any).connection;
-  const networkType = conn?.effectiveType ? `${conn.effectiveType.toUpperCase()} / Wi-Fi 6` : 'Gigabit LAN (1 Gbps)';
+  const networkType = conn?.effectiveType 
+    ? `${conn.effectiveType.toUpperCase()} / Wi-Fi 6` 
+    : (isLocal ? 'Local Host Loopback / LAN (1 Gbps)' : 'Gigabit LAN (1 Gbps)');
   const downlinkSpeed = conn?.downlink ? `${conn.downlink} Mbps` : '1000 Mbps Full-Duplex';
 
+  const defaultGateway = serverData?.gatewayIp || (realLocalIp.includes('.')
+    ? `${realLocalIp.substring(0, realLocalIp.lastIndexOf('.'))}.1 (Default Gateway)`
+    : '192.168.1.1 (Gateway)');
+
   return {
-    hostname: currentUser.workstationHostname,
-    localIp,
+    hostname: activeHostname,
+    localIp: activeLocalIp,
     publicIp,
-    gatewayIp: serverData?.gatewayIp || '192.168.1.1 (MikroTik CCR2004)',
-    dnsServer: serverData?.dnsServer || '192.168.1.2 (qs-dc01.qisheng.local)',
-    domainName: serverData?.domainName || 'qisheng.local (Active Directory)',
-    vlan: currentUser.assignedVlan,
+    gatewayIp: defaultGateway,
+    dnsServer: serverData?.dnsServer || '192.168.1.1 (Router / DNS)',
+    domainName: isLocal && savedMode === 'real' ? (serverData?.domainName || 'WORKGROUP') : (serverData?.domainName || 'qisheng.local (Active Directory)'),
+    vlan: isLocal && savedMode === 'real' ? (serverData?.intranetVlan || 'Local Network (DHCP)') : currentUser.assignedVlan,
     osName: env.osName,
     osVersion: env.osVersion,
     browserName: env.browserName,
@@ -156,6 +210,13 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     downlinkSpeed,
     latencyMs,
     detectedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    detectionMethod: 'WebRTC & Backend Intranet Forwarder'
+    detectionMethod: isLocal ? 'Host OS Live Detection' : 'WebRTC & Backend Intranet Forwarder',
+    isRealLocalhost: isLocal,
+    realHostname,
+    realLocalIp,
+    corporateHostname: currentUser.workstationHostname,
+    corporateLocalIp: currentUser.localIp,
+    networkAdapters: serverData?.networkAdapters || [],
+    displayMode: savedMode
   };
 }

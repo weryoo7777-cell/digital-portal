@@ -18,33 +18,73 @@ function corporateApiPlugin(): Plugin {
 
         if (url.pathname === '/api/client-info') {
           const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
-          const clientIp = rawForwarded.split(',')[0].trim() || req.socket.remoteAddress || '192.168.1.105';
+          const clientIp = (rawForwarded.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1').replace('::ffff:', '');
           const userAgent = (req.headers['user-agent'] as string) || 'Mozilla/5.0';
+          const hostHeader = (req.headers.host || '').toLowerCase();
           
           const networkInterfaces = os.networkInterfaces();
-          let serverLanIp = '10.10.20.1';
-          for (const name of Object.keys(networkInterfaces)) {
-            for (const iface of networkInterfaces[name] || []) {
+          const detectedAdapters: Array<{ name: string; ip: string; isPhysical: boolean; mac?: string }> = [];
+
+          for (const [name, ifaceList] of Object.entries(networkInterfaces)) {
+            if (!ifaceList) continue;
+            for (const iface of ifaceList) {
               if (iface.family === 'IPv4' && !iface.internal) {
-                serverLanIp = iface.address;
-                break;
+                const lowerName = name.toLowerCase();
+                const isVirtual = 
+                  lowerName.includes('virtual') || 
+                  lowerName.includes('vethernet') || 
+                  lowerName.includes('wsl') || 
+                  lowerName.includes('docker') || 
+                  lowerName.includes('vmware') || 
+                  lowerName.includes('vbox');
+
+                detectedAdapters.push({
+                  name,
+                  ip: iface.address,
+                  isPhysical: !isVirtual,
+                  mac: iface.mac
+                });
               }
             }
           }
 
+          // Prioritize physical adapters (Wi-Fi, Ethernet) over virtual switches
+          detectedAdapters.sort((a, b) => {
+            if (a.isPhysical && !b.isPhysical) return -1;
+            if (!a.isPhysical && b.isPhysical) return 1;
+            if (a.ip.startsWith('192.168.') && !b.ip.startsWith('192.168.')) return -1;
+            if (!a.ip.startsWith('192.168.') && b.ip.startsWith('192.168.')) return 1;
+            return 0;
+          });
+
+          const primaryLanIp = detectedAdapters[0]?.ip || '192.168.1.105';
+          const isLocalhost = 
+            hostHeader.includes('localhost') || 
+            hostHeader.includes('127.0.0.1') || 
+            clientIp === '127.0.0.1' || 
+            clientIp === '::1';
+
+          const realHostname = os.hostname() || 'LOCAL-WORKSTATION';
+          const gatewayIp = primaryLanIp.includes('.')
+            ? `${primaryLanIp.substring(0, primaryLanIp.lastIndexOf('.'))}.1 (Default Gateway)`
+            : '192.168.1.1 (Gateway)';
+
           res.statusCode = 200;
           return res.end(JSON.stringify({
             status: 'success',
-            clientIp: clientIp.replace('::ffff:', ''),
-            serverLanIp,
-            gatewayIp: '192.168.1.1',
-            dnsServer: '192.168.1.2 (qs-dc01.qisheng.local)',
-            domainJoined: true,
-            domainName: 'qisheng.local',
-            serverHostname: os.hostname() || 'QS-CORE-SRV01',
+            isLocalhost,
+            clientIp,
+            serverLanIp: primaryLanIp,
+            realHostname,
+            serverHostname: realHostname,
+            networkAdapters: detectedAdapters,
+            gatewayIp,
+            dnsServer: '192.168.1.1 (Local DNS / Router)',
+            domainJoined: !isLocalhost,
+            domainName: isLocalhost ? 'WORKGROUP' : 'qisheng.local',
             userAgent,
             timestamp: new Date().toISOString(),
-            intranetVlan: 'VLAN 10 - HQ Workstations',
+            intranetVlan: isLocalhost ? 'Local Network (DHCP)' : 'VLAN 10 - HQ Workstations',
           }));
         }
 
@@ -90,6 +130,9 @@ export default defineConfig(() => {
       },
     },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true as const,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

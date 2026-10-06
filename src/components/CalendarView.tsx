@@ -14,8 +14,7 @@ import {
   Info, 
   Sparkles, 
   CalendarDays, 
-  Grid3X3, 
-  MapPin,
+  Grid3X3,
   Check
 } from 'lucide-react';
 import { RoomBooking } from '../types';
@@ -36,9 +35,10 @@ interface CalendarViewProps {
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
-  // Current time is October 2026 (month index 9)
-  const currentMonthIndex = 9; // October 2026
-  const currentDay = 4; // Oct 4, 2026
+  // Real-time System Date calculation based on system date (e.g. Oct 6, 2026)
+  const now = useMemo(() => new Date(), []);
+  const currentMonthIndex = now.getMonth();
+  const currentDay = now.getDate();
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(currentMonthIndex);
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
@@ -145,8 +145,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
         {/* Decorative Top Accent */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-[#1E60D5] to-indigo-600"></div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-5 border-b border-slate-100">
-          {/* Company Branding & Address */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Company Branding */}
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 p-1.5 flex items-center justify-center shrink-0 shadow-xs border border-blue-100 overflow-hidden">
               <img 
@@ -173,87 +173,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
               <div className="text-xs sm:text-sm font-semibold text-[#1E60D5] tracking-wide mt-0.5">
                 {COMPANY_INFO.nameEn}
               </div>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                {COMPANY_INFO.addressTh}
-              </p>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-1 font-mono">
-                <span>E-mail : <a href={`mailto:${COMPANY_INFO.email}`} className="text-[#1E60D5] hover:underline">{COMPANY_INFO.email}</a></span>
-                <span>Tel : <a href={`tel:${COMPANY_INFO.tel}`} className="text-[#1E60D5] hover:underline">{COMPANY_INFO.tel}</a></span>
-              </div>
             </div>
           </div>
 
-          {/* Calendar Title & Year Badge */}
+          {/* Calendar Title */}
           <div className="flex flex-col lg:items-end justify-center">
-            <div className="text-2xl sm:text-3xl font-extrabold tracking-wider text-slate-900 font-mono flex items-center gap-3">
+            <div className="text-2xl sm:text-3xl font-extrabold tracking-wider text-slate-900 font-mono">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700">
-                CALENDAR 2026
+                CALENDAR
               </span>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-50 text-[#1E60D5] border border-blue-200">
-                พ.ศ. {COMPANY_INFO.yearTh}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {language === 'TH' ? 'ปฏิทินวันทำงานและวันหยุดตามประเพณีประจำปี' : 'Official Working Days & Public Holidays Schedule'}
-            </p>
-          </div>
-        </div>
-
-        {/* 2. Official Working & Holiday Statistics Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                {language === 'TH' ? 'วันทำงานทั้งหมด' : 'Total Working Days'}
-              </div>
-              <div className="text-lg sm:text-xl font-bold text-slate-800 font-mono mt-0.5">
-                {CALENDAR_STATS.workingDays} <span className="text-xs font-normal text-slate-500">วัน</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-xs font-bold font-mono">
-              68%
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                {language === 'TH' ? 'วันหยุดตามประเพณี' : 'Public Holidays'}
-              </div>
-              <div className="text-lg sm:text-xl font-bold text-rose-600 font-mono mt-0.5">
-                {CALENDAR_STATS.publicHolidays} <span className="text-xs font-normal text-slate-500">วัน</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-              ★
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                {language === 'TH' ? 'วันหยุดสุดสัปดาห์' : 'Weekly Holidays (Sat-Sun)'}
-              </div>
-              <div className="text-lg sm:text-xl font-bold text-amber-600 font-mono mt-0.5">
-                {CALENDAR_STATS.weeklyHolidays} <span className="text-xs font-normal text-slate-500">วัน</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-xs font-bold font-mono">
-              52w
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                {language === 'TH' ? 'รวมจำนวนวันในปี' : 'Total Days in Year'}
-              </div>
-              <div className="text-lg sm:text-xl font-bold text-[#1E60D5] font-mono mt-0.5">
-                {CALENDAR_STATS.totalDays} <span className="text-xs font-normal text-slate-500">วัน</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1E60D5] text-xs font-bold font-mono">
-              2026
             </div>
           </div>
         </div>
@@ -729,6 +657,65 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* 7. Official Working & Holiday Statistics Bar (ย้ายมาไว้ด้านล่างสุดของหน้าจอ) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              {language === 'TH' ? 'วันทำงานทั้งหมด' : 'Total Working Days'}
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-slate-800 font-mono mt-0.5">
+              {CALENDAR_STATS.workingDays} <span className="text-xs font-normal text-slate-500">{language === 'TH' ? 'วัน' : 'days'}</span>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-xs font-bold font-mono">
+            68%
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              {language === 'TH' ? 'วันหยุดตามประเพณี' : 'Public Holidays'}
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-rose-600 font-mono mt-0.5">
+              {CALENDAR_STATS.publicHolidays} <span className="text-xs font-normal text-slate-500">{language === 'TH' ? 'วัน' : 'days'}</span>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">
+            ★
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              {language === 'TH' ? 'วันหยุดสุดสัปดาห์' : 'Weekly Holidays (Sat-Sun)'}
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-amber-600 font-mono mt-0.5">
+              {CALENDAR_STATS.weeklyHolidays} <span className="text-xs font-normal text-slate-500">{language === 'TH' ? 'วัน' : 'days'}</span>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-xs font-bold font-mono">
+            52w
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              {language === 'TH' ? 'รวมจำนวนวันในปี' : 'Total Days in Year'}
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-[#1E60D5] font-mono mt-0.5">
+              {CALENDAR_STATS.totalDays} <span className="text-xs font-normal text-slate-500">{language === 'TH' ? 'วัน' : 'days'}</span>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1E60D5] text-xs font-bold font-mono">
+            2026
+          </div>
         </div>
       </div>
     </div>

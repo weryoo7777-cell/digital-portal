@@ -555,6 +555,16 @@ export const SYSTEM_SERVICES: SystemServiceHealth[] = [
 
 export const CORPORATE_ANNOUNCEMENTS: CorporateAnnouncement[] = [
   {
+    id: 'ann-welcome',
+    title: 'ยินดีต้อนรับเข้าสู่ระบบ QISHENG Digital Portal',
+    titleEn: 'Welcome to QISHENG Digital Portal',
+    summary: 'ศูนย์รวมแอปพลิเคชันและระบบงานองค์กร บริษัท ฉี เซิ่ง คอนซัลติ้ง จำกัด เชื่อมต่อทุกระบบงานไว้ในที่เดียว พร้อมระบบตรวจจับ Client Machine Info และ Single Sign-on (SSO)',
+    date: '6 ตุลาคม 2026',
+    tag: 'General',
+    priority: 'normal',
+    author: 'ฝ่ายสื่อสารองค์กรและดิจิทัล'
+  },
+  {
     id: 'ann-01',
     title: 'ประกาศกำหนดการยื่นแบบ ภ.ง.ด. และ ภ.พ.30 ประจำงวดเดือนนี้',
     titleEn: 'Monthly Tax Submission Deadline for P.N.D. and P.P.30',

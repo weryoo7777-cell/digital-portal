@@ -153,7 +153,7 @@ export default function App() {
   // Interactive Collections
   const [tickets, setTickets] = useState<HelpdeskTicket[]>(INITIAL_HELPDESK_TICKETS);
   const [roomBookings] = useState<RoomBooking[]>(INITIAL_ROOM_BOOKINGS);
-  const [announcements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
+  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
 
   // High-Priority Notifications Alert Feed for Right Sidebar
   const highPriorityAlerts = [
@@ -376,10 +376,10 @@ export default function App() {
   const getTabTitle = () => {
     switch (currentTab) {
       case 'dashboard': return language === 'TH' ? 'หน้าหลัก' : 'Home';
-      case 'all-apps': return language === 'TH' ? 'แค็ตตาล็อกระบบงานทั้งหมด (All Applications)' : 'All Applications Catalog';
+      case 'all-apps': return language === 'TH' ? 'แอปพลิเคชันทั้งหมด' : 'All Applications';
       case 'external-portals': return language === 'TH' ? 'ระบบราชการ & ธนาคาร (External Portals)' : 'External Corporate Portals';
-      case 'announcements': return language === 'TH' ? 'ข่าวสาร & ประกาศองค์กร (Announcements)' : 'Corporate Announcements';
-      case 'calendar': return language === 'TH' ? 'ปฏิทินบริษัท 2026 (Corporate Calendar)' : 'Corporate Calendar 2026';
+      case 'announcements': return language === 'TH' ? 'ข่าวสาร & ประกาศ' : 'Announcements';
+      case 'calendar': return language === 'TH' ? 'ปฏิทินบริษัท' : 'Company Calendar';
       case 'documents': return language === 'TH' ? 'เอกสาร & คู่มือการใช้งาน (Documents & Manuals)' : 'Documents & Manuals';
       default: return 'QISHENG Digital Portal';
     }
@@ -410,6 +410,7 @@ export default function App() {
         {/* 2. Top App Bar */}
         <Header
           currentUser={currentUser}
+          machineInfo={machineInfo}
           onSwitchUser={(newUser) => setCurrentUser(newUser)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -421,6 +422,7 @@ export default function App() {
           }}
           onOpenGoogleTranslate={() => setGoogleTranslateModalOpen(true)}
           onOpenAvatarModal={() => setAvatarModalOpen(true)}
+          onSaveAvatar={handleSaveAvatar}
           onOpenPasswordResetModal={() => setPasswordResetModalOpen(true)}
           darkMode={darkMode}
           onToggleDarkMode={toggleDarkMode}
@@ -453,145 +455,29 @@ export default function App() {
           {/* 3. HOME VIEW: CLEAN MODERN ENTERPRISE DASHBOARD */}
           {currentTab === 'dashboard' && (
             <div className="space-y-7 max-w-7xl mx-auto">
-              {/* 1) Greeting Banner with Glass Building Graphic & Client Info */}
+              {/* 1) Clean Welcome Banner */}
               <HeroClientInfo
                 currentUser={currentUser}
-                machineInfo={machineInfo}
-                isLoading={isDetectingMachine}
-                onRefreshInfo={() => runMachineDetection(currentUser)}
                 language={language}
-                onUpdateDeviceName={(name) => {
-                  setCurrentUser(prev => ({ ...prev, workstationHostname: name }));
-                  setMachineInfo(prev => prev ? { ...prev, hostname: name, deviceName: name.replace(/\.qisheng\.local$/i, '') } : null);
-                }}
-                onUpdateLocalIp={(ip) => {
-                  setCurrentUser(prev => ({ ...prev, localIp: ip }));
-                  setMachineInfo(prev => prev ? { ...prev, localIp: ip } : null);
-                }}
               />
 
-              {/* 2) Frequently Used Apps (Grid of cards with Filter Button) */}
+              {/* 2) Frequently Used Apps (Clean Section without Filter or View-All buttons) */}
               <section className="space-y-3.5">
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3 relative ${homeFilterOpen ? 'z-40' : 'z-20'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 text-[#1E60D5] flex items-center justify-center font-bold">
-                      <Clock className="w-3.5 h-3.5" />
-                    </div>
-                    <h2 className="text-base font-bold text-slate-900">
-                      {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
-                    </h2>
-                    <span className="text-xs text-slate-400 font-mono">
-                      ({displayedHomeApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
-                    </span>
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-[#1E60D5] flex items-center justify-center font-bold">
+                    <Clock className="w-3.5 h-3.5" />
                   </div>
-
-                  {/* Filter Controls & View All - Only Filter Button and ทั้งหมด */}
-                  <div className="flex items-center gap-2">
-                    {/* ปุ่มกรองมีแค่รูป (Icon-only Filter Button) with high z-index and click-outside backdrop */}
-                    <div className="relative z-50">
-                      <button
-                        onClick={() => setHomeFilterOpen(!homeFilterOpen)}
-                        className={`w-9 h-9 rounded-xl border transition-all shadow-2xs flex items-center justify-center shrink-0 relative ${
-                          homeFilter !== 'all'
-                            ? 'bg-[#1E60D5] text-white border-[#1E60D5] shadow-xs'
-                            : 'bg-white text-slate-700 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
-                        }`}
-                        title={
-                          homeFilter !== 'all'
-                            ? `${language === 'TH' ? 'ตัวกรอง:' : 'Filter:'} ${homeFilterOptions.find(o => o.id === homeFilter)?.labelTh}`
-                            : (language === 'TH' ? 'ตัวกรอง' : 'Filter')
-                        }
-                        aria-label="Filter"
-                      >
-                        <Filter className="w-4 h-4" />
-                        {homeFilter !== 'all' && (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
-                        )}
-                      </button>
-
-                      {/* Click outside backdrop */}
-                      {homeFilterOpen && (
-                        <div 
-                          className="fixed inset-0 z-[90]" 
-                          onClick={() => setHomeFilterOpen(false)} 
-                        />
-                      )}
-
-                      {/* Filter Dropdown Menu - rendered in front with high z-index */}
-                      {homeFilterOpen && (
-                        <div className="absolute right-0 sm:left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-2.5 animate-in fade-in zoom-in-95">
-                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            {language === 'TH' ? 'เลือกหมวดหมู่ที่ต้องการกรอง' : 'Select Category to Filter'}
-                          </div>
-                          <div className="space-y-1 mt-1 max-h-80 overflow-y-auto">
-                            {homeFilterOptions.map((opt) => (
-                              <button
-                                key={opt.id}
-                                onClick={() => {
-                                  setHomeFilter(opt.id);
-                                  setHomeFilterOpen(false);
-                                }}
-                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left ${
-                                  homeFilter === opt.id
-                                    ? 'bg-blue-50 text-[#1E60D5]'
-                                    : 'text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <span>{language === 'TH' ? opt.labelTh : opt.labelEn}</span>
-                                {opt.count !== undefined ? (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                                    homeFilter === opt.id
-                                      ? 'bg-[#1E60D5] text-white'
-                                      : 'bg-slate-100 text-slate-600'
-                                  }`}>
-                                    {opt.count}
-                                  </span>
-                                ) : homeFilter === opt.id ? (
-                                  <Check className="w-3.5 h-3.5 text-[#1E60D5]" />
-                                ) : null}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ปุ่มแสดงชื่อหมวดหมู่ที่เลือก (ถ้าเลือกทั้งหมดจะโชว์ทั้งหมด ถ้าเลือกเมนูอื่นจะเปลี่ยนชื่อเป็นเมนูนั้น) */}
-                    {(() => {
-                      const currentHomeOpt = homeFilterOptions.find(o => o.id === homeFilter) || homeFilterOptions[0];
-                      return (
-                        <button
-                          onClick={() => {
-                            if (homeFilter !== 'all') {
-                              setHomeFilter('all');
-                            }
-                          }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 bg-[#1E60D5] text-white shadow-2xs"
-                          title={homeFilter !== 'all' ? (language === 'TH' ? 'คลิกเพื่อกลับไปแสดงทั้งหมด' : 'Click to reset to all') : undefined}
-                        >
-                          <span>{language === 'TH' ? currentHomeOpt.labelTh : currentHomeOpt.labelEn}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-blue-800 text-white">
-                            {currentHomeOpt.count !== undefined ? currentHomeOpt.count : displayedHomeApps.length}
-                          </span>
-                        </button>
-                      );
-                    })()}
-
-                    <div className="h-4 w-px bg-slate-200 hidden sm:block mx-1" />
-
-                    <button
-                      onClick={() => setCurrentTab('all-apps')}
-                      className="text-xs text-[#1E60D5] hover:text-[#0B4ABF] font-bold flex items-center gap-1 group"
-                    >
-                      <span>{language === 'TH' ? 'ดูระบบทั้งหมด' : 'View All'}</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </button>
-                  </div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
+                  </h2>
+                  <span className="text-xs text-slate-400 font-mono">
+                    ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
+                  </span>
                 </div>
 
-                {displayedHomeApps.length > 0 ? (
+                {frequentAndFavoriteApps.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {displayedHomeApps.map((app) => (
+                    {frequentAndFavoriteApps.map((app) => (
                       <AppCard
                         key={app.id}
                         app={app}
@@ -606,14 +492,8 @@ export default function App() {
                 ) : (
                   <div className="p-8 text-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
                     <p className="text-xs text-slate-500">
-                      {language === 'TH' ? 'ไม่มีระบบที่ตรงกับตัวกรองที่เลือกในขณะนี้' : 'No applications match the selected filter.'}
+                      {language === 'TH' ? 'ไม่มีระบบที่บันทึกไว้ในขณะนี้' : 'No applications in list.'}
                     </p>
-                    <button
-                      onClick={() => setHomeFilter('all')}
-                      className="text-xs text-[#1E60D5] font-bold hover:underline"
-                    >
-                      {language === 'TH' ? 'ล้างตัวกรองเพื่อแสดงทั้งหมด' : 'Reset filter to show all'}
-                    </button>
                   </div>
                 )}
               </section>
@@ -930,6 +810,7 @@ export default function App() {
             <AnnouncementsView
               announcements={announcements}
               language={language}
+              onAddWelcomeAnnouncement={() => setAnnouncements(CORPORATE_ANNOUNCEMENTS)}
             />
           )}
 

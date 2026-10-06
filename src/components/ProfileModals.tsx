@@ -53,8 +53,8 @@ export const AvatarModal: React.FC<AvatarModalProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError(language === 'TH' ? 'ขนาดไฟล์ต้องไม่เกิน 5MB' : 'Image file size must be under 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError(language === 'TH' ? 'ขนาดไฟล์ต้องไม่เกิน 10MB' : 'Image file size must be under 10MB');
       return;
     }
 
@@ -175,7 +175,7 @@ export const AvatarModal: React.FC<AvatarModalProps> = ({
               <span>{language === 'TH' ? 'เลือกไฟล์รูปภาพ...' : 'Choose Image File...'}</span>
               <input 
                 type="file" 
-                accept="image/*" 
+                accept="image/jpeg,image/png,image/webp,image/gif,image/*" 
                 onChange={handleFileUpload}
                 className="hidden" 
               />

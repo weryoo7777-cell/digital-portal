@@ -86,12 +86,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       labelTh: 'ข่าวสาร & ประกาศ',
       labelEn: 'Announcements',
       icon: Bell,
-      badge: unreadAnnouncementsCount > 0 ? unreadAnnouncementsCount : null,
+      badge: (typeof unreadAnnouncementsCount === 'number' && unreadAnnouncementsCount > 0) ? unreadAnnouncementsCount : null,
       badgeColor: 'bg-rose-50 text-rose-600 border-rose-200'
     },
     {
       id: 'calendar' as NavTab,
-      labelTh: 'ปฏิทินบริษัท 2026',
+      labelTh: 'ปฏิทินบริษัท',
       labelEn: 'Corporate Calendar',
       icon: Calendar,
     },
@@ -229,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {language === 'TH' ? item.labelTh : item.labelEn}
                     </span>
                   </div>
-                  {item.badge !== null && item.badge !== undefined && (
+                  {Boolean(item.badge) && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                       {item.badge}
                     </span>

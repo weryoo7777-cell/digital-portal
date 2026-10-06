@@ -1,39 +1,40 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, 
   Bell, 
   Menu, 
-  Grid, 
   ChevronDown, 
   LogOut, 
   Shield, 
-  X,
   ExternalLink,
   Laptop,
+  Check,
+  Copy,
   Globe,
-  ArrowUpRight,
   User,
   Settings,
   Sparkles,
   Camera,
+  Upload,
   KeyRound,
   Sun,
   Moon,
   ChevronRight
 } from 'lucide-react';
-import { UserProfile, CorporateAnnouncement } from '../types';
+import { UserProfile, CorporateAnnouncement, ClientMachineInfo } from '../types';
 import { CORPORATE_USERS } from '../data/portalData';
 
 interface HeaderProps {
   currentUser: UserProfile;
+  machineInfo?: ClientMachineInfo | null;
   onSwitchUser: (user: UserProfile) => void;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
   onOpenMobileSidebar: () => void;
   onOpenSystemStatus: () => void;
   onOpenGoogleSearch?: () => void;
   onOpenGoogleTranslate?: () => void;
   onOpenAvatarModal?: () => void;
+  onSaveAvatar?: (newAvatarUrl: string) => void;
   onOpenPasswordResetModal?: () => void;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
@@ -46,6 +47,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
+  machineInfo,
   onSwitchUser,
   searchQuery,
   onSearchChange,
@@ -54,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGoogleSearch,
   onOpenGoogleTranslate,
   onOpenAvatarModal,
+  onSaveAvatar,
   onOpenPasswordResetModal,
   darkMode = false,
   onToggleDarkMode,
@@ -65,33 +68,64 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [appsDropdownOpen, setAppsDropdownOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [copiedClientInfo, setCopiedClientInfo] = useState(false);
 
-  // Keyboard shortcut Ctrl+K / Cmd+K
+  // Client device name & IP
+  const clientDeviceName = machineInfo?.deviceName || machineInfo?.hostname || 'CLIENT-PC';
+  const clientIpAddress = machineInfo?.localIp || '127.0.0.1';
+  const clientCombinedInfo = `${clientDeviceName} (${clientIpAddress})`;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarSuccess, setAvatarSuccess] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const handleDirectAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError(language === 'TH' ? 'กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, WebP)' : 'Please select an image file (JPG, PNG, WebP)');
+      setTimeout(() => setAvatarError(null), 4000);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError(language === 'TH' ? 'ขนาดไฟล์รูปภาพต้องไม่เกิน 10MB' : 'Image size must be under 10MB');
+      setTimeout(() => setAvatarError(null), 4000);
+      return;
+    }
+
+    setAvatarError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        const newUrl = event.target.result;
+        onSaveAvatar?.(newUrl);
+        setAvatarSuccess(true);
+        setTimeout(() => setAvatarSuccess(false), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCopyClientInfo = () => {
+    navigator.clipboard.writeText(clientCombinedInfo);
+    setCopiedClientInfo(true);
+    setTimeout(() => setCopiedClientInfo(false), 2000);
+  };
+
+  // Close dropdowns on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
       if (e.key === 'Escape') {
         setProfileDropdownOpen(false);
         setNotifDropdownOpen(false);
-        setAppsDropdownOpen(false);
-        setSearchFocused(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(searchQuery.trim())}`, '_blank', 'noopener,noreferrer');
-    }
-  };
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
@@ -123,121 +157,39 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
           <span className="text-slate-400 hidden sm:inline font-semibold">QISHENG</span>
           <span className="text-slate-300 hidden sm:inline">/</span>
-          <h1 className="text-slate-800 font-bold truncate max-w-[150px] sm:max-w-none">
+          <h1 className="text-slate-800 font-bold truncate max-w-[200px] sm:max-w-none">
             {currentTabName}
           </h1>
         </div>
       </div>
 
-      {/* Zone 2: Global search input field with shortcut hint (Ctrl + K) */}
-      <div className="flex-1 max-w-lg mx-2 sm:mx-4 relative">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            placeholder={language === 'TH' ? 'ค้นหาระบบงาน, บริการ, เอกสาร... (Ctrl + K)' : 'Search apps, services, docs... (Ctrl + K)'}
-            className="w-full bg-[#F4F6F9] hover:bg-slate-100/90 focus:bg-white border border-slate-200 focus:border-[#1E60D5] rounded-xl pl-9 pr-14 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-2xs"
-          />
-          {searchQuery ? (
-            <button
-              onClick={() => onSearchChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <kbd className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-white border border-slate-200 rounded shadow-2xs">
-              Ctrl + K
-            </kbd>
-          )}
-        </div>
-
-        {/* Real-time Search Dropdown when typing */}
-        {searchFocused && searchQuery.trim() && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in">
-            <button
-              onMouseDown={() => {
-                window.open(`https://www.google.com/search?q=${encodeURIComponent(searchQuery.trim())}`, '_blank', 'noopener,noreferrer');
-              }}
-              className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-blue-50/60 text-left transition-colors group"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs">
-                  <span className="text-[#4285F4]">G</span>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-800 group-hover:text-[#1E60D5]">
-                    {language === 'TH' ? 'ค้นหาบน Google สำหรับ:' : 'Search Google for:'} "{searchQuery}"
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    Google Enterprise Search &bull; Enter to open
-                  </div>
-                </div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#1E60D5] shrink-0" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Zone 3: Health Status, Grid App Launcher, Notifications, User Avatar */}
+      {/* Zone 2: Client Device Info, Notifications, User Avatar */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Core System Status Health Pill */}
-        <button
-          onClick={onOpenSystemStatus}
-          className="hidden xl:flex items-center gap-2 py-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-700 transition-colors shadow-2xs"
-          title="Network & Core Systems Status"
-        >
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="font-medium text-[11px] text-slate-600">All Systems Operational</span>
-        </button>
-
-        {/* Grid Menu / App Launcher */}
-        <div className="relative">
+        {/* Compact Client Machine & IP Info Pill on Top Header Bar */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700 shadow-2xs hover:border-blue-300 transition-colors">
+          <div className="w-5 h-5 rounded-md bg-blue-50 text-[#1E60D5] flex items-center justify-center shrink-0">
+            <Laptop className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="font-bold text-slate-800">{clientDeviceName}</span>
+            <span className="text-slate-300 font-normal">|</span>
+            <span className="text-emerald-600 flex items-center gap-1 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {clientIpAddress}
+            </span>
+          </div>
           <button
-            onClick={() => setAppsDropdownOpen(!appsDropdownOpen)}
-            className="p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
-            title="App Launcher"
+            onClick={handleCopyClientInfo}
+            className={`p-1 rounded-md text-xs transition-colors shrink-0 ml-0.5 ${
+              copiedClientInfo
+                ? 'text-emerald-600 bg-emerald-50'
+                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200/60'
+            }`}
+            title={copiedClientInfo ? (language === 'TH' ? 'คัดลอกแล้ว' : 'Copied!') : (language === 'TH' ? 'คัดลอกชื่อเครื่องและไอพี' : 'Copy Device Name & IP')}
+            aria-label="Copy Client Info"
           >
-            <Grid className="w-4 h-4" />
+            {copiedClientInfo ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
-
-          {appsDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 text-xs animate-in fade-in">
-              <div className="font-bold text-slate-800 pb-2 border-b border-slate-100 mb-2">
-                {language === 'TH' ? 'ระบบงานด่วน' : 'Quick Apps'}
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <a 
-                  href="https://drive.google.com" target="_blank" rel="noreferrer" 
-                  className="p-2 rounded-xl hover:bg-blue-50/60 transition-colors flex flex-col items-center gap-1 text-slate-700"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-[#1E60D5] font-bold">GD</div>
-                  <span className="text-[10px] font-medium">Drive</span>
-                </a>
-                <a 
-                  href="https://mail.google.com" target="_blank" rel="noreferrer" 
-                  className="p-2 rounded-xl hover:bg-blue-50/60 transition-colors flex flex-col items-center gap-1 text-slate-700"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600 font-bold">M</div>
-                  <span className="text-[10px] font-medium">Gmail</span>
-                </a>
-                <button 
-                  onClick={onOpenSystemStatus}
-                  className="p-2 rounded-xl hover:bg-blue-50/60 transition-colors flex flex-col items-center gap-1 text-slate-700"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">RT</div>
-                  <span className="text-[10px] font-medium">Router</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Notifications Popover */}
@@ -334,36 +286,47 @@ export const Header: React.FC<HeaderProps> = ({
 
           {profileDropdownOpen && (
             <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in">
-              {/* User details header */}
+              {/* User details header: แสดงเฉพาะ Avatar, Name, Department เท่านั้น */}
               <div className="pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full overflow-hidden border border-blue-200 bg-blue-50 shrink-0 shadow-2xs">
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-blue-200 bg-blue-50 shrink-0 shadow-2xs group cursor-pointer"
+                    title={language === 'TH' ? 'คลิกเพื่อเปลี่ยนรูปประจำตัวจากเครื่อง' : 'Click to upload profile photo'}
+                  >
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-75"
                       referrerPolicy="no-referrer"
                     />
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Camera className="w-4 h-4 text-white" />
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-sm text-slate-900">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-sm text-slate-900 truncate">
                       {currentUser.name}
                     </div>
-                    <div className="text-xs text-slate-500">{currentUser.email}</div>
-                    <div className="text-[11px] text-[#1E60D5] font-semibold mt-0.5">{currentUser.position}</div>
+                    <div className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                      {currentUser.department}
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">{language === 'TH' ? 'แผนก:' : 'Department:'}</span>
-                    <span className="font-medium text-slate-800 truncate max-w-[180px]">{currentUser.department}</span>
+                {avatarSuccess && (
+                  <div className="mt-2.5 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2 animate-in fade-in">
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                    <span>{language === 'TH' ? 'อัปเดตรูปประจำตัวเรียบร้อยแล้ว' : 'Profile photo updated successfully'}</span>
                   </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-slate-400">Local IP:</span>
-                    <span className="text-emerald-600 font-semibold">{currentUser.localIp}</span>
+                )}
+
+                {avatarError && (
+                  <div className="mt-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-in fade-in">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
+                    <span>{avatarError}</span>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Profile Settings Section (User Request #3: เปลี่ยนรูปประจำตัว, เปลี่ยนโหมด, รีเซ็ตรหัสผ่าน) */}
@@ -374,20 +337,48 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  {/* 1. Change Avatar */}
+                  {/* Hidden file input for uploading photo from device */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleDirectAvatarUpload}
+                    className="hidden"
+                  />
+
+                  {/* 1. Change Avatar Button (รองรับการอัปโหลดไฟล์ภาพจากเครื่องผู้ใช้) */}
                   <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      onOpenAvatarModal?.();
-                    }}
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
                     className="w-full flex items-center justify-between p-2 rounded-xl text-left text-xs text-slate-700 hover:text-[#1E60D5] hover:bg-blue-50/60 transition-colors group"
                   >
                     <div className="flex items-center gap-2.5">
                       <Camera className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E60D5]" />
-                      <span>{language === 'TH' ? 'เปลี่ยนรูปประจำตัว' : 'Change Avatar'}</span>
+                      <span className="font-medium">{language === 'TH' ? 'เปลี่ยนรูปประจำตัว' : 'Change Avatar'}</span>
                     </div>
-                    <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-[#1E60D5]" />
+                    <span className="text-[10px] text-[#1E60D5] font-semibold bg-blue-50 group-hover:bg-blue-100 px-2 py-0.5 rounded-md transition-colors flex items-center gap-1">
+                      <Upload className="w-2.5 h-2.5" />
+                      <span>{language === 'TH' ? 'อัปโหลดภาพ' : 'Upload'}</span>
+                    </span>
                   </button>
+
+                  {/* Preset Avatars Link */}
+                  {onOpenAvatarModal && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        onOpenAvatarModal();
+                      }}
+                      className="w-full flex items-center justify-between px-2 py-1 rounded-lg text-left text-[11px] text-slate-500 hover:text-[#1E60D5] hover:bg-slate-50 transition-colors group pl-8"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        <span>{language === 'TH' ? 'เลือกจากรูปตัวอย่างของระบบ' : 'Choose from Presets'}</span>
+                      </div>
+                      <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-[#1E60D5]" />
+                    </button>
+                  )}
 
                   {/* 2. Change Mode */}
                   <button

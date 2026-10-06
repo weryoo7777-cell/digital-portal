@@ -1,15 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Building2, 
-  ExternalLink, 
   Search, 
   ShieldCheck, 
   Landmark, 
   Receipt, 
   CreditCard, 
   Ship, 
-  Copy, 
-  Check, 
   Sparkles,
   Info,
   ArrowUpRight,
@@ -27,6 +24,139 @@ interface ExternalPortalsViewProps {
   onOpenGoogleSearchWithQuery?: (q: string) => void;
 }
 
+// Dedicated component for displaying official agency/bank logo with Google Favicon service & high-res vector fallbacks
+const PortalLogo: React.FC<{ 
+  portal: ExternalPortalItem; 
+  fallbackIcon: React.ComponentType<{ className?: string }>;
+}> = ({ portal, fallbackIcon: FallbackIcon }) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Extract cleanest domain/URL for Google Favicon service
+  const faviconUrl = useMemo(() => {
+    if (portal.logoUrl) return portal.logoUrl;
+    try {
+      const hostname = new URL(portal.url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+    } catch {
+      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(portal.url)}&sz=128`;
+    }
+  }, [portal.logoUrl, portal.url]);
+
+  // Brand-specific fallback vector emblems for Thai agencies and banks
+  const renderFallback = () => {
+    switch (portal.id) {
+      case 'bank-kbank':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#00A950] flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-base tracking-tighter font-sans font-extrabold">K</span>
+          </div>
+        );
+      case 'bank-scb':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#4E2A84] flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-bold">SCB</span>
+          </div>
+        );
+      case 'bank-bbl':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#1E3A8A] flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-bold text-amber-300">BBL</span>
+          </div>
+        );
+      case 'bank-ktb':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#00A3E0] flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-bold">KTB</span>
+          </div>
+        );
+      case 'bank-ttb':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#002D62] flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-xs tracking-tighter font-sans font-extrabold text-white">t<span className="text-[#F37021]">tb</span></span>
+          </div>
+        );
+      case 'bank-bay':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#FECB00] flex items-center justify-center text-[#333333] font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-extrabold">BAY</span>
+          </div>
+        );
+      case 'gov-rd-efiling':
+      case 'gov-rd-etax':
+        return (
+          <div className="w-full h-full rounded-lg bg-gradient-to-br from-sky-600 to-blue-800 flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-extrabold">RD</span>
+          </div>
+        );
+      case 'gov-dbd-datawarehouse':
+      case 'gov-dbd-ereg':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#002D62] flex items-center justify-center text-amber-300 font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-extrabold">DBD</span>
+          </div>
+        );
+      case 'gov-sso-eservice':
+        return (
+          <div className="w-full h-full rounded-lg bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[10px] tracking-tight font-sans font-extrabold">สปส</span>
+          </div>
+        );
+      case 'gov-customs-nsw':
+        return (
+          <div className="w-full h-full rounded-lg bg-gradient-to-br from-teal-700 to-slate-900 flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[10px] tracking-tight font-sans font-extrabold">NSW</span>
+          </div>
+        );
+      case 'gov-doe-workpermit':
+        return (
+          <div className="w-full h-full rounded-lg bg-gradient-to-br from-purple-700 to-indigo-900 flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[10px] tracking-tight font-sans font-extrabold">DOE</span>
+          </div>
+        );
+      case 'gov-dft-eservice':
+        return (
+          <div className="w-full h-full rounded-lg bg-gradient-to-br from-sky-600 to-blue-800 flex items-center justify-center text-white font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-extrabold">DFT</span>
+          </div>
+        );
+      case 'fin-bot-fx':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#0B2545] flex items-center justify-center text-amber-300 font-black select-none shadow-2xs">
+            <span className="text-[10px] tracking-tight font-sans font-extrabold">BOT</span>
+          </div>
+        );
+      case 'fin-setlink':
+        return (
+          <div className="w-full h-full rounded-lg bg-[#231F20] flex items-center justify-center text-[#FDB913] font-black select-none shadow-2xs">
+            <span className="text-[11px] tracking-tight font-sans font-extrabold">SET</span>
+          </div>
+        );
+      default:
+        return (
+          <div className="w-full h-full rounded-lg bg-blue-50 text-[#1E60D5] flex items-center justify-center">
+            <FallbackIcon className="w-5 h-5" />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 shrink-0 overflow-hidden group-hover:border-blue-400 group-hover:shadow-xs transition-all">
+      {!imageError ? (
+        <img
+          src={faviconUrl}
+          alt={portal.agencyTh}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        renderFallback()
+      )}
+    </div>
+  );
+};
+
 export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
   language,
   onOpenGoogleSearchWithQuery
@@ -34,7 +164,6 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const categories = [
     { id: 'all', labelTh: 'ทั้งหมด', labelEn: 'All Portals', count: EXTERNAL_PORTALS.length },
@@ -80,13 +209,6 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
       return matchesCategory && matchesSearch;
     });
   }, [selectedCategory, searchQuery]);
-
-  const copyUrl = (id: string, url: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const getCategoryIcon = (category: ExternalPortalItem['category']) => {
     switch (category) {
@@ -228,57 +350,16 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
                 className="rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 p-4 flex flex-col justify-between transition-all hover:shadow-md group shadow-2xs"
               >
                 <div>
-                  {/* Top Row: Category badge & Actions */}
+                  {/* Top Row: Official Favicon/Logo & Category badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2.5">
-                      {/* Real Authentic Agency / Bank Logo */}
-                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 shrink-0 overflow-hidden group-hover:border-blue-400 group-hover:shadow-xs transition-all">
-                        <img 
-                          src={portal.logoUrl || `https://www.google.com/s2/favicons?domain=${new URL(portal.url).hostname}&sz=128`}
-                          alt={portal.agencyTh}
-                          className="w-full h-full object-contain"
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.currentTarget as HTMLElement;
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.style.display = 'flex';
-                          }}
-                        />
-                        <div style={{ display: 'none' }} className="w-full h-full items-center justify-center text-[#1E60D5]">
-                          <Icon className="w-5 h-5" />
-                        </div>
-                      </div>
+                      <PortalLogo portal={portal} fallbackIcon={Icon} />
 
                       <div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${portal.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                           {portal.badge || portal.agency}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => copyUrl(portal.id, portal.url, e)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                        title={language === 'TH' ? 'คัดลอกลิงก์ URL' : 'Copy URL'}
-                      >
-                        {copiedId === portal.id ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-
-                      <a
-                        href={portal.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#1E60D5] hover:bg-blue-50 transition-colors"
-                        title={language === 'TH' ? 'เปิดระบบในแท็บใหม่' : 'Open in new tab'}
-                      >
-                        <ArrowUpRight className="w-4 h-4" />
-                      </a>
                     </div>
                   </div>
 
@@ -304,9 +385,9 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
                   )}
                 </div>
 
-                {/* Bottom: URL Link & Launch Button */}
-                <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 font-mono truncate max-w-[140px] sm:max-w-[170px]">
+                {/* Bottom: URL Link & Launch Button (เข้าระบบ ↗) */}
+                <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 font-mono truncate max-w-[140px] sm:max-w-[170px]" title={portal.url}>
                     {portal.url.replace(/^https?:\/\//, '')}
                   </span>
 
@@ -314,10 +395,10 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
                     href={portal.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-[#1E60D5] text-[#1E60D5] hover:text-white text-xs font-bold transition-all shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-[#1E60D5] text-[#1E60D5] hover:text-white text-xs font-bold transition-all shadow-2xs group/btn shrink-0"
                   >
-                    <span>{language === 'TH' ? 'เข้าสู่ระบบ' : 'Launch'}</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <span>{language === 'TH' ? 'เข้าระบบ' : 'Launch'}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
                   </a>
                 </div>
               </div>

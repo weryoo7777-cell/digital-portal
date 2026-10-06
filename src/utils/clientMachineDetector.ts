@@ -159,79 +159,24 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     // offline fallback
   }
 
-  // Detect whether running in localhost / local development environment
+  // Detect whether running in localhost browser
   const isLocalhostBrowser = 
     typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || 
-     window.location.hostname === '127.0.0.1' || 
-     window.location.hostname.startsWith('192.168.') || 
-     window.location.hostname.startsWith('10.'));
+     window.location.hostname === '127.0.0.1');
 
-  const isLocal = isLocalhostBrowser || !!serverData?.isLocalhost;
-
-  // Try WebRTC local IP
+  // 1. WebRTC Local IP candidate (private LAN IP on client's machine)
   const rtcLocalIp = await detectLocalIpViaWebRTC();
 
-  // 1. Read stored custom device name / hostname
-  let customDeviceName = '';
-  try {
-    const stored = localStorage.getItem('qs_device_name') || localStorage.getItem('qs_custom_hostname');
-    if (stored && stored.trim()) {
-      customDeviceName = stored.trim();
-    }
-  } catch {}
+  // 2. Client Request IP from backend /api/client-info (x-forwarded-for or remoteAddress)
+  let requestClientIp: string | null = null;
+  if (serverData?.clientIp && serverData.clientIp !== '127.0.0.1' && serverData.clientIp !== '::1') {
+    requestClientIp = serverData.clientIp;
+  }
 
-  // 2. Read FQDN display mode preference (default: false so it matches Windows Device name directly)
-  let showFqdn = false;
-  try {
-    const storedFqdn = localStorage.getItem('qs_show_fqdn');
-    if (storedFqdn !== null) {
-      showFqdn = storedFqdn === 'true';
-    }
-  } catch {}
-
-  // 3. Read stored device hardware specs or fallback to DEFAULT_DEVICE_SPECS
-  let deviceSpecs = { ...DEFAULT_DEVICE_SPECS };
-  try {
-    const storedSpecs = localStorage.getItem('qs_device_specs');
-    if (storedSpecs) {
-      deviceSpecs = { ...deviceSpecs, ...JSON.parse(storedSpecs) };
-    }
-  } catch {}
-
-  // Determine effective device name (QISHENG-022 by default)
-  const baseWorkstation = currentUser.workstationHostname
-    ? currentUser.workstationHostname.replace(/\.qisheng\.local$/i, '')
-    : DEFAULT_DEVICE_SPECS.deviceName;
-
-  const effectiveDeviceName = customDeviceName || baseWorkstation || DEFAULT_DEVICE_SPECS.deviceName;
-  deviceSpecs.deviceName = effectiveDeviceName;
-
-  // Determine Real Hardware info vs Corporate Mock info
-  const realHostname = serverData?.realHostname || effectiveDeviceName;
-  const realLocalIp = serverData?.serverLanIp || rtcLocalIp || '192.168.1.100';
-
-  // Read saved display mode preference ('real' | 'corporate'), default to 'real' when on localhost
-  let savedMode: 'real' | 'corporate' = isLocal ? 'real' : 'corporate';
-  try {
-    const stored = localStorage.getItem('qs_machine_display_mode');
-    if (stored === 'real' || stored === 'corporate') {
-      savedMode = stored;
-    }
-  } catch {}
-
-  // Active hostname: Format as plain Device Name (QISHENG-022) or FQDN (QISHENG-022.qisheng.local)
-  const activeHostname = showFqdn 
-    ? `${effectiveDeviceName}.${deviceSpecs.domainSuffix || 'qisheng.local'}`
-    : effectiveDeviceName;
-
-  const activeLocalIp = savedMode === 'real' && (serverData?.serverLanIp || rtcLocalIp || isLocal)
-    ? realLocalIp 
-    : (rtcLocalIp || currentUser.localIp || '192.168.10.45');
-
-  // Attempt to get real Public IP via public API with fast timeout
-  let detectedPublicIp = serverData?.clientIp;
-  if (!detectedPublicIp || detectedPublicIp === '127.0.0.1' || detectedPublicIp === '::1' || detectedPublicIp.startsWith('192.168.')) {
+  // 3. Fallback: Query public IP service directly from client browser if needed
+  let publicClientIp: string | null = null;
+  if (!rtcLocalIp && !requestClientIp) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1200);
@@ -240,38 +185,100 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
       if (ipRes.ok) {
         const ipJson = await ipRes.json();
         if (ipJson.ip) {
-          detectedPublicIp = ipJson.ip;
+          publicClientIp = ipJson.ip;
         }
       }
     } catch {
-      // ignore network errors
+      // ignore
     }
   }
 
-  const publicIp = detectedPublicIp && !detectedPublicIp.startsWith('127.0.') && detectedPublicIp !== '::1'
-    ? detectedPublicIp
-    : (isLocal ? '127.0.0.1 (Localhost Interface)' : '203.144.178.62 (True Super Fiber Corp)');
+  // The actual, dynamically detected IP for THIS client machine
+  const effectiveClientIp = rtcLocalIp || requestClientIp || publicClientIp || (isLocalhostBrowser ? '127.0.0.1' : '192.168.1.100');
 
-  // Determine network connection speed
+  // 4. Derive or retrieve Client Device Name
+  let savedDeviceName = '';
+  try {
+    const stored = localStorage.getItem('qs_device_name') || localStorage.getItem('qs_custom_hostname');
+    if (stored && stored.trim()) {
+      savedDeviceName = stored.trim();
+    }
+  } catch {}
+
+  // Stable client identifier for this specific machine/browser instance
+  let clientMachineId = '';
+  try {
+    clientMachineId = localStorage.getItem('qs_client_machine_id') || '';
+    if (!clientMachineId) {
+      const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+      clientMachineId = randomPart;
+      localStorage.setItem('qs_client_machine_id', clientMachineId);
+    }
+  } catch {
+    clientMachineId = '022';
+  }
+
+  // Derive suffix from IP if available (e.g. 192.168.1.22 -> 022)
+  let ipSuffix = '';
+  if (effectiveClientIp && effectiveClientIp.includes('.')) {
+    const segments = effectiveClientIp.split('.');
+    const lastOctet = segments[segments.length - 1];
+    if (lastOctet && !isNaN(Number(lastOctet))) {
+      ipSuffix = lastOctet.padStart(3, '0');
+    }
+  }
+
+  const machineSuffix = ipSuffix || clientMachineId;
+
+  // Generate dynamic client device name matching client's OS if none saved
+  let dynamicDeviceName = '';
+  if (savedDeviceName) {
+    dynamicDeviceName = savedDeviceName;
+  } else {
+    const os = env.osName.toLowerCase();
+    if (os.includes('win')) {
+      dynamicDeviceName = `QISHENG-${machineSuffix}`;
+    } else if (os.includes('mac')) {
+      dynamicDeviceName = `MAC-${machineSuffix}`;
+    } else if (os.includes('linux')) {
+      dynamicDeviceName = `LINUX-${machineSuffix}`;
+    } else if (os.includes('android')) {
+      dynamicDeviceName = `AND-${machineSuffix}`;
+    } else if (os.includes('ios')) {
+      dynamicDeviceName = `IOS-${machineSuffix}`;
+    } else {
+      dynamicDeviceName = `PC-${machineSuffix}`;
+    }
+  }
+
+  // Read stored device specs
+  let deviceSpecs = { ...DEFAULT_DEVICE_SPECS };
+  try {
+    const storedSpecs = localStorage.getItem('qs_device_specs');
+    if (storedSpecs) {
+      deviceSpecs = { ...deviceSpecs, ...JSON.parse(storedSpecs) };
+    }
+  } catch {}
+  deviceSpecs.deviceName = dynamicDeviceName;
+
+  // Determine network connection speed from client browser
   const conn = (navigator as any).connection;
   const networkType = conn?.effectiveType 
-    ? `${conn.effectiveType.toUpperCase()} / Wi-Fi 6` 
-    : (isLocal ? 'Local Host Loopback / LAN (1 Gbps)' : 'Gigabit LAN (1 Gbps)');
+    ? `${conn.effectiveType.toUpperCase()} / Wi-Fi` 
+    : 'Local Host Loopback / LAN (1 Gbps)';
   const downlinkSpeed = conn?.downlink ? `${conn.downlink} Mbps` : '1000 Mbps Full-Duplex';
 
-  const defaultGateway = serverData?.gatewayIp || (realLocalIp.includes('.')
-    ? `${realLocalIp.substring(0, realLocalIp.lastIndexOf('.'))}.1 (Default Gateway)`
-    : '192.168.1.1 (Gateway)');
-
   return {
-    hostname: activeHostname,
-    deviceName: effectiveDeviceName,
-    localIp: activeLocalIp,
-    publicIp,
-    gatewayIp: defaultGateway,
-    dnsServer: serverData?.dnsServer || '192.168.1.1 (Router / DNS)',
-    domainName: isLocal && savedMode === 'real' ? (serverData?.domainName || 'WORKGROUP') : (serverData?.domainName || 'qisheng.local (Active Directory)'),
-    vlan: isLocal && savedMode === 'real' ? (serverData?.intranetVlan || 'Local Network (DHCP)') : currentUser.assignedVlan,
+    hostname: dynamicDeviceName,
+    deviceName: dynamicDeviceName,
+    localIp: effectiveClientIp,
+    publicIp: requestClientIp || publicClientIp || effectiveClientIp,
+    gatewayIp: effectiveClientIp.includes('.')
+      ? `${effectiveClientIp.substring(0, effectiveClientIp.lastIndexOf('.'))}.1 (Default Gateway)`
+      : '192.168.1.1 (Gateway)',
+    dnsServer: '192.168.1.1 (Router / DNS)',
+    domainName: 'qisheng.local (Active Directory)',
+    vlan: currentUser.assignedVlan,
     osName: env.osName,
     osVersion: env.osVersion,
     browserName: env.browserName,
@@ -281,15 +288,15 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     downlinkSpeed,
     latencyMs,
     detectedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    detectionMethod: isLocal ? 'Host OS Live Detection' : 'WebRTC & Backend Intranet Forwarder',
-    isRealLocalhost: isLocal,
-    realHostname,
-    realLocalIp,
-    corporateHostname: currentUser.workstationHostname,
-    corporateLocalIp: currentUser.localIp,
-    networkAdapters: serverData?.networkAdapters || [],
-    displayMode: savedMode,
+    detectionMethod: rtcLocalIp ? 'Client WebRTC Direct Interface' : 'Client HTTP Connection Gateway',
+    isRealLocalhost: isLocalhostBrowser,
+    realHostname: dynamicDeviceName,
+    realLocalIp: effectiveClientIp,
+    corporateHostname: dynamicDeviceName,
+    corporateLocalIp: effectiveClientIp,
+    networkAdapters: [],
+    displayMode: 'real',
     deviceSpecs,
-    showFqdn
+    showFqdn: false
   };
 }

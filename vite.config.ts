@@ -18,76 +18,31 @@ function corporateApiPlugin(): Plugin {
 
         if (url.pathname === '/api/client-info') {
           const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
-          const clientIp = (rawForwarded.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1').replace('::ffff:', '');
+          const clientIp = (
+            rawForwarded.split(',')[0].trim() || 
+            (req.headers['x-real-ip'] as string) || 
+            (req.headers['cf-connecting-ip'] as string) || 
+            req.socket.remoteAddress || 
+            '127.0.0.1'
+          ).replace('::ffff:', '');
           const userAgent = (req.headers['user-agent'] as string) || 'Mozilla/5.0';
+          const platformHint = (req.headers['sec-ch-ua-platform'] as string) || '';
           const hostHeader = (req.headers.host || '').toLowerCase();
           
-          const networkInterfaces = os.networkInterfaces();
-          const detectedAdapters: Array<{ name: string; ip: string; isPhysical: boolean; mac?: string }> = [];
-
-          for (const [name, ifaceList] of Object.entries(networkInterfaces)) {
-            if (!ifaceList) continue;
-            for (const iface of ifaceList) {
-              if (iface.family === 'IPv4' && !iface.internal) {
-                const lowerName = name.toLowerCase();
-                const isVirtual = 
-                  lowerName.includes('virtual') || 
-                  lowerName.includes('vethernet') || 
-                  lowerName.includes('wsl') || 
-                  lowerName.includes('docker') || 
-                  lowerName.includes('vmware') || 
-                  lowerName.includes('vbox');
-
-                detectedAdapters.push({
-                  name,
-                  ip: iface.address,
-                  isPhysical: !isVirtual,
-                  mac: iface.mac
-                });
-              }
-            }
-          }
-
-          // Prioritize physical adapters (Wi-Fi, Ethernet) over virtual switches
-          detectedAdapters.sort((a, b) => {
-            if (a.isPhysical && !b.isPhysical) return -1;
-            if (!a.isPhysical && b.isPhysical) return 1;
-            if (a.ip.startsWith('192.168.') && !b.ip.startsWith('192.168.')) return -1;
-            if (!a.ip.startsWith('192.168.') && b.ip.startsWith('192.168.')) return 1;
-            return 0;
-          });
-
-          const primaryLanIp = detectedAdapters[0]?.ip || '192.168.1.105';
           const isLocalhost = 
             hostHeader.includes('localhost') || 
             hostHeader.includes('127.0.0.1') || 
             clientIp === '127.0.0.1' || 
             clientIp === '::1';
 
-          const rawHost = os.hostname();
-          const realHostname = (rawHost && !rawHost.includes('ais-') && !rawHost.includes('localhost') && rawHost !== '127.0.0.1')
-            ? rawHost
-            : 'QISHENG-022';
-          const gatewayIp = primaryLanIp.includes('.')
-            ? `${primaryLanIp.substring(0, primaryLanIp.lastIndexOf('.'))}.1 (Default Gateway)`
-            : '192.168.1.1 (Gateway)';
-
           res.statusCode = 200;
           return res.end(JSON.stringify({
             status: 'success',
             isLocalhost,
             clientIp,
-            serverLanIp: primaryLanIp,
-            realHostname,
-            serverHostname: realHostname,
-            networkAdapters: detectedAdapters,
-            gatewayIp,
-            dnsServer: '192.168.1.1 (Local DNS / Router)',
-            domainJoined: !isLocalhost,
-            domainName: isLocalhost ? 'WORKGROUP' : 'qisheng.local',
             userAgent,
+            platformHint: platformHint.replace(/"/g, ''),
             timestamp: new Date().toISOString(),
-            intranetVlan: isLocalhost ? 'Local Network (DHCP)' : 'VLAN 10 - HQ Workstations',
           }));
         }
 

@@ -1,21 +1,36 @@
-export type UserRole = 'ADMIN' | 'ACCOUNTING' | 'IT' | 'HR' | 'SALES_OPERATIONS';
+export type RoleLevel = 'admin' | 'user';
+export type UserRole = 'ADMIN' | 'ACCOUNTING' | 'IT' | 'HR' | 'SALES_OPERATIONS' | 'admin' | 'user';
 
 export interface UserProfile {
   id: string;
+  username?: string;
+  password?: string;
   name: string;
   nameTh: string;
   email: string;
   role: UserRole;
+  roleLevel?: RoleLevel;
   department: string;
   departmentTh: string;
   position: string;
   employeeId: string;
   avatar: string;
-  workstationHostname: string;
-  assignedVlan: string;
-  localIp: string;
-  ssoProvider: 'EntraID' | 'GoogleWorkspace' | 'LocalAD';
+  workstationHostname?: string;
+  assignedVlan?: string;
+  localIp?: string;
+  ssoProvider?: 'EntraID' | 'GoogleWorkspace' | 'LocalAD' | 'DirectAuth';
+  createdAt?: string;
 }
+
+export const isAdminUser = (user?: UserProfile | null): boolean => {
+  if (!user) return false;
+  const r = (user.role || '').toLowerCase();
+  return r === 'admin' || user.roleLevel === 'admin';
+};
+
+export const getUserRoleLevel = (user?: UserProfile | null): RoleLevel => {
+  return isAdminUser(user) ? 'admin' : 'user';
+};
 
 export type AppCategory = 
   | 'all'

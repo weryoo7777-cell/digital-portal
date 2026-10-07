@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -15,10 +15,18 @@ import {
   Sparkles, 
   CalendarDays, 
   Grid3X3,
-  Check
+  Check,
+  Upload,
+  Image as ImageIcon,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RotateCcw,
+  FileUp,
+  AlertCircle
 } from 'lucide-react';
 import { RoomBooking } from '../types';
-import { QISHENG_LOGO } from '../data/portalData';
+import { QISHENG_LOGO, CORPORATE_MOUNTAIN_BRAND } from '../data/portalData';
 import { 
   COMPANY_INFO, 
   CALENDAR_STATS, 
@@ -32,17 +40,76 @@ import {
 interface CalendarViewProps {
   roomBookings?: RoomBooking[];
   language: 'TH' | 'EN';
+  isAdmin?: boolean;
+  customCalendarImage?: string | null;
+  onUploadCalendarImage?: (imageUrl: string) => void;
+  onResetCalendarImage?: () => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ 
+  language,
+  isAdmin = false,
+  customCalendarImage = null,
+  onUploadCalendarImage,
+  onResetCalendarImage
+}) => {
   // Real-time System Date calculation based on system date (e.g. Oct 6, 2026)
   const now = useMemo(() => new Date(), []);
   const currentMonthIndex = now.getMonth();
   const currentDay = now.getDate();
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(currentMonthIndex);
-  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
+  const [viewMode, setViewMode] = useState<'monthly' | 'yearly' | 'image'>('monthly');
   const [monthPickerOpen, setMonthPickerOpen] = useState<boolean>(false);
+  const [imageZoom, setImageZoom] = useState<number>(1);
+  const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState<boolean>(false);
+  const [uploadSuccessNotice, setUploadSuccessNotice] = useState<string | null>(null);
+  const [uploadErrorNotice, setUploadErrorNotice] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const activeCalendarImage = customCalendarImage || CORPORATE_MOUNTAIN_BRAND;
+
+  const handleTriggerUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadErrorNotice(null);
+
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
+    if (!isImage && !isPdf) {
+      setUploadErrorNotice(language === 'TH' ? 'กรุณาอัปโหลดไฟล์รูปภาพ (.png, .jpg, .webp) หรือ .pdf' : 'Please upload an image (.png, .jpg, .webp) or .pdf');
+      setTimeout(() => setUploadErrorNotice(null), 4000);
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setUploadErrorNotice(language === 'TH' ? 'ขนาดไฟล์ต้องไม่เกิน 20MB' : 'File size must be under 20MB');
+      setTimeout(() => setUploadErrorNotice(null), 4000);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        const resultUrl = event.target.result;
+        onUploadCalendarImage?.(resultUrl);
+        setViewMode('image');
+        setUploadSuccessNotice(language === 'TH' 
+          ? `อัปโหลดปฏิทิน "${file.name}" เรียบร้อยแล้ว!` 
+          : `Calendar "${file.name}" uploaded successfully!`);
+        setTimeout(() => setUploadSuccessNotice(null), 4000);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const selectedMonth: MonthMeta = MONTHS_2026[selectedMonthIndex];
 
@@ -244,8 +311,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
           )}
         </div>
 
-        {/* View Mode Toggle (Monthly Focus vs Full 12-Month Overview) */}
-        <div className="flex items-center gap-2">
+        {/* View Mode Toggle (Monthly Focus vs Full 12-Month Overview vs Image Poster) */}
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
             <button
               onClick={() => setViewMode('monthly')}
@@ -270,7 +337,53 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
               <Grid3X3 className="w-3.5 h-3.5" />
               <span>{language === 'TH' ? 'ทั้งปี 12 เดือน' : 'Full 12 Months'}</span>
             </button>
+
+            <button
+              onClick={() => setViewMode('image')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+                viewMode === 'image'
+                  ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>{language === 'TH' ? 'ภาพปฏิทิน' : 'Poster Image'}</span>
+              {customCalendarImage && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Custom calendar active" />
+              )}
+            </button>
           </div>
+
+          {/* Admin Upload / Change Calendar Image Button (Requirement #5) */}
+          {isAdmin && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                className="hidden"
+              />
+              <button
+                onClick={handleTriggerUpload}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
+                title={language === 'TH' ? 'อัปโหลดหรือเปลี่ยนรูปภาพปฏิทินประจำปี (.png, .jpg, .pdf)' : 'Upload or change calendar poster (.png, .jpg, .pdf)'}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{language === 'TH' ? 'อัปโหลด / เปลี่ยนรูปปฏิทิน' : 'Upload Calendar'}</span>
+              </button>
+
+              {customCalendarImage && onResetCalendarImage && (
+                <button
+                  onClick={onResetCalendarImage}
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs transition-colors"
+                  title={language === 'TH' ? 'รีเซ็ตเป็นรูปปฏิทินเริ่มต้น' : 'Reset to default calendar image'}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
+          )}
 
           <button
             onClick={() => window.print()}
@@ -281,6 +394,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
           </button>
         </div>
       </div>
+
+      {/* Upload Success or Error Notices */}
+      {uploadSuccessNotice && (
+        <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{uploadSuccessNotice}</span>
+          </div>
+          <button onClick={() => setUploadSuccessNotice(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {uploadErrorNotice && (
+        <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{uploadErrorNotice}</span>
+          </div>
+          <button onClick={() => setUploadErrorNotice(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* 4. Month Picker Pop-up Modal */}
       {monthPickerOpen && (
@@ -379,6 +517,149 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ language }) => {
                 {language === 'TH' ? 'ปิด' : 'Close'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4.5. VIEW: CALENDAR IMAGE POSTER VIEW (Requirement #5) */}
+      {viewMode === 'image' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{language === 'TH' ? 'ภาพปฏิทินประจำปี 2026 (Company Calendar Poster)' : 'Official 2026 Company Calendar Sheet'}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                      customCalendarImage
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                        : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                    }`}>
+                      {customCalendarImage 
+                        ? (language === 'TH' ? 'รูปที่อัปโหลดโดย Admin' : 'Custom Uploaded')
+                        : (language === 'TH' ? 'รูปปฏิทินตั้งต้น' : 'Standard')}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {language === 'TH' 
+                      ? 'ปฏิทินวันทำงานและวันหยุดประจำปีสำหรับติดบอร์ดประชาสัมพันธ์และดาวน์โหลด' 
+                      : 'Corporate working days and official holidays reference sheet'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Poster Controls: Zoom, Fullscreen, Download */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => setImageZoom(prev => Math.max(0.6, prev - 0.2))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[11px] font-mono px-2 font-bold text-slate-700 dark:text-slate-300 min-w-[45px] text-center">
+                    {Math.round(imageZoom * 100)}%
+                  </span>
+                  <button
+                    onClick={() => setImageZoom(prev => Math.min(2.5, prev + 0.2))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  {imageZoom !== 1 && (
+                    <button
+                      onClick={() => setImageZoom(1)}
+                      className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors text-[10px] font-bold"
+                      title="Reset Zoom"
+                    >
+                      1x
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setIsFullscreenModalOpen(true)}
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                  title={language === 'TH' ? 'ขยายเต็มหน้าจอ' : 'Fullscreen View'}
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+
+                <a
+                  href={activeCalendarImage}
+                  download="QISHENG_Corporate_Calendar_2026.jpg"
+                  className="p-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 text-xs font-bold"
+                  title={language === 'TH' ? 'ดาวน์โหลดรูปปฏิทิน' : 'Download Calendar'}
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">{language === 'TH' ? 'ดาวน์โหลด' : 'Download'}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Calendar Image Display Frame */}
+            <div className="mt-5 p-4 rounded-2xl bg-slate-900/5 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center overflow-auto min-h-[480px] max-h-[720px]">
+              <div 
+                className="transition-transform duration-200 origin-center max-w-full"
+                style={{ transform: `scale(${imageZoom})` }}
+              >
+                <img 
+                  src={activeCalendarImage} 
+                  alt="Corporate Calendar 2026" 
+                  className="max-h-[650px] w-auto object-contain rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800"
+                />
+              </div>
+            </div>
+
+            {/* Quick Upload Banner for Admin if on image view */}
+            {isAdmin && (
+              <div className="mt-4 p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>
+                    {language === 'TH' 
+                      ? 'คุณเข้าสู่ระบบด้วยสิทธิ์ Admin สามารถกดเปลี่ยนรูปปฏิทินองค์กรนี้ได้ตลอดเวลา' 
+                      : 'Logged in as Admin. You can change this company calendar poster anytime.'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleTriggerUpload}
+                  className="px-3 py-1.5 rounded-lg bg-[#1E60D5] hover:bg-blue-700 text-white font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{language === 'TH' ? 'เลือกรูปใหม่' : 'Change Image'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Lightbox Modal */}
+      {isFullscreenModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
+            <div className="font-bold text-sm">
+              {language === 'TH' ? 'ภาพปฏิทินประจำปี — โหมดขยายเต็มหน้าจอ' : 'Calendar Poster — Fullscreen View'}
+            </div>
+            <button
+              onClick={() => setIsFullscreenModalOpen(false)}
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center overflow-auto p-4">
+            <img 
+              src={activeCalendarImage} 
+              alt="Calendar Fullscreen" 
+              className="max-h-[90vh] max-w-full object-contain rounded-xl shadow-2xl"
+            />
           </div>
         </div>
       )}

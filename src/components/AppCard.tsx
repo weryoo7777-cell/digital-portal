@@ -22,7 +22,9 @@ import {
   CreditCard,
   Banknote,
   ExternalLink,
-  ArrowUpRight
+  ArrowUpRight,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { EnterpriseApp, UserRole } from '../types';
 
@@ -33,6 +35,9 @@ interface AppCardProps {
   onToggleFavorite: (appId: string) => void;
   onLaunchApp: (app: EnterpriseApp) => void;
   language: 'TH' | 'EN';
+  isAdmin?: boolean;
+  onEditApp?: (app: EnterpriseApp) => void;
+  onDeleteApp?: (appId: string) => void;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -63,10 +68,16 @@ export const AppCard: React.FC<AppCardProps> = ({
   isFavorite,
   onToggleFavorite,
   onLaunchApp,
-  language
+  language,
+  isAdmin = false,
+  onEditApp,
+  onDeleteApp
 }) => {
   const IconComponent = ICON_MAP[app.iconName] || Layers;
-  const hasAccess = app.allowedRoles.includes(currentUserRole);
+  const isUserAdmin = isAdmin || (currentUserRole || '').toLowerCase() === 'admin';
+  const hasAccess = isUserAdmin || 
+    app.allowedRoles.includes(currentUserRole) || 
+    app.allowedRoles.some(r => r.toLowerCase() === 'user');
 
   const getCategoryBadge = (cat: string) => {
     switch (cat) {
@@ -99,10 +110,10 @@ export const AppCard: React.FC<AppCardProps> = ({
           : 'border-slate-200/60 dark:border-slate-800/60 opacity-60 bg-slate-50/50 dark:bg-slate-950/40'}
       `}
     >
-      {/* Left: App Icon & Details */}
-      <div className="flex items-center gap-3.5 min-w-0">
+      {/* Left: App Icon & Details with strict text truncate */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
         <div className={`
-          w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs
+          w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs
           ${hasAccess 
             ? 'bg-blue-50/80 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 text-[#1E60D5] dark:text-blue-400 group-hover:bg-[#1E60D5] dark:group-hover:bg-[#1E60D5] group-hover:text-white group-hover:border-[#1E60D5]' 
             : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}
@@ -110,26 +121,61 @@ export const AppCard: React.FC<AppCardProps> = ({
           <IconComponent className="w-5 h-5" />
         </div>
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 
+              className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate"
+              title={app.name}
+            >
               {app.name}
             </h3>
             {!hasAccess && (
               <Lock className="w-3 h-3 text-amber-500 shrink-0" />
             )}
-            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md border ${catBadge.style}`}>
+            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md border shrink-0 ${catBadge.style}`}>
               {catBadge.label}
             </span>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-normal line-clamp-1 mt-0.5">
-            {language === 'TH' ? app.nameTh : app.description}
-          </div>
+          <p 
+            className="text-xs text-slate-500 dark:text-slate-400 font-normal truncate mt-0.5" 
+            title={language === 'TH' ? (app.nameTh || app.descriptionTh || app.description) : app.description}
+          >
+            {language === 'TH' ? (app.nameTh || app.descriptionTh || app.description) : app.description}
+          </p>
         </div>
       </div>
 
-      {/* Right: Star Icon for Favorite & Arrow hint */}
+      {/* Right: Star Icon for Favorite & Admin Controls & Arrow hint */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Admin CRUD Actions (Requirement #4: Only visible to Admin) */}
+        {isUserAdmin && onEditApp && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditApp(app);
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-[#1E60D5] hover:bg-blue-50 dark:hover:bg-blue-950/60 dark:hover:text-blue-400 transition-colors"
+            title={language === 'TH' ? 'แก้ไขแอปพลิเคชัน' : 'Edit application'}
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {isUserAdmin && onDeleteApp && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteApp(app.id);
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition-colors"
+            title={language === 'TH' ? 'ลบแอปพลิเคชัน' : 'Delete application'}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={(e) => {

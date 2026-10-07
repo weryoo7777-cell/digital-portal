@@ -278,7 +278,7 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
       : '192.168.1.1 (Gateway)',
     dnsServer: '192.168.1.1 (Router / DNS)',
     domainName: 'qisheng.local (Active Directory)',
-    vlan: currentUser.assignedVlan,
+    vlan: currentUser.assignedVlan || 'VLAN 10 - Corporate Operations',
     osName: env.osName,
     osVersion: env.osVersion,
     browserName: env.browserName,

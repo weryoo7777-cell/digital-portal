@@ -6,7 +6,10 @@ import {
   Bell,
   Calendar,
   Landmark,
-  Languages
+  Languages,
+  Users,
+  ShieldCheck,
+  Crown
 } from 'lucide-react';
 import { QISHENG_LOGO } from '../data/portalData';
 
@@ -16,7 +19,8 @@ export type NavTab =
   | 'external-portals'
   | 'announcements' 
   | 'calendar' 
-  | 'documents';
+  | 'documents'
+  | 'user-management';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -30,6 +34,7 @@ interface SidebarProps {
   onToggleLanguage?: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  isAdmin?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,7 +45,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenGoogleTranslate,
   language,
   mobileOpen,
-  onCloseMobile
+  onCloseMobile,
+  isAdmin = false
 }) => {
   // Primary Navigation
   const primaryNavItems = [
@@ -192,6 +198,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          {/* Admin Management Section (Requirement #3: Only visible to Admin) */}
+          {isAdmin && (
+            <>
+              <div className="pt-4 pb-1 px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                <span>{language === 'TH' ? 'ผู้ดูแลระบบ (Admin)' : 'Administration'}</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-blue-100 dark:bg-blue-900/60 text-[#1E60D5] dark:text-blue-300">
+                  RBAC
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  onSelectTab('user-management');
+                  onCloseMobile();
+                }}
+                className={`
+                  w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all text-left cursor-pointer
+                  ${currentTab === 'user-management'
+                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 font-bold border-l-4 border-[#1E60D5] dark:border-blue-400 shadow-xs' 
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium'}
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className={`w-4 h-4 ${currentTab === 'user-management' ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <span className="truncate">
+                    {language === 'TH' ? 'จัดการผู้ใช้งาน' : 'User Management'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-mono">
+                  Admin
+                </span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* 3. Bottom Utility Actions: Google Search & Google Translate */}

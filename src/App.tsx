@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CORPORATE_USERS, 
+  DEFAULT_ADMIN_ACCOUNT,
+  DEFAULT_USER_ACCOUNT,
   ENTERPRISE_APPS, 
   CORPORATE_ANNOUNCEMENTS, 
   INITIAL_HELPDESK_TICKETS,
@@ -13,7 +15,8 @@ import {
   ClientMachineInfo, 
   HelpdeskTicket, 
   CorporateAnnouncement,
-  RoomBooking 
+  RoomBooking,
+  isAdminUser 
 } from './types';
 import { detectClientMachineInfo } from './utils/clientMachineDetector';
 
@@ -31,6 +34,9 @@ import { ExternalPortalsView } from './components/ExternalPortalsView';
 import { GoogleSearchModal } from './components/GoogleSearchModal';
 import { GoogleTranslateModal } from './components/GoogleTranslateModal';
 import { LoginModal } from './components/LoginModal';
+import { LoginPage } from './components/LoginPage';
+import { UserManagementView } from './components/UserManagementView';
+import { AppManageModal } from './components/AppManageModal';
 import { AvatarModal, PasswordResetModal } from './components/ProfileModals';
 import { EXTERNAL_PORTALS } from './data/externalPortalsData';
 
@@ -65,13 +71,169 @@ import {
   Check,
   SlidersHorizontal,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 export default function App() {
-  // Authentication & Profile state (Default to Paramed Cherdchoo - IT Support)
-  const [currentUser, setCurrentUser] = useState<UserProfile>(CORPORATE_USERS[0]);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  // 1. Available User Accounts (Stored in localStorage)
+  const [availableUsers, setAvailableUsers] = useState<UserProfile[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_user_accounts');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return CORPORATE_USERS;
+  });
+
+  // 2. Authentication & Profile state (Stored in localStorage)
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    try {
+      const stored = localStorage.getItem('qs_auth_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.id) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ADMIN_ACCOUNT;
+  });
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('qs_is_logged_in');
+      return stored === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isAdmin = isAdminUser(currentUser);
+
+  // 3. Enterprise Apps Collection (Stored in localStorage)
+  const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_enterprise_apps');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return ENTERPRISE_APPS;
+  });
+
+  // 4. Custom Calendar Image (Stored in localStorage)
+  const [customCalendarImage, setCustomCalendarImage] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('qs_calendar_custom_image');
+    } catch {
+      return null;
+    }
+  });
+
+  // App CRUD Modal States
+  const [appModalOpen, setAppModalOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState<EnterpriseApp | null>(null);
+  const [appToDeleteId, setAppToDeleteId] = useState<string | null>(null);
+
+  const handleSaveApp = (app: EnterpriseApp) => {
+    setEnterpriseApps((prev) => {
+      const exists = prev.some(a => a.id === app.id);
+      const updated = exists 
+        ? prev.map(a => a.id === app.id ? app : a)
+        : [app, ...prev];
+      try {
+        localStorage.setItem('qs_enterprise_apps', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDeleteApp = (appId: string) => {
+    setEnterpriseApps((prev) => {
+      const updated = prev.filter(a => a.id !== appId);
+      try {
+        localStorage.setItem('qs_enterprise_apps', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setAppToDeleteId(null);
+  };
+
+  // User CRUD Handlers
+  const handleAddUser = (newUser: UserProfile) => {
+    setAvailableUsers((prev) => {
+      const updated = [newUser, ...prev];
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+    setAvailableUsers((prev) => {
+      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem('qs_auth_user', JSON.stringify(updatedUser));
+      } catch {}
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (userId === currentUser.id) return;
+    setAvailableUsers((prev) => {
+      const updated = prev.filter(u => u.id !== userId);
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Calendar Image Handlers
+  const handleUploadCalendarImage = (imageUrl: string) => {
+    setCustomCalendarImage(imageUrl);
+    try {
+      localStorage.setItem('qs_calendar_custom_image', imageUrl);
+    } catch {}
+  };
+
+  const handleResetCalendarImage = () => {
+    setCustomCalendarImage(null);
+    try {
+      localStorage.removeItem('qs_calendar_custom_image');
+    } catch {}
+  };
+
+  // Authentication Handlers
+  const handleLoginSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    try {
+      localStorage.setItem('qs_is_logged_in', 'true');
+      localStorage.setItem('qs_auth_user', JSON.stringify(user));
+    } catch {}
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    try {
+      localStorage.removeItem('qs_is_logged_in');
+    } catch {}
+    if (currentTab === 'user-management') {
+      setCurrentTab('dashboard');
+    }
+  };
 
   // Layout & Navigation state
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -269,7 +431,7 @@ export default function App() {
 
   // Filter apps based on role, category, and search query
   const filteredApps = useMemo(() => {
-    return ENTERPRISE_APPS.filter((app) => {
+    return enterpriseApps.filter((app) => {
       const matchesSearch = 
         searchQuery === '' ||
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -282,7 +444,7 @@ export default function App() {
 
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [enterpriseApps, searchQuery, selectedCategory]);
 
   // Frequently used & Favorites combined for Section 2 (Top 6 apps)
   const frequentAndFavoriteApps = useMemo(() => {
@@ -290,7 +452,7 @@ export default function App() {
     const seen = new Set<string>();
 
     // 1. Favorites first
-    ENTERPRISE_APPS.forEach(app => {
+    enterpriseApps.forEach(app => {
       if (favorites.includes(app.id) && !seen.has(app.id)) {
         seen.add(app.id);
         list.push(app);
@@ -298,7 +460,7 @@ export default function App() {
     });
 
     // 2. Then frequent apps
-    ENTERPRISE_APPS.forEach(app => {
+    enterpriseApps.forEach(app => {
       if (app.isFrequent && !seen.has(app.id)) {
         seen.add(app.id);
         list.push(app);
@@ -306,7 +468,7 @@ export default function App() {
     });
 
     return list.slice(0, 6);
-  }, [favorites]);
+  }, [enterpriseApps, favorites]);
 
   // Home Page Filter State (User Request: เพิ่มปุ่มกรองลงไปแทนที่จะให้มันโชว์ทั้งหมด)
   type HomeFilterType = 'all' | 'favorites' | 'accounting' | 'tax' | 'it' | 'operations' | 'productivity';
@@ -316,24 +478,24 @@ export default function App() {
   const homeFilterOptions: { id: HomeFilterType; labelTh: string; labelEn: string; count?: number }[] = [
     { id: 'all', labelTh: 'ทั้งหมด (ใช้บ่อย)', labelEn: 'All (Frequent)' },
     { id: 'favorites', labelTh: '⭐ รายการโปรด', labelEn: 'Favorites', count: favorites.length },
-    { id: 'accounting', labelTh: 'การบัญชี', labelEn: 'Accounting', count: ENTERPRISE_APPS.filter(a => a.category === 'accounting').length },
-    { id: 'tax', labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: ENTERPRISE_APPS.filter(a => a.category === 'tax').length },
-    { id: 'it', labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: ENTERPRISE_APPS.filter(a => a.category === 'it').length },
-    { id: 'operations', labelTh: 'ปฏิบัติการ & AI', labelEn: 'Operations & AI', count: ENTERPRISE_APPS.filter(a => a.category === 'operations').length },
-    { id: 'productivity', labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: ENTERPRISE_APPS.filter(a => a.category === 'productivity').length },
+    { id: 'accounting', labelTh: 'การบัญชี', labelEn: 'Accounting', count: enterpriseApps.filter(a => a.category === 'accounting').length },
+    { id: 'tax', labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: enterpriseApps.filter(a => a.category === 'tax').length },
+    { id: 'it', labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: enterpriseApps.filter(a => a.category === 'it').length },
+    { id: 'operations', labelTh: 'ปฏิบัติการ & AI', labelEn: 'Operations & AI', count: enterpriseApps.filter(a => a.category === 'operations').length },
+    { id: 'productivity', labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: enterpriseApps.filter(a => a.category === 'productivity').length },
   ];
 
   const displayedHomeApps = useMemo(() => {
     if (homeFilter === 'favorites') {
-      return ENTERPRISE_APPS.filter(app => favorites.includes(app.id));
+      return enterpriseApps.filter(app => favorites.includes(app.id));
     }
     if (homeFilter === 'all') {
       return frequentAndFavoriteApps;
     }
-    return ENTERPRISE_APPS.filter(app => app.category === homeFilter);
-  }, [homeFilter, favorites, frequentAndFavoriteApps]);
+    return enterpriseApps.filter(app => app.category === homeFilter);
+  }, [homeFilter, favorites, frequentAndFavoriteApps, enterpriseApps]);
 
-  // 2x4 System Categories specification
+  // System Categories specification
   const categoryGridItems = [
     {
       id: 'accounting' as const,
@@ -342,8 +504,7 @@ export default function App() {
       descTh: 'Express, GL, AP/AR, DataForge',
       icon: Calculator,
       badgeStyle: 'bg-blue-50 text-[#1E60D5] border-blue-200 group-hover:bg-[#1E60D5] group-hover:text-white',
-      count: ENTERPRISE_APPS.filter(a => a.category === 'accounting').length,
-      onClick: () => { setSelectedCategory('accounting'); setCurrentTab('all-apps'); }
+      onClick: () => { setSelectedCategory('accounting'); setSearchQuery(''); setCurrentTab('all-apps'); }
     },
     {
       id: 'tax' as const,
@@ -352,8 +513,7 @@ export default function App() {
       descTh: 'RD e-Filing, e-Tax, สรรพากร',
       icon: ReceiptText,
       badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white',
-      count: ENTERPRISE_APPS.filter(a => a.category === 'tax').length,
-      onClick: () => { setSelectedCategory('tax'); setCurrentTab('all-apps'); }
+      onClick: () => { setSelectedCategory('tax'); setSearchQuery(''); setCurrentTab('all-apps'); }
     },
     {
       id: 'hr' as const,
@@ -362,8 +522,7 @@ export default function App() {
       descTh: 'HRMS, บันทึกเวลา, ลางาน',
       icon: Users,
       badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-600 group-hover:text-white',
-      count: ENTERPRISE_APPS.filter(a => a.category === 'hr').length,
-      onClick: () => { setSelectedCategory('hr'); setCurrentTab('all-apps'); }
+      onClick: () => { setSelectedCategory('hr'); setSearchQuery(''); setCurrentTab('all-apps'); }
     },
     {
       id: 'it' as const,
@@ -372,28 +531,25 @@ export default function App() {
       descTh: 'Router, Firewall, WireGuard VPN',
       icon: Network,
       badgeStyle: 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-600 group-hover:text-white',
-      count: ENTERPRISE_APPS.filter(a => a.category === 'it').length,
-      onClick: () => { setSelectedCategory('it'); setCurrentTab('all-apps'); }
+      onClick: () => { setSelectedCategory('it'); setSearchQuery(''); setCurrentTab('all-apps'); }
     },
     {
-      id: 'ai-tools' as const,
-      nameTh: 'เครื่องมือ AI',
-      nameEn: 'AI Tools',
-      descTh: 'DataForge OCR, Smart Extraction',
+      id: 'operations' as const,
+      nameTh: 'ปฏิบัติการ & ERP',
+      nameEn: 'Operations & ERP',
+      descTh: 'ERP Central, WMS, Supply Chain',
+      icon: Layers,
+      badgeStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white',
+      onClick: () => { setSelectedCategory('operations'); setSearchQuery(''); setCurrentTab('all-apps'); }
+    },
+    {
+      id: 'productivity' as const,
+      nameTh: 'เครื่องมือสำนักงาน',
+      nameEn: 'Workspace & Docs',
+      descTh: 'Google Workspace, Cloud Drive',
       icon: Sparkles,
       badgeStyle: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 group-hover:bg-fuchsia-600 group-hover:text-white',
-      count: ENTERPRISE_APPS.filter(a => a.badge === 'AI Powered' || a.id.includes('ocr')).length,
-      onClick: () => { setSearchQuery('OCR'); setSelectedCategory('all'); setCurrentTab('all-apps'); }
-    },
-    {
-      id: 'documents' as const,
-      nameTh: 'เอกสารภายใน',
-      nameEn: 'Internal Docs',
-      descTh: 'Knowledge Base, Policy & Guides',
-      icon: BookOpen,
-      badgeStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white',
-      count: 4,
-      onClick: () => { setCurrentTab('documents'); }
+      onClick: () => { setSelectedCategory('productivity'); setSearchQuery(''); setCurrentTab('all-apps'); }
     },
     {
       id: 'external' as const,
@@ -402,17 +558,15 @@ export default function App() {
       descTh: '16 พอร์ทัลราชการ & สถาบันการเงิน',
       icon: Globe2,
       badgeStyle: 'bg-rose-50 text-rose-700 border-rose-200 group-hover:bg-rose-600 group-hover:text-white',
-      count: EXTERNAL_PORTALS.length,
       onClick: () => { setCurrentTab('external-portals'); }
     },
     {
-      id: 'others' as const,
-      nameTh: 'ระบบอื่นๆ',
-      nameEn: 'Others',
-      descTh: 'ERP Central, WMS & All Systems',
+      id: 'all' as const,
+      nameTh: 'ระบบทั้งหมด',
+      nameEn: 'All Applications',
+      descTh: 'ศูนย์รวมทุกระบบงานขององค์กร',
       icon: Grid,
       badgeStyle: 'bg-slate-100 text-slate-800 border-slate-300 group-hover:bg-slate-900 group-hover:text-white',
-      count: ENTERPRISE_APPS.length,
       onClick: () => { setSelectedCategory('all'); setSearchQuery(''); setCurrentTab('all-apps'); }
     }
   ];
@@ -425,9 +579,22 @@ export default function App() {
       case 'announcements': return language === 'TH' ? 'ข่าวสาร & ประกาศ' : 'Announcements';
       case 'calendar': return language === 'TH' ? 'ปฏิทินบริษัท' : 'Company Calendar';
       case 'documents': return language === 'TH' ? 'เอกสาร & คู่มือการใช้งาน (Documents & Manuals)' : 'Documents & Manuals';
+      case 'user-management': return language === 'TH' ? 'จัดการผู้ใช้งานระบบ (User Management)' : 'User Management';
       default: return 'QISHENG Digital Portal';
     }
   };
+
+  // Requirement #1: If user is not logged in, redirect to dedicated Login Page
+  if (!isLoggedIn) {
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+        availableUsers={availableUsers}
+        language={language}
+        onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-[#0B0F19] text-slate-100' : 'bg-[#F4F6F9] text-slate-900'} flex font-sans antialiased transition-colors duration-200`}>
@@ -447,6 +614,7 @@ export default function App() {
         onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        isAdmin={isAdmin}
       />
 
       {/* Main Content Area */}
@@ -472,7 +640,7 @@ export default function App() {
           announcements={announcements}
           unreadAnnouncementsCount={unreadAnnouncementsCount}
           onOpenAnnouncements={() => setCurrentTab('announcements')}
-          onLogout={() => setIsLoggedIn(false)}
+          onLogout={handleLogout}
           language={language}
           onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
           currentTabName={getTabTitle()}
@@ -506,21 +674,21 @@ export default function App() {
                 language={language}
               />
 
-              {/* 2) Frequently Used Apps (Clean Section without Filter or View-All buttons) */}
-              <section className="space-y-3.5">
-                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center font-bold">
-                    <Clock className="w-3.5 h-3.5" />
+              {/* 2) Frequently Used Apps & Favorites (Hidden completely if no favorites or frequent apps) */}
+              {frequentAndFavoriteApps.length > 0 && (
+                <section className="space-y-3.5">
+                  <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center font-bold">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
+                    </h2>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+                      ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
+                    </span>
                   </div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                    {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
-                  </h2>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                    ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
-                  </span>
-                </div>
 
-                {frequentAndFavoriteApps.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                     {frequentAndFavoriteApps.map((app) => (
                       <AppCard
@@ -534,65 +702,53 @@ export default function App() {
                       />
                     ))}
                   </div>
-                ) : (
-                  <div className="p-8 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {language === 'TH' ? 'ไม่มีระบบที่บันทึกไว้ในขณะนี้' : 'No applications in list.'}
-                    </p>
-                  </div>
-                )}
-              </section>
+                </section>
+              )}
 
-                {/* 3) System Categories (2x4 Category Grid) */}
-                <section className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                        <Grid className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                          {language === 'TH' ? 'หมวดหมู่ระบบงานองค์กร' : 'System Categories'}
-                        </h2>
-                      </div>
+              {/* 3) System Categories */}
+              <section className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                      <Grid className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                      2x4 Category Matrix
-                    </span>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        {language === 'TH' ? 'หมวดหมู่ระบบงานองค์กร' : 'System Categories'}
+                      </h2>
+                    </div>
                   </div>
+                </div>
 
-                  {/* 2x4 Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {categoryGridItems.map((cat) => {
-                      const Icon = cat.icon;
-                      return (
-                        <div
-                          key={cat.id}
-                          onClick={cat.onClick}
-                          className="group p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/50 cursor-pointer transition-all flex flex-col justify-between"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-transparent dark:border-slate-700">
-                              {cat.count}
-                            </span>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
-                              {language === 'TH' ? cat.nameTh : cat.nameEn}
-                            </div>
-                            <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate mt-0.5">
-                              {cat.descTh}
-                            </div>
+                {/* Category Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {categoryGridItems.map((cat) => {
+                    const Icon = cat.icon;
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={cat.onClick}
+                        className="group p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/50 cursor-pointer transition-all flex flex-col justify-between"
+                      >
+                        <div className="flex items-center mb-2.5">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
+                            <Icon className="w-4 h-4" />
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </section>
+
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
+                            {language === 'TH' ? cat.nameTh : cat.nameEn}
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate mt-0.5">
+                            {cat.descTh}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
 
                 {/* 4) Recent Activity / Updates (Two Columns) */}
                 <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -692,22 +848,22 @@ export default function App() {
           {/* ALL APPS VIEW */}
           {currentTab === 'all-apps' && (() => {
             const allAppsCategories = [
-              { id: 'all' as AppCategory, labelTh: 'ทั้งหมด', labelEn: 'All Apps', count: ENTERPRISE_APPS.length },
-              { id: 'accounting' as AppCategory, labelTh: 'การบัญชี', labelEn: 'Accounting', count: ENTERPRISE_APPS.filter(a => a.category === 'accounting').length },
-              { id: 'tax' as AppCategory, labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: ENTERPRISE_APPS.filter(a => a.category === 'tax').length },
-              { id: 'hr' as AppCategory, labelTh: 'ทรัพยากรบุคคล', labelEn: 'HR', count: ENTERPRISE_APPS.filter(a => a.category === 'hr').length },
-              { id: 'it' as AppCategory, labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: ENTERPRISE_APPS.filter(a => a.category === 'it').length },
-              { id: 'operations' as AppCategory, labelTh: 'ปฏิบัติการ & ERP', labelEn: 'Operations', count: ENTERPRISE_APPS.filter(a => a.category === 'operations').length },
-              { id: 'productivity' as AppCategory, labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: ENTERPRISE_APPS.filter(a => a.category === 'productivity').length },
+              { id: 'all' as AppCategory, labelTh: 'ทั้งหมด', labelEn: 'All Apps', count: enterpriseApps.length },
+              { id: 'accounting' as AppCategory, labelTh: 'การบัญชี', labelEn: 'Accounting', count: enterpriseApps.filter(a => a.category === 'accounting').length },
+              { id: 'tax' as AppCategory, labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: enterpriseApps.filter(a => a.category === 'tax').length },
+              { id: 'hr' as AppCategory, labelTh: 'ทรัพยากรบุคคล', labelEn: 'HR', count: enterpriseApps.filter(a => a.category === 'hr').length },
+              { id: 'it' as AppCategory, labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: enterpriseApps.filter(a => a.category === 'it').length },
+              { id: 'operations' as AppCategory, labelTh: 'ปฏิบัติการ & ERP', labelEn: 'Operations', count: enterpriseApps.filter(a => a.category === 'operations').length },
+              { id: 'productivity' as AppCategory, labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: enterpriseApps.filter(a => a.category === 'productivity').length },
             ];
 
             return (
               <div className="space-y-6 animate-in fade-in">
-                {/* Filter and Search Bar: Only Filter Button and ทั้งหมด */}
+                {/* Filter and Search Bar & Admin Add App button */}
                 <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 relative ${allAppsFilterDropdownOpen ? 'z-40' : 'z-20'}`}>
-                  {/* Left: Icon-Only Filter Button & ทั้งหมด only (ไม่มีหัวข้ออื่น) */}
+                  {/* Left: Icon-Only Filter Button & ทั้งหมด only */}
                   <div className="flex items-center gap-2">
-                    {/* ปุ่มกรองมีแค่รูป (Icon-only Filter Button) with high z-index and click-outside backdrop */}
+                    {/* ปุ่มกรองมีแค่รูป (Icon-only Filter Button) */}
                     <div className="relative z-50">
                       <button
                         onClick={() => setAllAppsFilterDropdownOpen(!allAppsFilterDropdownOpen)}
@@ -737,7 +893,7 @@ export default function App() {
                         />
                       )}
 
-                      {/* Filter Dropdown Menu - rendered in front with high z-index */}
+                      {/* Filter Dropdown Menu */}
                       {allAppsFilterDropdownOpen && (
                         <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl dark:shadow-slate-950/80 p-2.5 animate-in fade-in zoom-in-95">
                           <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -794,16 +950,33 @@ export default function App() {
                     })()}
                   </div>
 
-                  {/* Search input */}
-                  <div className="relative min-w-[200px] sm:w-64 shrink-0">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={language === 'TH' ? 'ค้นหาระบบงานองค์กร...' : 'Filter apps...'}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
-                    />
+                  {/* Right: Search input & Admin "+ Add App" Button (Requirement #4) */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative min-w-[180px] sm:w-60 shrink-0">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={language === 'TH' ? 'ค้นหาระบบงานองค์กร...' : 'Filter apps...'}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
+                      />
+                    </div>
+
+                    {/* Admin "+ Add New App" button */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setEditingApp(null);
+                          setAppModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                        title={language === 'TH' ? 'เพิ่มแอปพลิเคชันองค์กรใหม่' : 'Add new enterprise app'}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{language === 'TH' ? '+ เพิ่มแอป' : '+ Add App'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -819,6 +992,14 @@ export default function App() {
                         onToggleFavorite={toggleFavorite}
                         onLaunchApp={setSelectedAppForLaunch}
                         language={language}
+                        isAdmin={isAdmin}
+                        onEditApp={(appToEdit) => {
+                          setEditingApp(appToEdit);
+                          setAppModalOpen(true);
+                        }}
+                        onDeleteApp={(appIdToDelete) => {
+                          setAppToDeleteId(appIdToDelete);
+                        }}
                       />
                     ))}
                   </div>
@@ -862,17 +1043,41 @@ export default function App() {
             />
           )}
 
-          {/* CALENDAR VIEW */}
+          {/* CALENDAR VIEW (Requirement #5: with Admin Upload Support) */}
           {currentTab === 'calendar' && (
             <CalendarView
               roomBookings={roomBookings}
               language={language}
+              isAdmin={isAdmin}
+              customCalendarImage={customCalendarImage}
+              onUploadCalendarImage={handleUploadCalendarImage}
+              onResetCalendarImage={handleResetCalendarImage}
             />
           )}
 
           {/* DOCUMENTS & MANUALS VIEW */}
           {currentTab === 'documents' && (
             <KnowledgeBaseView language={language} />
+          )}
+
+          {/* USER MANAGEMENT VIEW (Requirement #3: Admin Only) */}
+          {currentTab === 'user-management' && (
+            isAdmin ? (
+              <UserManagementView
+                currentUser={currentUser}
+                users={availableUsers}
+                onAddUser={handleAddUser}
+                onUpdateUser={handleUpdateUser}
+                onDeleteUser={handleDeleteUser}
+                language={language}
+              />
+            ) : (
+              <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-sm font-semibold text-rose-600">
+                  {language === 'TH' ? 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเข้าถึงหน้านี้ได้' : 'Access Restricted to Administrators'}
+                </p>
+              </div>
+            )
           )}
         </main>
       </div>
@@ -884,6 +1089,53 @@ export default function App() {
         onClose={() => setSelectedAppForLaunch(null)}
         language={language}
       />
+
+      {/* Admin App Manage Modal (Requirement #4: Create / Edit App) */}
+      <AppManageModal
+        isOpen={appModalOpen}
+        editingApp={editingApp}
+        onClose={() => {
+          setAppModalOpen(false);
+          setEditingApp(null);
+        }}
+        onSaveApp={handleSaveApp}
+        language={language}
+      />
+
+      {/* Admin Delete App Confirmation Modal */}
+      {appToDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                {language === 'TH' ? 'ยืนยันการลบแอปพลิเคชัน' : 'Confirm Application Deletion'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {language === 'TH' 
+                  ? `คุณต้องการลบแอปพลิเคชัน "${enterpriseApps.find(a => a.id === appToDeleteId)?.name || 'นี้'}" ออกจากพอร์ทัลใช่หรือไม่?` 
+                  : `Are you sure you want to remove "${enterpriseApps.find(a => a.id === appToDeleteId)?.name || 'this app'}" from the digital portal?`}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setAppToDeleteId(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => handleDeleteApp(appToDeleteId)}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md"
+              >
+                {language === 'TH' ? 'ยืนยันลบ' : 'Delete App'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions Modal (Helpdesk, SSPR, Access Request) */}
       <QuickActionsModal
@@ -916,13 +1168,6 @@ export default function App() {
       <GoogleTranslateModal
         isOpen={googleTranslateModalOpen}
         onClose={() => setGoogleTranslateModalOpen(false)}
-        language={language}
-      />
-
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={!isLoggedIn}
-        onLoginSuccess={() => setIsLoggedIn(true)}
         language={language}
       />
 

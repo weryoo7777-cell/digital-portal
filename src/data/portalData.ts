@@ -6,13 +6,60 @@ export const CORPORATE_BUILDING_BANNER = '/src/assets/images/corporate_glass_bui
 export const CORPORATE_OFFICE_FACADE = CORPORATE_BUILDING_BANNER;
 export const CORPORATE_MOUNTAIN_BRAND = '/src/assets/images/corporate_mountain_brand_1791176478081.jpg';
 
+export const DEFAULT_ADMIN_ACCOUNT: UserProfile = {
+  id: 'usr_admin_default',
+  username: 'admin',
+  password: 'adminpassword123',
+  name: 'System Administrator',
+  nameTh: 'ผู้ดูแลระบบ (Admin)',
+  email: 'admin@qisheng.co.th',
+  role: 'admin',
+  roleLevel: 'admin',
+  department: 'IT Administration & Corporate Systems',
+  departmentTh: 'ฝ่ายเทคโนโลยีสารสนเทศและระบบงานกลาง',
+  position: 'Enterprise Super Admin',
+  employeeId: 'QS-ADM001',
+  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+  workstationHostname: 'QS-HQ-ADMIN-01',
+  assignedVlan: 'VLAN 10 - Admin Subnet',
+  localIp: '192.168.10.1',
+  ssoProvider: 'DirectAuth',
+  createdAt: '2026-01-10'
+};
+
+export const DEFAULT_USER_ACCOUNT: UserProfile = {
+  id: 'usr_user_default',
+  username: 'user',
+  password: 'user123',
+  name: 'Somchai Meesook',
+  nameTh: 'สมชาย มีสุข',
+  email: 'user@qisheng.co.th',
+  role: 'user',
+  roleLevel: 'user',
+  department: 'General Operations & Staff',
+  departmentTh: 'ฝ่ายปฏิบัติการและธุรการทั่วไป',
+  position: 'Operations Specialist',
+  employeeId: 'QS-USR002',
+  avatar: SOMCHAI_AVATAR,
+  workstationHostname: 'QS-HQ-STAFF-05',
+  assignedVlan: 'VLAN 30 - General Staff Subnet',
+  localIp: '192.168.30.22',
+  ssoProvider: 'DirectAuth',
+  createdAt: '2026-02-01'
+};
+
 export const CORPORATE_USERS: UserProfile[] = [
+  DEFAULT_ADMIN_ACCOUNT,
+  DEFAULT_USER_ACCOUNT,
   {
     id: 'usr_paramed_01',
+    username: 'paramed',
+    password: 'password123',
     name: 'Paramed Cherdchoo',
     nameTh: 'ปรเมศวร์ เชิดชู',
     email: 'paramed.c@qisheng.co.th',
-    role: 'IT',
+    role: 'admin',
+    roleLevel: 'admin',
     department: 'IT Infrastructure & User Support',
     departmentTh: 'ฝ่ายสนับสนุนเทคโนโลยีสารสนเทศ (IT Support)',
     position: 'IT Support Specialist',
@@ -21,14 +68,18 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QISHENG-022',
     assignedVlan: 'VLAN 10 - IT Operations Subnet',
     localIp: '192.168.10.45',
-    ssoProvider: 'EntraID'
+    ssoProvider: 'EntraID',
+    createdAt: '2026-01-15'
   },
   {
     id: 'usr_it_01',
+    username: 'somchai.v',
+    password: 'password123',
     name: 'Somchai Vijitsilp',
     nameTh: 'สมชาย วิจิตรศิลป์',
     email: 'somchai.v@qisheng.co.th',
-    role: 'IT',
+    role: 'admin',
+    roleLevel: 'admin',
     department: 'IT & Infrastructure Operations',
     departmentTh: 'ฝ่ายเทคโนโลยีสารสนเทศและโครงสร้างพื้นฐาน',
     position: 'Senior IT Network & Systems Lead',
@@ -37,14 +88,18 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QS-BKK-IT-NB04.qisheng.local',
     assignedVlan: 'VLAN 10 - IT Operations Subnet',
     localIp: '192.168.10.46',
-    ssoProvider: 'EntraID'
+    ssoProvider: 'EntraID',
+    createdAt: '2026-01-20'
   },
   {
     id: 'usr_acc_01',
+    username: 'suda',
+    password: 'password123',
     name: 'Suda Pornpitak',
     nameTh: 'สุดา พรพิทักษ์',
     email: 'suda.p@qisheng.co.th',
-    role: 'ACCOUNTING',
+    role: 'user',
+    roleLevel: 'user',
     department: 'Accounting & Corporate Finance',
     departmentTh: 'ฝ่ายการบัญชีและการเงินองค์กร',
     position: 'Accounting & Tax Manager',
@@ -53,14 +108,18 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QS-BKK-ACC-PC03.qisheng.local',
     assignedVlan: 'VLAN 20 - Accounting & Finance',
     localIp: '192.168.20.12',
-    ssoProvider: 'EntraID'
+    ssoProvider: 'EntraID',
+    createdAt: '2026-02-10'
   },
   {
     id: 'usr_hr_01',
+    username: 'napatsorn',
+    password: 'password123',
     name: 'Napatsorn Amphawa',
     nameTh: 'นภัสสร อัมพวา',
     email: 'napatsorn.a@qisheng.co.th',
-    role: 'HR',
+    role: 'user',
+    roleLevel: 'user',
     department: 'People & Human Resources',
     departmentTh: 'ฝ่ายบริหารทรัพยากรบุคคล',
     position: 'HR Director & People Operations',
@@ -69,14 +128,18 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QS-BKK-HR-NB01.qisheng.local',
     assignedVlan: 'VLAN 30 - HR & Confidential',
     localIp: '192.168.30.5',
-    ssoProvider: 'GoogleWorkspace'
+    ssoProvider: 'GoogleWorkspace',
+    createdAt: '2026-02-15'
   },
   {
     id: 'usr_admin_01',
+    username: 'thanakrit',
+    password: 'password123',
     name: 'Thanakrit Wittayakorn',
     nameTh: 'ธนกฤต วิทยากร',
     email: 'thanakrit.w@qisheng.co.th',
-    role: 'ADMIN',
+    role: 'admin',
+    roleLevel: 'admin',
     department: 'Executive Management & Board',
     departmentTh: 'คณะผู้บริหารและกรรมการผู้จัดการ',
     position: 'Managing Director & Enterprise Super Admin',
@@ -85,14 +148,18 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QS-BKK-CEO-MAC01.qisheng.local',
     assignedVlan: 'VLAN 99 - Executive Management',
     localIp: '192.168.99.1',
-    ssoProvider: 'EntraID'
+    ssoProvider: 'EntraID',
+    createdAt: '2026-01-01'
   },
   {
     id: 'usr_sales_01',
+    username: 'kittisak',
+    password: 'password123',
     name: 'Kittisak Charoenporn',
     nameTh: 'กิตติศักดิ์ เจริญพร',
     email: 'kittisak.c@qisheng.co.th',
-    role: 'SALES_OPERATIONS',
+    role: 'user',
+    roleLevel: 'user',
     department: 'Sales & Warehouse Logistics',
     departmentTh: 'ฝ่ายขายและการจัดการคลังสินค้า',
     position: 'Supply Chain & Sales Coordinator',
@@ -101,7 +168,8 @@ export const CORPORATE_USERS: UserProfile[] = [
     workstationHostname: 'QS-BKK-WMS-PC08.qisheng.local',
     assignedVlan: 'VLAN 40 - Operations & Logistics',
     localIp: '192.168.40.24',
-    ssoProvider: 'GoogleWorkspace'
+    ssoProvider: 'GoogleWorkspace',
+    createdAt: '2026-03-01'
   }
 ];
 

@@ -148,6 +148,13 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const getRoleBadgeStyle = (role: string) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') {
+      return 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60 font-bold font-mono';
+    }
+    if (r === 'user') {
+      return 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 font-bold font-mono';
+    }
     switch (role) {
       case 'ADMIN':
         return 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60';

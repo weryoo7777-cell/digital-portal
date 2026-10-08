@@ -16,8 +16,10 @@ import {
   RoomBooking,
   VendorContact,
   CorporateAnnouncement,
-  NavTab
+  NavTab,
+  ActivityLogItem
 } from './types';
+import { centralSyncService } from './services/centralSyncService';
 import { detectClientMachineInfo } from './utils/clientMachineDetector';
 import { ADMIN_PIN } from './config/adminConfig';
 import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
@@ -153,69 +155,147 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
-  // Requirement #3.2 & #4.2: Corporate Announcements with daily dismissal logic and Admin CRUD
-  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(() => {
-    try {
-      const stored = localStorage.getItem('qs_announcements_v1');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return CORPORATE_ANNOUNCEMENTS;
-  });
+  // Centralized Announcements State
+  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
 
-  const handleAddAnnouncement = (newAnn: CorporateAnnouncement) => {
-    setAnnouncements((prev) => {
-      const updated = [newAnn, ...prev];
-      try {
-        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
+  // Centralized Activity Logs State
+  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
 
-  const handleDeleteAnnouncement = (annId: string) => {
-    setAnnouncements((prev) => {
-      const updated = prev.filter(a => a.id !== annId);
-      try {
-        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
+  // 3. Enterprise Apps Collection (Synced across LAN via Central Server)
+  const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(ENTERPRISE_APPS);
 
+  // App CRUD Modal States
+  const [appModalOpen, setAppModalOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState<EnterpriseApp | null>(null);
+  const [appToDeleteId, setAppToDeleteId] = useState<string | null>(null);
+
+  // Daily Announcement Modal State & Smart Detection
   const [dailyAnnouncementModalOpen, setDailyAnnouncementModalOpen] = useState<boolean>(false);
-  const [isDismissedToday, setIsDismissedToday] = useState<boolean>(() => {
-    try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      return localStorage.getItem('qs_announcement_dismissed_' + todayStr) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isDismissedToday, setIsDismissedToday] = useState<boolean>(false);
 
-  // Automatically show Announcement Modal when opening the app for the first time of the day
+  // Central Dynamic Sync Subscription (Listens for updates across all LAN machines)
   useEffect(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    try {
-      const dismissed = localStorage.getItem('qs_announcement_dismissed_' + todayStr);
-      if (!dismissed) {
-        setDailyAnnouncementModalOpen(true);
+    const unsubscribe = centralSyncService.subscribe((data) => {
+      if (data.apps && Array.isArray(data.apps) && data.apps.length > 0) {
+        setEnterpriseApps(data.apps);
       }
-    } catch {}
+      if (data.activityLogs && Array.isArray(data.activityLogs)) {
+        setActivityLogs(data.activityLogs);
+      }
+      if (data.announcements && Array.isArray(data.announcements) && data.announcements.length > 0) {
+        setAnnouncements(data.announcements);
+
+        // Requirement #3: Smart Announcement Detection
+        // Check date, ID of announcement, AND updated timestamp
+        const latestAnn = data.announcements[0];
+        if (latestAnn) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const lastDismissedDate = localStorage.getItem('qs_announcement_dismissed_date');
+          const lastDismissedId = localStorage.getItem('qs_announcement_dismissed_id');
+          const lastDismissedUpdatedAt = Number(localStorage.getItem('qs_announcement_dismissed_updated_at') || 0);
+
+          const isNewAnnouncementId = Boolean(lastDismissedId && lastDismissedId !== latestAnn.id);
+          const isUpdatedTimestamp = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastDismissedUpdatedAt);
+          const isNotDismissedToday = lastDismissedDate !== todayStr;
+
+          // If Admin added a new announcement OR updated an existing announcement OR user hasn't dismissed today:
+          if (isNotDismissedToday || isNewAnnouncementId || isUpdatedTimestamp) {
+            setDailyAnnouncementModalOpen(true);
+            setIsDismissedToday(false);
+          } else {
+            setIsDismissedToday(true);
+          }
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleDismissAnnouncementToday = () => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const latestAnn = announcements[0];
     try {
-      localStorage.setItem('qs_announcement_dismissed_' + todayStr, 'true');
+      localStorage.setItem('qs_announcement_dismissed_date', todayStr);
+      if (latestAnn) {
+        localStorage.setItem('qs_announcement_dismissed_id', latestAnn.id);
+        localStorage.setItem('qs_announcement_dismissed_updated_at', String(latestAnn.updatedAt || Date.now()));
+      }
     } catch {}
     setIsDismissedToday(true);
     setDailyAnnouncementModalOpen(false);
   };
 
-  // Requirement #2 & #4: Vendor Contacts Collection (Stored in localStorage)
+  const handleAddAnnouncement = async (newAnn: CorporateAnnouncement) => {
+    // Save to Central Server/Backend Database
+    await centralSyncService.saveAnnouncement(newAnn);
+    // Instant local optimistic update
+    setAnnouncements((prev) => [newAnn, ...prev]);
+  };
+
+  const handleDeleteAnnouncement = async (annId: string) => {
+    // Delete from Central Server/Backend Database
+    await centralSyncService.deleteAnnouncement(annId);
+    setAnnouncements((prev) => prev.filter(a => a.id !== annId));
+  };
+
+  const handleSaveApp = async (app: EnterpriseApp) => {
+    const isEdit = enterpriseApps.some(a => a.id === app.id);
+    // Save to Central Server/Backend Database
+    await centralSyncService.saveApp(app, isEdit);
+    setEnterpriseApps((prev) => {
+      const exists = prev.some(a => a.id === app.id);
+      return exists ? prev.map(a => a.id === app.id ? app : a) : [app, ...prev];
+    });
+    setAppModalOpen(false);
+    setEditingApp(null);
+  };
+
+  const handleDeleteApp = async (appId: string) => {
+    // Delete from Central Server/Backend Database
+    await centralSyncService.deleteApp(appId);
+    setEnterpriseApps((prev) => prev.filter(a => a.id !== appId));
+    setAppToDeleteId(null);
+  };
+
+  // User CRUD Handlers
+  const handleAddUser = (newUser: UserProfile) => {
+    setAvailableUsers((prev) => {
+      const updated = [newUser, ...prev];
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+    setAvailableUsers((prev) => {
+      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (userId === currentUser.id) return;
+    setAvailableUsers((prev) => {
+      const updated = prev.filter(u => u.id !== userId);
+      try {
+        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Vendor Contacts Collection
   const [vendorContacts, setVendorContacts] = useState<VendorContact[]>(() => {
     try {
       const stored = localStorage.getItem('qs_vendor_contacts_v1');
@@ -262,85 +342,6 @@ export default function App() {
     try {
       localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(INITIAL_VENDOR_CONTACTS));
     } catch {}
-  };
-
-
-  // 3. Enterprise Apps Collection
-  const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
-    try {
-      const stored = localStorage.getItem('qs_enterprise_apps_v2');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return ENTERPRISE_APPS;
-  });
-
-  // App CRUD Modal States
-  const [appModalOpen, setAppModalOpen] = useState(false);
-  const [editingApp, setEditingApp] = useState<EnterpriseApp | null>(null);
-  const [appToDeleteId, setAppToDeleteId] = useState<string | null>(null);
-
-  const handleSaveApp = (app: EnterpriseApp) => {
-    setEnterpriseApps((prev) => {
-      const exists = prev.some(a => a.id === app.id);
-      const updated = exists 
-        ? prev.map(a => a.id === app.id ? app : a)
-        : [app, ...prev];
-      try {
-        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    setAppModalOpen(false);
-    setEditingApp(null);
-  };
-
-  const handleDeleteApp = (appId: string) => {
-    setEnterpriseApps((prev) => {
-      const updated = prev.filter(a => a.id !== appId);
-      try {
-        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    setAppToDeleteId(null);
-  };
-
-  // User CRUD Handlers
-  const handleAddUser = (newUser: UserProfile) => {
-    setAvailableUsers((prev) => {
-      const updated = [newUser, ...prev];
-      try {
-        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
-
-  const handleUpdateUser = (updatedUser: UserProfile) => {
-    setAvailableUsers((prev) => {
-      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
-      try {
-        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    if (currentUser.id === updatedUser.id) {
-      setCurrentUser(updatedUser);
-    }
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    if (userId === currentUser.id) return;
-    setAvailableUsers((prev) => {
-      const updated = prev.filter(u => u.id !== userId);
-      try {
-        localStorage.setItem('qs_user_accounts', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
   };
 
   // Launch History tracking
@@ -400,9 +401,52 @@ export default function App() {
     setCurrentTab(newTab);
   };
 
-  // Launch App Handler
+  // App Log Icon Helper
+  const getAppLogIcon = (category?: string, name?: string) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('express') || n.includes('บัญชี')) return Calculator;
+    if (n.includes('tax') || n.includes('สรรพากร') || n.includes('ภาษี') || n.includes('etax')) return Landmark;
+    if (n.includes('router') || n.includes('mikrotik') || n.includes('vpn') || n.includes('network')) return Network;
+    if (n.includes('boi') || n.includes('visa')) return ReceiptText;
+    if (n.includes('protrack') || n.includes('track') || n.includes('task')) return Layers;
+    if (n.includes('drive') || n.includes('storage') || n.includes('cloud')) return HardDrive;
+    return Activity;
+  };
+
+  // Launch App Handler: Records Central Activity Log immediately upon click
   const handleLaunchApp = (app: EnterpriseApp) => {
     if (!app || !app.id) return;
+
+    // Requirement #2: Send event to Central Server Database immediately
+    centralSyncService.recordActivityLog({
+      appId: app.id,
+      appName: app.name,
+      appNameTh: app.nameTh,
+      appUrl: app.url,
+      category: app.category,
+      currentUser,
+      status: 'launched',
+      action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
+    });
+
+    // Optimistically prepend to local activity logs so dashboard updates instantly
+    const newLogItem: ActivityLogItem = {
+      id: `log-${Date.now()}`,
+      appId: app.id,
+      appName: app.name,
+      appNameTh: app.nameTh,
+      appUrl: app.url,
+      category: app.category,
+      clientIp: currentUser.localIp || '192.168.7.122',
+      workstationHostname: currentUser.workstationHostname || 'QISHENG-122',
+      userName: currentUser.name || 'General User',
+      userRole: currentUser.role || 'user',
+      timestamp: Date.now(),
+      status: 'launched',
+      action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
+    };
+    setActivityLogs(prev => [newLogItem, ...prev.filter(l => l.id !== newLogItem.id)].slice(0, 20));
+
     setSelectedAppForLaunch(app);
     setLaunchHistory((prev) => {
       const updated = { ...prev, [app.id]: (prev[app.id] || 0) + 1 };
@@ -418,14 +462,6 @@ export default function App() {
 
   // Corporate Calendar Data
   const [roomBookings] = useState<RoomBooking[]>(INITIAL_ROOM_BOOKINGS);
-
-  // Recently accessed apps log
-  const recentAccessLog = [
-    { appName: 'Express Accounting', appTh: 'ระบบบัญชี Express', time: '10m ago', icon: Calculator, color: 'text-[#1E60D5] bg-blue-50' },
-    { appName: 'BOI Privileges Online', appTh: 'ระบบสิทธิประโยชน์ BOI', time: '35m ago', icon: ReceiptText, color: 'text-emerald-600 bg-emerald-50' },
-    { appName: 'Qisheng Core Router', appTh: 'เราเตอร์ & ระบบไฟร์วอลล์', time: '1h ago', icon: Network, color: 'text-purple-600 bg-purple-50' },
-    { appName: 'RD e-Filing (สรรพากร)', appTh: 'ยื่นแบบภาษีออนไลน์', time: '2h ago', icon: Landmark, color: 'text-amber-600 bg-amber-50' }
-  ];
 
   // Persist favorites
   const toggleFavorite = (appId: string) => {
@@ -695,33 +731,54 @@ export default function App() {
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">Live Log</span>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {recentAccessLog.map((log, idx) => {
-                      const Icon = log.icon;
-                      return (
-                        <div 
-                          key={idx} 
-                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${log.color}`}>
-                              <Icon className="w-3.5 h-3.5" />
+                  <div className="space-y-2">
+                    {activityLogs && activityLogs.length > 0 ? (
+                      activityLogs.slice(0, 5).map((log) => {
+                        const Icon = getAppLogIcon(log.category, log.appName);
+                        return (
+                          <div 
+                            key={log.id} 
+                            onClick={() => {
+                              if (log.appUrl) {
+                                window.open(log.appUrl, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                            title={log.appUrl ? `เปิด ${log.appName}` : log.appName}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 group-hover:bg-[#1E60D5] group-hover:text-white transition-all shadow-2xs">
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
+                                  {language === 'TH' ? (log.appNameTh || log.appName) : log.appName}
+                                </div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 truncate">
+                                  <span>{log.userName || 'User'}</span>
+                                  <span>•</span>
+                                  <span className="font-mono text-slate-500 dark:text-slate-400">{log.workstationHostname || log.clientIp}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                                {language === 'TH' ? log.appTh : log.appName}
-                              </div>
-                              <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {log.appName}
-                              </div>
+                            <div className="text-right shrink-0 ml-2">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
+                                {centralSyncService.formatRelativeTime(log.timestamp, language)}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                                {log.status || 'Active'}
+                              </span>
                             </div>
                           </div>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
-                            {log.time}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-5 text-xs text-slate-400 dark:text-slate-500 space-y-1">
+                        <Activity className="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600" />
+                        <p>{language === 'TH' ? 'ยังไม่มีประวัติการเข้าใช้งานล่าสุด' : 'No recent activity recorded yet'}</p>
+                        <p className="text-[11px] text-slate-400">{language === 'TH' ? 'คลิกเปิดแอปพลิเคชันเพื่อบันทึกประวัติเข้าสู่ระบบกลาง' : 'Click any app to log your session to central server'}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -835,6 +892,24 @@ export default function App() {
                   onOpenGoogleSearchWithQuery={(q) => {
                     setGoogleSearchInitialQuery(q);
                     setGoogleSearchModalOpen(true);
+                  }}
+                  onLaunchPortal={(portal) => {
+                    const newLogItem: ActivityLogItem = {
+                      id: `log-${Date.now()}`,
+                      appId: portal.id,
+                      appName: portal.name,
+                      appNameTh: portal.nameTh,
+                      appUrl: portal.url,
+                      category: 'external',
+                      clientIp: currentUser.localIp || '192.168.7.122',
+                      workstationHostname: currentUser.workstationHostname || 'QISHENG-122',
+                      userName: currentUser.name || 'General User',
+                      userRole: currentUser.role || 'user',
+                      timestamp: Date.now(),
+                      status: 'redirected',
+                      action: 'External Portal Redirect'
+                    };
+                    setActivityLogs(prev => [newLogItem, ...prev.filter(l => l.id !== newLogItem.id)].slice(0, 20));
                   }}
                 />
               ) : (

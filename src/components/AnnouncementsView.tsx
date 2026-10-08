@@ -74,7 +74,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       date: todayStr,
       tag: newTag,
       priority: newPriority,
-      author: newAuthor.trim() || 'Admin'
+      author: newAuthor.trim() || 'Admin',
+      updatedAt: Date.now()
     };
 
     onAddAnnouncement?.(newAnnouncement);

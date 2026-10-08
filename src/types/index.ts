@@ -132,6 +132,34 @@ export interface CorporateAnnouncement {
   priority: 'normal' | 'high' | 'urgent';
   author: string;
   read?: boolean;
+  updatedAt?: number;
+}
+
+export interface ActivityLogItem {
+  id: string;
+  appId?: string;
+  appName: string;
+  appNameTh?: string;
+  appUrl?: string;
+  category?: string;
+  clientIp?: string;
+  workstationHostname?: string;
+  userName?: string;
+  userRole?: string;
+  timestamp: number;
+  timeFormatted?: string;
+  status: 'online' | 'success' | 'redirected' | 'launched';
+  action?: string;
+}
+
+export interface PortalDataSyncResponse {
+  apps: EnterpriseApp[];
+  announcements: CorporateAnnouncement[];
+  activityLogs: ActivityLogItem[];
+  latestAnnouncementId: string;
+  latestAnnouncementUpdatedAt: number;
+  serverTime: number;
+  version: number;
 }
 
 export interface HelpdeskTicket {

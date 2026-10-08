@@ -18,10 +18,12 @@ import {
   X
 } from 'lucide-react';
 import { EXTERNAL_PORTALS, ExternalPortalItem } from '../data/externalPortalsData';
+import { centralSyncService } from '../services/centralSyncService';
 
 interface ExternalPortalsViewProps {
   language: 'TH' | 'EN';
   onOpenGoogleSearchWithQuery?: (q: string) => void;
+  onLaunchPortal?: (portal: ExternalPortalItem) => void;
 }
 
 // Dedicated component for displaying official agency/bank logo with Google Favicon service & high-res vector fallbacks
@@ -159,7 +161,8 @@ const PortalLogo: React.FC<{
 
 export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
   language,
-  onOpenGoogleSearchWithQuery
+  onOpenGoogleSearchWithQuery,
+  onLaunchPortal
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState<boolean>(false);
@@ -391,15 +394,29 @@ export const ExternalPortalsView: React.FC<ExternalPortalsViewProps> = ({
                     {portal.url.replace(/^https?:\/\//, '')}
                   </span>
 
-                  <a
-                    href={portal.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-[#1E60D5] dark:hover:bg-[#1E60D5] text-[#1E60D5] dark:text-blue-300 hover:text-white text-xs font-bold transition-all shadow-2xs group/btn shrink-0"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      centralSyncService.recordActivityLog({
+                        appId: portal.id,
+                        appName: portal.name,
+                        appNameTh: portal.nameTh,
+                        appUrl: portal.url,
+                        category: 'external',
+                        status: 'redirected',
+                        action: 'External Portal Redirect'
+                      });
+                      if (onLaunchPortal) {
+                        onLaunchPortal(portal);
+                      }
+                      window.open(portal.url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-[#1E60D5] dark:hover:bg-[#1E60D5] text-[#1E60D5] dark:text-blue-300 hover:text-white text-xs font-bold transition-all shadow-2xs group/btn shrink-0 cursor-pointer"
                   >
                     <span>{language === 'TH' ? 'เข้าระบบ' : 'Launch'}</span>
                     <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
-                  </a>
+                  </button>
                 </div>
               </div>
             );

@@ -2,13 +2,34 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import os from 'os';
+import http from 'http';
 import {defineConfig, Plugin} from 'vite';
+import { centralStore } from './src/server/centralStore';
+
+function parseBody(req: http.IncomingMessage): Promise<any> {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    req.on('error', () => {
+      resolve({});
+    });
+  });
+}
 
 function corporateApiPlugin(): Plugin {
   return {
     name: 'corporate-api-plugin',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) {
           return next();
         }
@@ -16,6 +37,135 @@ function corporateApiPlugin(): Plugin {
         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
         res.setHeader('Content-Type', 'application/json');
 
+        // 1. Central Portal Sync Endpoint (GET /api/portal-data)
+        if (url.pathname === '/api/portal-data' && req.method === 'GET') {
+          res.statusCode = 200;
+          return res.end(JSON.stringify(centralStore.getPortalData()));
+        }
+
+        // 2. Apps Management Endpoints
+        if (url.pathname === '/api/apps') {
+          if (req.method === 'GET') {
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ apps: centralStore.getApps() }));
+          }
+          if (req.method === 'POST') {
+            const body = await parseBody(req);
+            if (!body || !body.name) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'App name is required' }));
+            }
+            const saved = centralStore.addApp(body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, app: saved }));
+          }
+          if (req.method === 'PUT') {
+            const body = await parseBody(req);
+            if (!body || !body.id) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'App ID is required' }));
+            }
+            const updated = centralStore.updateApp(body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, app: updated }));
+          }
+        }
+
+        if (url.pathname === '/api/apps/delete' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const appId = body?.id || body?.appId;
+          if (!appId) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: 'App ID is required' }));
+          }
+          const deleted = centralStore.deleteApp(appId);
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: deleted, id: appId }));
+        }
+
+        // 3. Announcements Management Endpoints
+        if (url.pathname === '/api/announcements') {
+          if (req.method === 'GET') {
+            res.statusCode = 200;
+            return res.end(JSON.stringify(centralStore.getAnnouncements()));
+          }
+          if (req.method === 'POST') {
+            const body = await parseBody(req);
+            if (!body || !body.title || !body.summary) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'Title and summary are required' }));
+            }
+            const saved = centralStore.addAnnouncement(body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, announcement: saved }));
+          }
+          if (req.method === 'PUT') {
+            const body = await parseBody(req);
+            if (!body || !body.id) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'Announcement ID is required' }));
+            }
+            const updated = centralStore.updateAnnouncement(body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, announcement: updated }));
+          }
+        }
+
+        if (url.pathname === '/api/announcements/delete' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const annId = body?.id || body?.announcementId;
+          if (!annId) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: 'Announcement ID is required' }));
+          }
+          const deleted = centralStore.deleteAnnouncement(annId);
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: deleted, id: annId }));
+        }
+
+        // 4. Central Activity Logs Endpoints
+        if (url.pathname === '/api/activity-logs') {
+          if (req.method === 'GET') {
+            const limit = parseInt(url.searchParams.get('limit') || '20', 10);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ logs: centralStore.getActivityLogs(limit) }));
+          }
+          if (req.method === 'POST') {
+            const body = await parseBody(req);
+            // Enrich with client IP if missing
+            const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
+            const detectedIp = (
+              rawForwarded.split(',')[0].trim() || 
+              (req.headers['x-real-ip'] as string) || 
+              req.socket.remoteAddress || 
+              '127.0.0.1'
+            ).replace('::ffff:', '');
+            
+            const logEntry = centralStore.addActivityLog({
+              ...body,
+              clientIp: body.clientIp || detectedIp
+            });
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, log: logEntry }));
+          }
+        }
+
+        // 5. Admin PIN Verification & Updating
+        if (url.pathname === '/api/auth/verify-pin' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const valid = centralStore.verifyPin(body?.pin || '');
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ valid }));
+        }
+
+        if (url.pathname === '/api/auth/change-pin' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const result = centralStore.changePin(body?.currentPin || '', body?.newPin || '');
+          res.statusCode = result.success ? 200 : 400;
+          return res.end(JSON.stringify(result));
+        }
+
+        // 6. Client Hardware / Network Info
         if (url.pathname === '/api/client-info') {
           const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
           const clientIp = (
@@ -46,6 +196,7 @@ function corporateApiPlugin(): Plugin {
           }));
         }
 
+        // 7. System Health Monitor
         if (url.pathname === '/api/system-health') {
           res.statusCode = 200;
           return res.end(JSON.stringify({
@@ -62,6 +213,7 @@ function corporateApiPlugin(): Plugin {
           }));
         }
 
+        // 8. SSO Auth Status
         if (url.pathname === '/api/auth/sso') {
           res.statusCode = 200;
           return res.end(JSON.stringify({

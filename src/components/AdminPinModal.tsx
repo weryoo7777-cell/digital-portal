@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, KeyRound, X, AlertCircle, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
-import { verifyAdminPin } from '../config/adminConfig';
+import { Shield, KeyRound, X, AlertCircle, CheckCircle2, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { centralSyncService } from '../services/centralSyncService';
 
 interface AdminPinModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showPin, setShowPin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -24,6 +25,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
     if (isOpen) {
       setPin('');
       setError(false);
+      setLoading(false);
       setShowPin(false);
       setTimeout(() => {
         inputRef.current?.focus();
@@ -33,16 +35,29 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (verifyAdminPin(pin)) {
-      setError(false);
-      onSuccess();
-      onClose();
-    } else {
+    if (!pin.trim()) return;
+
+    setLoading(true);
+    setError(false);
+    try {
+      const isValid = await centralSyncService.verifyAdminPin(pin.trim());
+      if (isValid) {
+        setError(false);
+        onSuccess();
+        onClose();
+      } else {
+        setError(true);
+        setPin('');
+        inputRef.current?.focus();
+      }
+    } catch {
       setError(true);
       setPin('');
       inputRef.current?.focus();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,7 +103,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
             {language === 'TH' 
-              ? 'กรุณากรอกรหัส PIN เพื่อปลดล็อกสิทธิ์ผู้ดูแลระบบ (เพิ่ม/แก้ไข/ลบ ข้อมูล)'
+              ? 'กรุณากรอกรหัส PIN เพื่อปลดล็อกสิทธิ์ผู้ดูแลระบบ'
               : 'Enter admin PIN to unlock administration management privileges'}
           </p>
         </div>
@@ -97,7 +112,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 text-center">
-              {language === 'TH' ? 'รหัส PIN (ค่าเริ่มต้น: 1111)' : 'Admin PIN (Default: 1111)'}
+              {language === 'TH' ? 'กรุณากรอกรหัส PIN' : 'Please enter PIN'}
             </label>
             <div className="relative">
               <input
@@ -106,6 +121,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
                 inputMode="numeric"
                 maxLength={6}
                 value={pin}
+                disabled={loading}
                 onChange={(e) => {
                   setPin(e.target.value);
                   setError(false);
@@ -134,8 +150,8 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>
                 {language === 'TH' 
-                  ? 'รหัส PIN ไม่ถูกต้อง (กำหนดเป็น 1111)' 
-                  : 'Invalid PIN. Please enter PIN: 1111'}
+                  ? 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' 
+                  : 'Invalid PIN. Please try again.'}
               </span>
             </div>
           )}
@@ -146,30 +162,34 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
               <button
                 key={digit}
                 type="button"
+                disabled={loading}
                 onClick={() => handleQuickKey(digit)}
-                className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all active:scale-95 cursor-pointer"
+                className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
               >
                 {digit}
               </button>
             ))}
             <button
               type="button"
+              disabled={loading}
               onClick={() => { setPin(''); setError(false); }}
-              className="py-2.5 rounded-xl bg-slate-100/60 hover:bg-slate-200/60 dark:bg-slate-800/60 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-semibold text-xs transition-all cursor-pointer"
+              className="py-2.5 rounded-xl bg-slate-100/60 hover:bg-slate-200/60 dark:bg-slate-800/60 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-semibold text-xs transition-all cursor-pointer disabled:opacity-50"
             >
               C
             </button>
             <button
               type="button"
+              disabled={loading}
               onClick={() => handleQuickKey('0')}
-              className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all active:scale-95 cursor-pointer"
+              className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             >
               0
             </button>
             <button
               type="button"
+              disabled={loading}
               onClick={handleBackspace}
-              className="py-2.5 rounded-xl bg-slate-100/60 hover:bg-slate-200/60 dark:bg-slate-800/60 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-semibold text-xs transition-all cursor-pointer"
+              className="py-2.5 rounded-xl bg-slate-100/60 hover:bg-slate-200/60 dark:bg-slate-800/60 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-semibold text-xs transition-all cursor-pointer disabled:opacity-50"
             >
               ⌫
             </button>
@@ -180,16 +200,21 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
             >
               {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
             </button>
             <button
               type="submit"
-              disabled={pin.length === 0}
+              disabled={pin.length === 0 || loading}
               className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <KeyRound className="w-3.5 h-3.5" />
+              {loading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <KeyRound className="w-3.5 h-3.5" />
+              )}
               <span>{language === 'TH' ? 'ปลดล็อก' : 'Unlock'}</span>
             </button>
           </div>

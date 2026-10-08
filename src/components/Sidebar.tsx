@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="pt-4 pb-1 px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-between">
                 <span>{language === 'TH' ? 'ผู้ดูแลระบบ (Admin)' : 'Administration'}</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
-                  PIN 1111
+                  {language === 'TH' ? 'เปิดใช้งานแล้ว' : 'Active'}
                 </span>
               </div>
               <button

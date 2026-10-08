@@ -278,6 +278,24 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
     version: 'WG 1.0',
     internalPort: '51820',
     documentationUrl: 'https://www.wireguard.com'
+  },
+  {
+    id: 'app-protrack',
+    name: 'ProTrack System',
+    nameTh: 'ระบบบริหารและติดตามความคืบหน้างาน ProTrack',
+    category: 'it',
+    description: 'Enterprise Project & Task Tracking System for corporate workflows, milestones and assignments.',
+    descriptionTh: 'ระบบบริหาร ติดตามความคืบหน้าโครงการ และมอบหมายภาระงานองค์กร (ProTrack)',
+    iconName: 'Layers',
+    badge: 'ProTrack v2',
+    url: 'https://protrack.qisheng.internal',
+    allowedRoles: ['admin', 'user'],
+    status: 'online',
+    launchType: 'web',
+    isFrequent: true,
+    version: 'v2.4.1',
+    internalPort: '8080',
+    documentationUrl: 'https://protrack.qisheng.internal/docs'
   }
 ];
 

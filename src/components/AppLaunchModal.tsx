@@ -13,6 +13,7 @@ import {
   Server
 } from 'lucide-react';
 import { EnterpriseApp, UserProfile } from '../types';
+import { centralSyncService } from '../services/centralSyncService';
 
 interface AppLaunchModalProps {
   app: EnterpriseApp | null;
@@ -47,6 +48,16 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
 
   const handleSimulateLaunch = () => {
     setIsLaunching(true);
+    centralSyncService.recordActivityLog({
+      appId: app.id,
+      appName: app.name,
+      appNameTh: app.nameTh,
+      appUrl: app.url,
+      category: app.category,
+      currentUser,
+      status: 'launched',
+      action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Portal'
+    });
     setTimeout(() => {
       setIsLaunching(false);
       setLaunchSuccess(true);

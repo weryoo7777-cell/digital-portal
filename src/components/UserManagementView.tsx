@@ -204,6 +204,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setFormError(null);
 
     const cleanUsername = formUsername.trim();
@@ -341,6 +342,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           {/* Action Buttons: Export to Excel & Add User */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
+              type="button"
               onClick={handleExportUsers}
               className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-98 shrink-0 cursor-pointer"
               title={language === 'TH' ? 'ส่งออกข้อมูลผู้ใช้ทั้งหมดเป็นไฟล์ Excel (.csv)' : 'Export all user accounts to Excel (.csv)'}
@@ -351,6 +353,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
             {isAdmin && (
               <button
+                type="button"
                 onClick={handleOpenAddModal}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-98 shrink-0 cursor-pointer"
               >
@@ -369,7 +372,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{exportNotice}</span>
           </div>
-          <button onClick={() => setExportNotice(null)} className="p-1 text-emerald-600 hover:text-emerald-800">
+          <button type="button" onClick={() => setExportNotice(null)} className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -584,8 +587,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                           <div className="flex items-center justify-center gap-1.5">
                             {/* Edit Button */}
                             <button
-                              onClick={() => handleOpenEditModal(user)}
-                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-[#1E60D5] dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 transition-colors"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenEditModal(user);
+                              }}
+                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-[#1E60D5] dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 transition-colors cursor-pointer"
                               title={language === 'TH' ? 'แก้ไขผู้ใช้' : 'Edit User'}
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -593,9 +601,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
                             {/* Delete Button (disabled for self) */}
                             <button
-                              onClick={() => setDeleteConfirmId(user.id)}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDeleteConfirmId(user.id);
+                              }}
                               disabled={isSelf}
-                              className={`p-1.5 rounded-lg border transition-colors ${
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                                 isSelf
                                   ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
                                   : 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60'
@@ -646,8 +659,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsModalOpen(false);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -901,19 +919,27 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDeleteConfirmId(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
               >
                 {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
               </button>
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (deleteConfirmId) {
                     onDeleteUser(deleteConfirmId);
                     setDeleteConfirmId(null);
                   }
                 }}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 {language === 'TH' ? 'ยืนยันลบ' : 'Delete Account'}
               </button>

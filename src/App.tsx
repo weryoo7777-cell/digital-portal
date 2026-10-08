@@ -192,8 +192,39 @@ export default function App() {
   const [appToDeleteId, setAppToDeleteId] = useState<string | null>(null);
 
   // Daily Announcement Modal State & Smart Detection
-  const [dailyAnnouncementModalOpen, setDailyAnnouncementModalOpen] = useState<boolean>(false);
-  const [isDismissedToday, setIsDismissedToday] = useState<boolean>(false);
+  const [dailyAnnouncementModalOpen, setDailyAnnouncementModalOpen] = useState<boolean>(() => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
+      // Rule 1: If user closed announcements today, never show modal on refresh
+      if (lastClosedDate === todayStr) return false;
+
+      const closedIds: string[] = JSON.parse(localStorage.getItem('qs_announcement_closed_ids') || '[]');
+      const lastClosedTimestamp = Number(localStorage.getItem('qs_announcement_last_closed_timestamp') || 0);
+      const rawStored = localStorage.getItem('qs_announcements_v1');
+      const anns = rawStored ? JSON.parse(rawStored) : CORPORATE_ANNOUNCEMENTS;
+      const latest = anns[0];
+      if (!latest || !latest.id) return false;
+
+      // Rule 2: If existing closed ID, only pop up if updated_at is newer than last_closed_timestamp
+      if (closedIds.includes(latest.id)) {
+        return Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  const [isDismissedToday, setIsDismissedToday] = useState<boolean>(() => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
+      return lastClosedDate === todayStr;
+    } catch {
+      return false;
+    }
+  });
 
   // Central Dynamic Sync Subscription (Listens for updates across all LAN machines)
   useEffect(() => {
@@ -220,38 +251,56 @@ export default function App() {
           localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
         } catch {}
 
-        // Requirement #3: Only trigger popup notification when creating a new notice or updating an existing notice
-        // In case an admin DELETES an announcement, NEVER show popup notification
+        // When an announcement is DELETED, never trigger popup notification
         if (data.lastAnnouncementAction === 'delete') {
           setDailyAnnouncementModalOpen(false);
-          const latestAnn = data.announcements[0];
-          if (latestAnn) {
-            try {
-              localStorage.setItem('qs_announcement_dismissed_id', latestAnn.id);
-              localStorage.setItem('qs_announcement_dismissed_updated_at', String(latestAnn.updatedAt || Date.now()));
-            } catch {}
-          }
           return;
         }
 
         const latestAnn = data.announcements[0];
-        if (latestAnn) {
+        if (latestAnn && latestAnn.id) {
           const todayStr = new Date().toISOString().split('T')[0];
-          const lastDismissedDate = localStorage.getItem('qs_announcement_dismissed_date');
-          const lastDismissedUpdatedAt = Number(localStorage.getItem('qs_announcement_dismissed_updated_at') || 0);
+          const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
+          const lastClosedTimestamp = Number(localStorage.getItem('qs_announcement_last_closed_timestamp') || 0);
+          
+          let closedIds: string[] = [];
+          try {
+            closedIds = JSON.parse(localStorage.getItem('qs_announcement_closed_ids') || '[]');
+          } catch {
+            closedIds = [];
+          }
 
-          const isUpdatedTimestamp = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastDismissedUpdatedAt);
-          const isNotDismissedToday = lastDismissedDate !== todayStr;
-
+          // Case A: Admin explicitly created new notice or updated existing notice right now
           if (data.lastAnnouncementAction === 'create' || data.lastAnnouncementAction === 'update') {
             setDailyAnnouncementModalOpen(true);
             setIsDismissedToday(false);
-          } else if (isNotDismissedToday || isUpdatedTimestamp) {
-            setDailyAnnouncementModalOpen(true);
-            setIsDismissedToday(false);
-          } else {
-            setIsDismissedToday(true);
+            return;
           }
+
+          // Case B: User already closed announcements today -> DO NOT POP UP ON REFRESH
+          if (lastClosedDate === todayStr) {
+            setIsDismissedToday(true);
+            setDailyAnnouncementModalOpen(false);
+            return;
+          }
+
+          // Case C: Existing announcement ID that was already closed previously
+          if (closedIds.includes(latestAnn.id)) {
+            const updatedAt = latestAnn.updatedAt || 0;
+            // Only pop up if updatedAt is newer than the timestamp when closed
+            if (updatedAt > lastClosedTimestamp) {
+              setDailyAnnouncementModalOpen(true);
+              setIsDismissedToday(false);
+            } else {
+              setIsDismissedToday(true);
+              setDailyAnnouncementModalOpen(false);
+            }
+            return;
+          }
+
+          // Case D: Brand new announcement ID not yet closed and not dismissed today -> pop up
+          setDailyAnnouncementModalOpen(true);
+          setIsDismissedToday(false);
         } else {
           setDailyAnnouncementModalOpen(false);
         }
@@ -265,14 +314,24 @@ export default function App() {
 
   const handleDismissAnnouncementToday = () => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const latestAnn = announcements[0];
+    const nowTs = Date.now();
     try {
-      localStorage.setItem('qs_announcement_dismissed_date', todayStr);
-      if (latestAnn) {
-        localStorage.setItem('qs_announcement_dismissed_id', latestAnn.id);
-        localStorage.setItem('qs_announcement_dismissed_updated_at', String(latestAnn.updatedAt || Date.now()));
+      localStorage.setItem('qs_announcement_last_closed_date', todayStr);
+      localStorage.setItem('qs_announcement_last_closed_timestamp', String(nowTs));
+
+      // Append all current announcement IDs to closed IDs
+      const rawClosedIds = localStorage.getItem('qs_announcement_closed_ids');
+      let closedIds: string[] = [];
+      try {
+        closedIds = rawClosedIds ? JSON.parse(rawClosedIds) : [];
+      } catch {
+        closedIds = [];
       }
+      const currentIds = announcements.map(a => a.id).filter(Boolean);
+      const combined = Array.from(new Set([...closedIds, ...currentIds]));
+      localStorage.setItem('qs_announcement_closed_ids', JSON.stringify(combined));
     } catch {}
+
     setIsDismissedToday(true);
     setDailyAnnouncementModalOpen(false);
   };
@@ -595,7 +654,19 @@ export default function App() {
     });
   }, [enterpriseApps, searchQuery, selectedCategory]);
 
-  // Requirement #2.2: Pinned Favorites Apps Collection
+  // Requirement #2.1: Frequently Used & Favorites Apps Collection
+  const frequentAndFavoriteApps = useMemo(() => {
+    const favSet = new Set(favorites);
+    const favs = enterpriseApps.filter((app) => favSet.has(app.id));
+
+    // Also include frequent apps based on launch history that are not already in favs
+    const frequent = enterpriseApps
+      .filter((app) => !favSet.has(app.id) && (launchHistory[app.id] || 0) > 0)
+      .sort((a, b) => (launchHistory[b.id] || 0) - (launchHistory[a.id] || 0));
+
+    return [...favs, ...frequent];
+  }, [enterpriseApps, favorites, launchHistory]);
+
   const favoriteApps = useMemo(() => {
     return enterpriseApps.filter((app) => favorites.includes(app.id));
   }, [enterpriseApps, favorites]);
@@ -722,33 +793,32 @@ export default function App() {
               />
 
 
-              {/* 2) Favorites Section (Requirement #2.2: Pinned & Favorite Apps) */}
-              <section className="space-y-3.5">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-500 dark:text-amber-400 flex items-center justify-center font-bold">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+              {/* 2) Frequently Used & Favorites Section: HIDE completely when empty, NO empty card */}
+              {frequentAndFavoriteApps.length > 0 && (
+                <section className="space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-500 dark:text-amber-400 flex items-center justify-center font-bold">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                      </div>
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used & Favorites'}
+                      </h2>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+                        ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
+                      </span>
                     </div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                      {language === 'TH' ? 'รายการโปรด (Favorites / Pinned Apps)' : 'Favorites & Pinned Applications'}
-                    </h2>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                      ({favoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
-                    </span>
-                  </div>
-                  {favoriteApps.length > 0 && (
                     <button
+                      type="button"
                       onClick={() => handleTabChange('all-apps')}
-                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
+                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline cursor-pointer"
                     >
                       {language === 'TH' ? 'ดูระบบทั้งหมด →' : 'View all apps →'}
                     </button>
-                  )}
-                </div>
+                  </div>
 
-                {favoriteApps.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {favoriteApps.map((app) => (
+                    {frequentAndFavoriteApps.map((app) => (
                       <AppCard
                         key={app.id}
                         app={app}
@@ -760,23 +830,8 @@ export default function App() {
                       />
                     ))}
                   </div>
-                ) : (
-                  <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
-                    <Star className="w-6 h-6 text-amber-400 mx-auto opacity-75" />
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                      {language === 'TH'
-                        ? 'ยังไม่มีรายการโปรด สามารถกดไอคอนรูปดาว (⭐) ที่การ์ดระบบในหน้า "แอปพลิเคชันทั้งหมด" เพื่อนำมาปักหมุดไว้ที่นี่'
-                        : 'No favorites pinned yet. Click the star icon (⭐) on any app in "All Applications" to pin it here.'}
-                    </p>
-                    <button
-                      onClick={() => handleTabChange('all-apps')}
-                      className="mt-1 px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 text-xs font-bold hover:bg-blue-100 transition-colors"
-                    >
-                      {language === 'TH' ? 'ไปยังหน้าแอปพลิเคชันทั้งหมด' : 'Go to All Applications'}
-                    </button>
-                  </div>
-                )}
-              </section>
+                </section>
+              )}
 
               {/* 3) System Categories Matrix */}
               <section className="space-y-3.5">

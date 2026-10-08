@@ -246,6 +246,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   // Add a custom candidate manually to the list
   const handleAddCustomCandidate = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!newHolidayOccasionTh.trim()) return;
 
     const monthMeta = MONTHS_2026[newHolidayMonth - 1] || MONTHS_2026[0];
@@ -519,6 +520,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         {/* Month Navigation & Clickable Month Popover Trigger */}
         <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={handlePrevMonth}
             className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="เดือนก่อนหน้า (Previous Month)"
@@ -528,6 +530,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
           {/* Clickable Month Indicator button */}
           <button
+            type="button"
             onClick={() => setMonthPickerOpen(true)}
             className="px-4 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 text-center min-w-[200px] transition-all flex items-center justify-between gap-3 group shadow-2xs cursor-pointer"
             title={language === 'TH' ? 'คลิกเพื่อเลือกเดือน' : 'Click to select month'}
@@ -553,6 +556,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={handleNextMonth}
             className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="เดือนถัดไป (Next Month)"
@@ -563,6 +567,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {/* Jump to current month button */}
           {selectedMonthIndex !== currentMonthIndex && (
             <button
+              type="button"
               onClick={handleResetToCurrentMonth}
               className="text-xs px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold transition-all cursor-pointer"
             >
@@ -575,6 +580,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
             <button
+              type="button"
               onClick={() => setViewMode('monthly')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 viewMode === 'monthly'
@@ -587,6 +593,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => setViewMode('yearly')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 viewMode === 'yearly'
@@ -610,6 +617,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 className="hidden"
               />
               <button
+                type="button"
                 onClick={handleTriggerUpload}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                 title={language === 'TH' ? 'อัปโหลดไฟล์รูปภาพหรือเอกสารปฏิทินเพื่อสแกนและปักหมุดวันหยุด' : 'Upload calendar document to scan & pin holidays'}
@@ -619,6 +627,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={handleResetHolidays}
                 className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs transition-colors cursor-pointer"
                 title={language === 'TH' ? 'รีเซ็ตเป็นวันหยุดมาตรฐาน 14 วัน' : 'Reset to default official holidays'}
@@ -629,6 +638,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           )}
 
           <button
+            type="button"
             onClick={() => window.print()}
             className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="พิมพ์ปฏิทิน (Print Calendar)"
@@ -1271,7 +1281,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
+                          type="button"
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             setSelectedMonthIndex(holiday.month - 1);
                             setViewMode('monthly');
@@ -1282,7 +1294,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         </button>
                         {isAdmin && isPinned && (
                           <button
+                            type="button"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               handleDeleteHoliday(holiday.no);
                             }}

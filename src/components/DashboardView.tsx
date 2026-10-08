@@ -560,11 +560,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                         {cat.title}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">
+                      <div className="text-[10px] text-slate-400 truncate mt-0.5">
                         {cat.subTitle}
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-medium mt-0.5">
-                        {cat.count}
                       </div>
                     </div>
                   </div>

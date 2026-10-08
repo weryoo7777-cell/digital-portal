@@ -619,8 +619,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
             <div className="flex justify-end pt-4">
               <button
-                onClick={() => setActiveAnn(null)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#1E60D5] hover:bg-[#0B4ABF] rounded-xl transition-colors shadow-2xs"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveAnn(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#1E60D5] hover:bg-[#0B4ABF] rounded-xl transition-colors shadow-2xs cursor-pointer"
               >
                 {language === 'TH' ? 'ปิดประกาศ' : 'Close'}
               </button>

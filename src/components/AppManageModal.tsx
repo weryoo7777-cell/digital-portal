@@ -79,6 +79,19 @@ export const getFaviconUrl = (rawUrl: string): string => {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 };
 
+// Helper to auto-clean duplicate protocols e.g. "https://https://..."
+export const cleanUrlInput = (raw: string): string => {
+  if (!raw) return '';
+  let cleaned = raw.trim();
+  // Strip repeated protocols at start of URL
+  while (/^(https?:\/\/)+(https?:\/\/)/i.test(cleaned)) {
+    cleaned = cleaned.replace(/^(https?:\/\/)+(https?:\/\/)/i, '$2');
+  }
+  // Replace multiple slashes after protocol if any
+  cleaned = cleaned.replace(/^(https?:\/\/)\/+/i, '$1');
+  return cleaned;
+};
+
 export const AppManageModal: React.FC<AppManageModalProps> = ({
   isOpen,
   editingApp,
@@ -151,7 +164,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       setCategory(resolvedDefaultCat);
       setDescription('');
       setDescriptionTh('');
-      setUrl('https://');
+      setUrl('');
       setIconMode('auto');
       setIconName('Layers');
       setUploadedIconData('');
@@ -200,13 +213,13 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
     setError(null);
 
     const cleanName = name.trim();
-    const cleanUrl = url.trim();
+    const cleanUrl = cleanUrlInput(url);
 
     if (!cleanName) {
       setError(language === 'TH' ? 'กรุณาระบุชื่อแอปพลิเคชัน (App Name)' : 'Please enter App Name');
       return;
     }
-    if (!cleanUrl || cleanUrl === 'https://') {
+    if (!cleanUrl || cleanUrl === 'https://' || cleanUrl === 'http://') {
       setError(language === 'TH' ? 'กรุณาระบุ URL สำหรับเปิดใช้งานแอป' : 'Please enter a valid launch URL');
       return;
     }
@@ -386,8 +399,9 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
                   type="text"
                   required
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://app.qisheng.co.th or https://drive.google.com"
+                  onChange={(e) => setUrl(cleanUrlInput(e.target.value))}
+                  onBlur={(e) => setUrl(cleanUrlInput(e.target.value))}
+                  placeholder="https://example.com หรือ https://app.qisheng.co.th"
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-[#1E60D5]"
                 />
               </div>

@@ -709,8 +709,21 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                   <input
                     type="text"
                     value={formWebsite}
-                    onChange={(e) => setFormWebsite(e.target.value)}
-                    placeholder="https://..."
+                    onChange={(e) => {
+                      let val = e.target.value.trim();
+                      while (/^(https?:\/\/)+(https?:\/\/)/i.test(val)) {
+                        val = val.replace(/^(https?:\/\/)+(https?:\/\/)/i, '$2');
+                      }
+                      setFormWebsite(val);
+                    }}
+                    onBlur={(e) => {
+                      let val = e.target.value.trim();
+                      while (/^(https?:\/\/)+(https?:\/\/)/i.test(val)) {
+                        val = val.replace(/^(https?:\/\/)+(https?:\/\/)/i, '$2');
+                      }
+                      setFormWebsite(val);
+                    }}
+                    placeholder="https://example.com"
                     className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2.5 focus:outline-none focus:border-[#1E60D5]"
                   />
                 </div>

@@ -118,7 +118,12 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
               {announcements.map((ann, idx) => (
                 <button
                   key={ann.id || idx}
-                  onClick={() => setSelectedAnnouncementIndex(idx)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedAnnouncementIndex(idx);
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                     selectedAnnouncementIndex === idx
                       ? 'bg-white text-[#1E60D5] shadow-xs'

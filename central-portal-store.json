@@ -1,8 +1,8 @@
 {
-  "version": 4,
+  "version": 6,
   "adminPin": "1111",
-  "latestAnnouncementId": "ann-welcome",
-  "latestAnnouncementUpdatedAt": 1791432532657,
+  "latestAnnouncementId": "ann-1791432976319",
+  "latestAnnouncementUpdatedAt": 1791432976448,
   "apps": [
     {
       "id": "app-express",
@@ -151,6 +151,17 @@
   ],
   "announcements": [
     {
+      "id": "ann-1791432976319",
+      "title": "test",
+      "titleEn": "test",
+      "summary": "test",
+      "date": "8 ตุลาคม 2569",
+      "tag": "General",
+      "priority": "urgent",
+      "author": "ฝ่ายบริหารและสื่อสารองค์กร (Admin)",
+      "updatedAt": 1791432976448
+    },
+    {
       "id": "ann-welcome",
       "title": "ยินดีต้อนรับเข้าสู่ระบบ QISHENG Digital Portal",
       "titleEn": "Welcome to QISHENG Digital Portal",
@@ -182,17 +193,6 @@
       "priority": "urgent",
       "author": "แผนกโครงสร้างพื้นฐานไอที",
       "updatedAt": 1791425332657
-    },
-    {
-      "id": "ann-03",
-      "title": "เปิดใช้งานฟีเจอร์ DataForge OCR สแกนใบเสร็จด้วย AI เต็มรูปแบบ",
-      "titleEn": "New DataForge OCR AI Document Intake Feature is Now Live",
-      "summary": "พนักงานสามารถอัปโหลดใบเสร็จค่าน้ำมันและค่าเดินทางผ่านเมนู DataForge เพื่อประมวลผลการเบิกจ่ายได้รวดเร็วขึ้น",
-      "date": "18 กันยายน 2026",
-      "tag": "General",
-      "priority": "normal",
-      "author": "ฝ่ายพัฒนาระบบและดิจิทัล",
-      "updatedAt": 1791421732657
     }
   ],
   "activityLogs": [
@@ -270,5 +270,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791432890674
+  "lastModified": 1791434431516
 }

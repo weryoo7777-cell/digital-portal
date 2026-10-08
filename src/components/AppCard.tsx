@@ -100,9 +100,23 @@ export const AppCard: React.FC<AppCardProps> = ({
 
   const catBadge = getCategoryBadge(app?.category);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Direct open to destination URL without page refresh or home redirect
+    if (app.url && app.launchType !== 'remote_rdp') {
+      try {
+        window.open(app.url, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.error('Failed to open app URL:', err);
+      }
+    }
+    onLaunchApp(app);
+  };
+
   return (
     <div 
-      onClick={() => onLaunchApp(app)}
+      onClick={handleCardClick}
       className={`
         group relative rounded-2xl border bg-white dark:bg-slate-900 p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 min-w-0 overflow-hidden
         ${hasAccess 
@@ -152,10 +166,11 @@ export const AppCard: React.FC<AppCardProps> = ({
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onEditApp(app);
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-[#1E60D5] hover:bg-blue-50 dark:hover:bg-blue-950/60 dark:hover:text-blue-400 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-[#1E60D5] hover:bg-blue-50 dark:hover:bg-blue-950/60 dark:hover:text-blue-400 transition-colors cursor-pointer"
             title={language === 'TH' ? 'แก้ไขแอปพลิเคชัน' : 'Edit application'}
           >
             <Edit2 className="w-3.5 h-3.5" />
@@ -166,10 +181,11 @@ export const AppCard: React.FC<AppCardProps> = ({
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               if (app?.id) onDeleteApp(app.id);
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition-colors cursor-pointer"
             title={language === 'TH' ? 'ลบแอปพลิเคชัน' : 'Delete application'}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -179,10 +195,11 @@ export const AppCard: React.FC<AppCardProps> = ({
         <button
           type="button"
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             if (app?.id) onToggleFavorite(app.id);
           }}
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
             isFavorite 
               ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40' 
               : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800'

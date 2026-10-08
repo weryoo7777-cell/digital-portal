@@ -120,7 +120,7 @@ class CentralStoreManager {
           this.store = {
             version: parsed.version || 1,
             adminPin: parsed.adminPin || '1111',
-            latestAnnouncementId: parsed.latestAnnouncementId || (parsed.announcements[0]?.id || 'ann-welcome'),
+            latestAnnouncementId: parsed.latestAnnouncementId !== undefined ? parsed.latestAnnouncementId : (parsed.announcements[0]?.id || ''),
             latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || Date.now(),
             apps: parsed.apps,
             announcements: parsed.announcements,
@@ -248,6 +248,9 @@ class CentralStoreManager {
       if (this.store.announcements.length > 0) {
         this.store.latestAnnouncementId = this.store.announcements[0].id;
         this.store.latestAnnouncementUpdatedAt = this.store.announcements[0].updatedAt || Date.now();
+      } else {
+        this.store.latestAnnouncementId = '';
+        this.store.latestAnnouncementUpdatedAt = Date.now();
       }
       this.store.version += 1;
       this.persistStore();

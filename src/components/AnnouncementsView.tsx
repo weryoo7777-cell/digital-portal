@@ -46,6 +46,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState<boolean>(false);
   const [activeAnn, setActiveAnn] = useState<CorporateAnnouncement | null>(null);
+  const [annToDelete, setAnnToDelete] = useState<CorporateAnnouncement | null>(null);
 
   // Admin New Announcement Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -346,13 +347,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                     <div className="flex items-center gap-1 shrink-0 mt-2">
                       {isAdmin && onDeleteAnnouncement && (
                         <button
+                          type="button"
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
-                            if (window.confirm(language === 'TH' ? `คุณต้องการลบประกาศ "${ann.title}" ใช่หรือไม่?` : `Delete announcement "${ann.title}"?`)) {
-                              onDeleteAnnouncement(ann.id);
-                            }
+                            setAnnToDelete(ann);
                           }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                           title={language === 'TH' ? 'ลบประกาศ' : 'Delete announcement'}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -546,6 +547,54 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 className="px-4 py-2 text-xs font-semibold text-white bg-[#1E60D5] hover:bg-[#0B4ABF] rounded-xl transition-colors shadow-2xs"
               >
                 {language === 'TH' ? 'ปิดประกาศ' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Announcement Confirmation Modal */}
+      {annToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                {language === 'TH' ? 'ยืนยันการลบประกาศ' : 'Confirm Delete Announcement'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {language === 'TH' 
+                  ? `คุณต้องการลบประกาศ "${annToDelete.title}" ออกจากระบบใช่หรือไม่?` 
+                  : `Are you sure you want to delete announcement "${annToDelete.title}"?`}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAnnToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+              >
+                {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (annToDelete?.id) {
+                    onDeleteAnnouncement?.(annToDelete.id);
+                  }
+                  setAnnToDelete(null);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                {language === 'TH' ? 'ยืนยันลบ' : 'Delete'}
               </button>
             </div>
           </div>

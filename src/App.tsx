@@ -155,14 +155,36 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
-  // Centralized Announcements State
-  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
+  // 1. Centralized Announcements State (Prioritizes Storage over Default Mock Data)
+  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_announcements_v1');
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed; // Persisted announcements (including deletions)
+        }
+      }
+    } catch {}
+    return CORPORATE_ANNOUNCEMENTS;
+  });
 
   // Centralized Activity Logs State
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
 
-  // 3. Enterprise Apps Collection (Synced across LAN via Central Server)
-  const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(ENTERPRISE_APPS);
+  // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data)
+  const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_enterprise_apps_v2');
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return ENTERPRISE_APPS;
+  });
 
   // App CRUD Modal States
   const [appModalOpen, setAppModalOpen] = useState(false);
@@ -176,14 +198,20 @@ export default function App() {
   // Central Dynamic Sync Subscription (Listens for updates across all LAN machines)
   useEffect(() => {
     const unsubscribe = centralSyncService.subscribe((data) => {
-      if (data.apps && Array.isArray(data.apps) && data.apps.length > 0) {
+      if (data.apps && Array.isArray(data.apps)) {
         setEnterpriseApps(data.apps);
+        try {
+          localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(data.apps));
+        } catch {}
       }
       if (data.activityLogs && Array.isArray(data.activityLogs)) {
         setActivityLogs(data.activityLogs);
       }
-      if (data.announcements && Array.isArray(data.announcements) && data.announcements.length > 0) {
+      if (data.announcements && Array.isArray(data.announcements)) {
         setAnnouncements(data.announcements);
+        try {
+          localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
+        } catch {}
 
         // Requirement #3: Smart Announcement Detection
         // Check date, ID of announcement, AND updated timestamp
@@ -205,6 +233,8 @@ export default function App() {
           } else {
             setIsDismissedToday(true);
           }
+        } else {
+          setDailyAnnouncementModalOpen(false);
         }
       }
     });
@@ -229,34 +259,57 @@ export default function App() {
   };
 
   const handleAddAnnouncement = async (newAnn: CorporateAnnouncement) => {
-    // Save to Central Server/Backend Database
+    // 1. Save to LocalStorage immediately
+    setAnnouncements((prev) => {
+      const updated = [newAnn, ...prev];
+      try {
+        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
+        localStorage.setItem('qs_announcements_persisted', 'true');
+      } catch {}
+      return updated;
+    });
+    // 2. Save to Central Server/Backend Database immediately
     await centralSyncService.saveAnnouncement(newAnn);
-    // Instant local optimistic update
-    setAnnouncements((prev) => [newAnn, ...prev]);
   };
 
   const handleDeleteAnnouncement = async (annId: string) => {
-    // Delete from Central Server/Backend Database
+    // 1. Update State and LocalStorage immediately (prevents mock data overwrite on refresh)
+    setAnnouncements((prev) => {
+      const updated = prev.filter(a => a.id !== annId);
+      try {
+        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
+        localStorage.setItem('qs_announcements_persisted', 'true');
+      } catch {}
+      return updated;
+    });
+    // 2. Delete from Central Server/Backend Database immediately
     await centralSyncService.deleteAnnouncement(annId);
-    setAnnouncements((prev) => prev.filter(a => a.id !== annId));
   };
 
   const handleSaveApp = async (app: EnterpriseApp) => {
     const isEdit = enterpriseApps.some(a => a.id === app.id);
-    // Save to Central Server/Backend Database
-    await centralSyncService.saveApp(app, isEdit);
     setEnterpriseApps((prev) => {
       const exists = prev.some(a => a.id === app.id);
-      return exists ? prev.map(a => a.id === app.id ? app : a) : [app, ...prev];
+      const updated = exists ? prev.map(a => a.id === app.id ? app : a) : [app, ...prev];
+      try {
+        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
+      } catch {}
+      return updated;
     });
+    await centralSyncService.saveApp(app, isEdit);
     setAppModalOpen(false);
     setEditingApp(null);
   };
 
   const handleDeleteApp = async (appId: string) => {
-    // Delete from Central Server/Backend Database
+    setEnterpriseApps((prev) => {
+      const updated = prev.filter(a => a.id !== appId);
+      try {
+        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     await centralSyncService.deleteApp(appId);
-    setEnterpriseApps((prev) => prev.filter(a => a.id !== appId));
     setAppToDeleteId(null);
   };
 
@@ -447,7 +500,10 @@ export default function App() {
     };
     setActivityLogs(prev => [newLogItem, ...prev.filter(l => l.id !== newLogItem.id)].slice(0, 20));
 
-    setSelectedAppForLaunch(app);
+    // For Remote RDP sessions or apps without a web URL, show launch modal (credentials/mstsc instructions)
+    if (app.launchType === 'remote_rdp' || !app.url) {
+      setSelectedAppForLaunch(app);
+    }
     setLaunchHistory((prev) => {
       const updated = { ...prev, [app.id]: (prev[app.id] || 0) + 1 };
       try {

@@ -138,6 +138,7 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!formName.trim() || !formPhone.trim() || !formServiceDescription.trim()) {
       setFormError(language === 'TH' ? 'กรุณากรอกชื่อบริษัท, เบอร์โทร และรายละเอียดบริการ' : 'Please fill in vendor name, phone, and service description');
       return;

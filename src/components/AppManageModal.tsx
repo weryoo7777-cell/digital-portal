@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Check, 
@@ -21,12 +21,10 @@ import {
   Globe, 
   CreditCard, 
   Banknote,
-  ExternalLink,
-  Laptop,
-  Cloud,
-  Terminal,
   AlertTriangle,
-  Sparkles
+  Upload,
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 import { EnterpriseApp, AppCategory, AppLaunchType, AppStatus, UserRole } from '../types';
 
@@ -61,6 +59,26 @@ export const AVAILABLE_APP_ICONS: Array<{ name: string; label: string; icon: Rea
   { name: 'Banknote', label: 'เงินสด / ภาษีรายได้', icon: Banknote },
 ];
 
+export const extractDomain = (rawUrl: string): string => {
+  try {
+    const trimmed = rawUrl.trim();
+    if (!trimmed || trimmed === 'https://' || trimmed === 'http://') return '';
+    const withProto = trimmed.startsWith('http://') || trimmed.startsWith('https://') 
+      ? trimmed 
+      : `https://${trimmed}`;
+    const parsed = new URL(withProto);
+    return parsed.hostname;
+  } catch {
+    return '';
+  }
+};
+
+export const getFaviconUrl = (rawUrl: string): string => {
+  const domain = extractDomain(rawUrl);
+  if (!domain || domain.length < 3 || !domain.includes('.')) return '';
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+};
+
 export const AppManageModal: React.FC<AppManageModalProps> = ({
   isOpen,
   editingApp,
@@ -78,7 +96,14 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
   const [description, setDescription] = useState('');
   const [descriptionTh, setDescriptionTh] = useState('');
   const [url, setUrl] = useState('');
+  
+  // 3-Mode Icon System: 'auto' (domain favicon) | 'upload' (computer image) | 'preset' (lucide icons)
+  const [iconMode, setIconMode] = useState<'auto' | 'upload' | 'preset'>('auto');
   const [iconName, setIconName] = useState('Layers');
+  const [uploadedIconData, setUploadedIconData] = useState<string>('');
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [launchType, setLaunchType] = useState<AppLaunchType>('web');
   const [status, setStatus] = useState<AppStatus>('online');
   const [badge, setBadge] = useState('');
@@ -88,16 +113,38 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
   useEffect(() => {
     if (editingApp) {
       setName(editingApp.name);
-      setNameTh(editingApp.nameTh);
+      setNameTh(editingApp.nameTh || '');
       setCategory(editingApp.category);
-      setDescription(editingApp.description);
-      setDescriptionTh(editingApp.descriptionTh);
-      setUrl(editingApp.url);
-      setIconName(editingApp.iconName || 'Layers');
+      setDescription(editingApp.description || '');
+      setDescriptionTh(editingApp.descriptionTh || '');
+      setUrl(editingApp.url || '');
       setLaunchType(editingApp.launchType);
       setStatus(editingApp.status);
       setBadge(editingApp.badge || '');
       setAccessLevel(editingApp.allowedRoles.length === 1 && editingApp.allowedRoles[0].toLowerCase() === 'admin' ? 'admin' : 'all');
+
+      const custom = editingApp.customIconUrl || '';
+      if (custom.startsWith('data:') || editingApp.iconName?.startsWith('data:')) {
+        setIconMode('upload');
+        setUploadedIconData(custom || editingApp.iconName);
+        setUploadedFileName('Custom Uploaded Icon');
+        setIconName('Layers');
+      } else if (custom.includes('google.com/s2/favicons') || (editingApp.iconName?.startsWith('http') && editingApp.iconName.includes('favicon'))) {
+        setIconMode('auto');
+        setUploadedIconData('');
+        setUploadedFileName('');
+        setIconName('Globe');
+      } else if (custom.startsWith('http') || editingApp.iconName?.startsWith('http')) {
+        setIconMode('auto');
+        setUploadedIconData('');
+        setUploadedFileName('');
+        setIconName('Globe');
+      } else {
+        setIconMode('preset');
+        setIconName(editingApp.iconName || 'Layers');
+        setUploadedIconData('');
+        setUploadedFileName('');
+      }
     } else {
       setName('');
       setNameTh('');
@@ -105,7 +152,10 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       setDescription('');
       setDescriptionTh('');
       setUrl('https://');
+      setIconMode('auto');
       setIconName('Layers');
+      setUploadedIconData('');
+      setUploadedFileName('');
       setLaunchType('web');
       setStatus('online');
       setBadge('');
@@ -116,8 +166,37 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError(language === 'TH' ? 'กรุณาเลือกไฟล์รูปภาพ (PNG, JPG, SVG, WebP)' : 'Please select an image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError(language === 'TH' ? 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB' : 'Image size must not exceed 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setUploadedIconData(result);
+      setUploadedFileName(file.name);
+      setIconMode('upload');
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError(language === 'TH' ? 'เกิดข้อผิดพลาดในการอ่านไฟล์รูปภาพ' : 'Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setError(null);
 
     const cleanName = name.trim();
@@ -136,6 +215,25 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       ? ['ADMIN', 'admin'] 
       : ['ADMIN', 'ACCOUNTING', 'IT', 'HR', 'SALES_OPERATIONS', 'admin', 'user'];
 
+    let finalIconName = iconName;
+    let finalCustomIconUrl: string | undefined = undefined;
+
+    if (iconMode === 'auto') {
+      const autoFavicon = getFaviconUrl(cleanUrl);
+      if (autoFavicon) {
+        finalCustomIconUrl = autoFavicon;
+        finalIconName = autoFavicon;
+      }
+    } else if (iconMode === 'upload') {
+      if (uploadedIconData) {
+        finalCustomIconUrl = uploadedIconData;
+        finalIconName = uploadedIconData;
+      }
+    } else {
+      finalCustomIconUrl = undefined;
+      finalIconName = iconName;
+    }
+
     const targetApp: EnterpriseApp = {
       id: editingApp ? editingApp.id : `app-${Date.now()}`,
       name: cleanName,
@@ -144,7 +242,8 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       description: description.trim() || `${cleanName} enterprise application for corporate workflow.`,
       descriptionTh: descriptionTh.trim() || `${nameTh.trim() || cleanName} ระบบงานดิจิทัลสำหรับพนักงานองค์กร`,
       url: cleanUrl,
-      iconName,
+      iconName: finalIconName,
+      customIconUrl: finalCustomIconUrl,
       launchType,
       status,
       badge: badge.trim() || undefined,
@@ -156,17 +255,47 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
     onClose();
   };
 
-  const SelectedIconComp = AVAILABLE_APP_ICONS.find(i => i.name === iconName)?.icon || Layers;
+  const renderCurrentIconPreview = () => {
+    if (iconMode === 'upload' && uploadedIconData) {
+      return (
+        <img 
+          src={uploadedIconData} 
+          alt="Uploaded icon" 
+          className="w-7 h-7 object-contain rounded-md" 
+        />
+      );
+    }
+    if (iconMode === 'auto') {
+      const favUrl = getFaviconUrl(url);
+      if (favUrl) {
+        return (
+          <img 
+            src={favUrl} 
+            alt="Favicon" 
+            className="w-7 h-7 object-contain rounded-md bg-white/90 p-0.5" 
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
+            }}
+          />
+        );
+      }
+    }
+    const IconComp = AVAILABLE_APP_ICONS.find(i => i.name === iconName)?.icon || Layers;
+    return <IconComp className="w-6 h-6" />;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-2xl text-slate-900 dark:text-white my-8">
+      <div 
+        className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-2xl text-slate-900 dark:text-white my-8 max-h-[92vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
-              <SelectedIconComp className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400 shrink-0 overflow-hidden shadow-2xs">
+              {renderCurrentIconPreview()}
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg">
@@ -180,8 +309,13 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -336,39 +470,209 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Icon Selection Grid */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {language === 'TH' ? 'เลือกไอคอนแอปพลิเคชัน (Select App Icon)' : 'Select Icon'}
+          {/* Row 5: 3-Mode Application Icon System */}
+          <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                {language === 'TH' ? 'ระบบไอคอนแอปพลิเคชัน (App Icon)' : 'App Icon System'}
               </label>
-              <span className="text-[11px] text-slate-400 font-mono">
-                {iconName}
+              <span className="text-[11px] font-mono font-medium text-slate-500">
+                {iconMode === 'auto' ? (language === 'TH' ? 'ดึง Favicon อัตโนมัติ' : 'Auto Domain Favicon') :
+                 iconMode === 'upload' ? (language === 'TH' ? 'รูปภาพที่อัปโหลด' : 'Uploaded Image') :
+                 (language === 'TH' ? `ไอคอนสำเร็จรูป: ${iconName}` : `Preset: ${iconName}`)}
               </span>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-7 gap-2 max-h-36 overflow-y-auto p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              {AVAILABLE_APP_ICONS.map((item) => {
-                const IconComp = item.icon;
-                const isSelected = iconName === item.name;
 
-                return (
-                  <button
-                    key={item.name}
-                    type="button"
-                    onClick={() => setIconName(item.name)}
-                    className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${
-                      isSelected
-                        ? 'bg-[#1E60D5] text-white shadow-xs scale-105'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700'
-                    }`}
-                    title={item.label}
-                  >
-                    <IconComp className="w-5 h-5 shrink-0" />
-                    <span className="text-[9px] truncate max-w-full font-mono">{item.name}</span>
-                  </button>
-                );
-              })}
+            {/* 3 Mode Selector Tabs */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-750">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIconMode('auto');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  iconMode === 'auto'
+                    ? 'bg-[#1E60D5] text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span className="truncate">{language === 'TH' ? '[ดึงไอคอนอัตโนมัติ]' : '[Auto Favicon]'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIconMode('upload');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  iconMode === 'upload'
+                    ? 'bg-[#1E60D5] text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span className="truncate">{language === 'TH' ? '[อัปโหลดรูปจากเครื่อง]' : '[Upload Image]'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIconMode('preset');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  iconMode === 'preset'
+                    ? 'bg-[#1E60D5] text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="truncate">{language === 'TH' ? '[เลือกจากไอคอนสำเร็จรูป]' : '[Preset Icons]'}</span>
+              </button>
             </div>
+
+            {/* Mode 1 Content: Auto Favicon */}
+            {iconMode === 'auto' && (
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-2xs p-1">
+                    {getFaviconUrl(url) ? (
+                      <img 
+                        src={getFaviconUrl(url)} 
+                        alt="Favicon Preview" 
+                        className="w-8 h-8 object-contain rounded"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }} 
+                      />
+                    ) : (
+                      <Globe className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {extractDomain(url) ? `Favicon จาก Domain: ${extractDomain(url)}` : (language === 'TH' ? 'ยังไม่ได้ระบุ Domain' : 'No Domain Detected')}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {getFaviconUrl(url) 
+                        ? (language === 'TH' ? 'ดึง Favicon อัตโนมัติจาก URL ที่ระบุ' : 'Automatically fetched favicon from URL domain')
+                        : (language === 'TH' ? 'กรุณากรอก URL ลิงก์ด้านบน ระบบจะดึง Favicon ให้ทันที' : 'Enter URL above to auto-fetch domain logo')}
+                    </div>
+                  </div>
+                </div>
+                {getFaviconUrl(url) && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                    {language === 'TH' ? 'พร้อมใช้งาน' : 'Ready'}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Mode 2 Content: Upload from Computer */}
+            {iconMode === 'upload' && (
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                />
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden p-1">
+                      {uploadedIconData ? (
+                        <img 
+                          src={uploadedIconData} 
+                          alt="Uploaded icon" 
+                          className="w-10 h-10 object-contain rounded" 
+                        />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {uploadedFileName || (uploadedIconData ? (language === 'TH' ? 'มีรูปภาพกำหนดไว้แล้ว' : 'Custom Image Active') : (language === 'TH' ? 'ยังไม่ได้เลือกรูปภาพ' : 'No image selected'))}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {language === 'TH' ? 'รองรับ PNG, JPG, WebP, SVG (แปลงเป็น Base64 อัตโนมัติ)' : 'Supports PNG, JPG, WebP, SVG (converted to Base64)'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{language === 'TH' ? 'เลือกรูปภาพจากคอมพิวเตอร์' : 'Choose File from PC'}</span>
+                    </button>
+                    {uploadedIconData && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setUploadedIconData('');
+                          setUploadedFileName('');
+                        }}
+                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors cursor-pointer"
+                        title={language === 'TH' ? 'ลบรูปภาพ' : 'Remove Image'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mode 3 Content: Preset Icons Grid */}
+            {iconMode === 'preset' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-7 gap-2 max-h-36 overflow-y-auto p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  {AVAILABLE_APP_ICONS.map((item) => {
+                    const IconComp = item.icon;
+                    const isSelected = iconName === item.name;
+
+                    return (
+                      <button
+                        key={item.name}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIconName(item.name);
+                        }}
+                        className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-blue-950/80 border-2 border-[#1E60D5] text-[#1E60D5] dark:text-blue-300 shadow-xs'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-transparent'
+                        }`}
+                        title={item.label}
+                      >
+                        <IconComp className="w-4 h-4" />
+                        <span className="text-[9px] truncate max-w-full text-center">{item.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Row 6: Role Access Control */}
@@ -379,8 +683,12 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setAccessLevel('all')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAccessLevel('all');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                   accessLevel === 'all'
                     ? 'bg-blue-50 dark:bg-blue-950/70 border-[#1E60D5] text-[#1E60D5] dark:text-blue-300 ring-2 ring-blue-200'
                     : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
@@ -395,8 +703,12 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setAccessLevel('admin')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAccessLevel('admin');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                   accessLevel === 'admin'
                     ? 'bg-amber-50 dark:bg-amber-950/70 border-amber-500 text-amber-800 dark:text-amber-300 ring-2 ring-amber-200'
                     : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
@@ -415,14 +727,18 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
             >
               {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>{editingApp ? (language === 'TH' ? 'บันทึกการแก้ไข' : 'Save App') : (language === 'TH' ? 'เพิ่มแอปใหม่' : 'Add App')}</span>

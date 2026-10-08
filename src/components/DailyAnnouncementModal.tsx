@@ -37,7 +37,11 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
 
   const currentAnnouncement = announcements[selectedAnnouncementIndex] || announcements[0];
 
-  const handleDismiss = () => {
+  const handleDismiss = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (dontShowAgainToday) {
       onDismissToday();
     } else {
@@ -95,7 +99,12 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
             </div>
 
             <button
-              onClick={onClose}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
               title={language === 'TH' ? 'ปิด' : 'Close'}
             >
@@ -184,6 +193,7 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
+              type="button"
               onClick={handleDismiss}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >

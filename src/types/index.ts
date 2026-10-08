@@ -50,6 +50,7 @@ export interface EnterpriseApp {
   description: string;
   descriptionTh: string;
   iconName: string;
+  customIconUrl?: string;
   badge?: string;
   url: string;
   allowedRoles: UserRole[];
@@ -158,6 +159,7 @@ export interface PortalDataSyncResponse {
   activityLogs: ActivityLogItem[];
   latestAnnouncementId: string;
   latestAnnouncementUpdatedAt: number;
+  lastAnnouncementAction?: 'create' | 'update' | 'delete' | 'init';
   serverTime: number;
   version: number;
   vendorContacts?: VendorContact[];

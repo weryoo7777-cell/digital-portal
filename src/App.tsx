@@ -220,7 +220,20 @@ export default function App() {
           localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
         } catch {}
 
-        // Smart Announcement Detection: Only alert when user hasn't dismissed today OR genuinely newer announcement posted
+        // Requirement #3: Only trigger popup notification when creating a new notice or updating an existing notice
+        // In case an admin DELETES an announcement, NEVER show popup notification
+        if (data.lastAnnouncementAction === 'delete') {
+          setDailyAnnouncementModalOpen(false);
+          const latestAnn = data.announcements[0];
+          if (latestAnn) {
+            try {
+              localStorage.setItem('qs_announcement_dismissed_id', latestAnn.id);
+              localStorage.setItem('qs_announcement_dismissed_updated_at', String(latestAnn.updatedAt || Date.now()));
+            } catch {}
+          }
+          return;
+        }
+
         const latestAnn = data.announcements[0];
         if (latestAnn) {
           const todayStr = new Date().toISOString().split('T')[0];
@@ -230,7 +243,10 @@ export default function App() {
           const isUpdatedTimestamp = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastDismissedUpdatedAt);
           const isNotDismissedToday = lastDismissedDate !== todayStr;
 
-          if (isNotDismissedToday || isUpdatedTimestamp) {
+          if (data.lastAnnouncementAction === 'create' || data.lastAnnouncementAction === 'update') {
+            setDailyAnnouncementModalOpen(true);
+            setIsDismissedToday(false);
+          } else if (isNotDismissedToday || isUpdatedTimestamp) {
             setDailyAnnouncementModalOpen(true);
             setIsDismissedToday(false);
           } else {
@@ -271,11 +287,17 @@ export default function App() {
       } catch {}
       return updated;
     });
+    // Requirement #3: Trigger notification modal when new announcement is created
+    setDailyAnnouncementModalOpen(true);
+    setIsDismissedToday(false);
     // 2. Save to Central Server/Backend Database immediately
     await centralSyncService.saveAnnouncement(newAnn);
   };
 
   const handleDeleteAnnouncement = async (annId: string) => {
+    // Requirement #3: In case of deletion, DO NOT show notification popup
+    setDailyAnnouncementModalOpen(false);
+
     // 1. Update State and LocalStorage immediately (prevents mock data overwrite on refresh)
     setAnnouncements((prev) => {
       const updated = prev.filter(a => a.id !== annId);
@@ -285,11 +307,13 @@ export default function App() {
         if (updated[0]) {
           localStorage.setItem('qs_announcement_dismissed_id', updated[0].id);
           localStorage.setItem('qs_announcement_dismissed_updated_at', String(updated[0].updatedAt || Date.now()));
+        } else {
+          localStorage.removeItem('qs_announcement_dismissed_id');
         }
       } catch {}
       return updated;
     });
-    // 2. Delete from Central Server/Backend Database immediately
+    // 2. Delete from Central Server/Backend Database immediately without page redirect
     await centralSyncService.deleteAnnouncement(annId);
   };
 
@@ -394,15 +418,23 @@ export default function App() {
 
   const handleDeleteVendor = async (vendorId: string) => {
     // Keep current tab active - never redirect to home or reload
+    let remainingLength = 0;
     setVendorContacts((prev) => {
       const updated = prev.filter(v => v.id !== vendorId);
+      remainingLength = updated.length;
       try {
         localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
         localStorage.setItem('qs_vendor_contacts_persisted', 'true');
       } catch {}
       return updated;
     });
-    await centralSyncService.deleteVendor(vendorId);
+
+    if (remainingLength === 0) {
+      // When 0 items remain, explicitly persist empty array [] to central server so refresh never restores old data
+      await centralSyncService.saveAllVendors([]);
+    } else {
+      await centralSyncService.deleteVendor(vendorId);
+    }
   };
 
   const handleResetVendors = async () => {

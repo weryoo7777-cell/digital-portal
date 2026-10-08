@@ -87,8 +87,19 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
 
         {/* Modal Header */}
         <div className="flex items-start gap-3.5 pr-8 mb-5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Server className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center shrink-0 overflow-hidden">
+            {app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:')) ? (
+              <img 
+                src={app.customIconUrl || app.iconName} 
+                alt={app.name} 
+                className="w-7 h-7 object-contain rounded-md"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <Server className="w-6 h-6" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">

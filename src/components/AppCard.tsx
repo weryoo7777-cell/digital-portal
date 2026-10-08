@@ -127,12 +127,27 @@ export const AppCard: React.FC<AppCardProps> = ({
       {/* Left: App Icon & Details with strict text truncate */}
       <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
         <div className={`
-          w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs
+          w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs overflow-hidden
           ${hasAccess 
             ? 'bg-blue-50/80 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 text-[#1E60D5] dark:text-blue-400 group-hover:bg-[#1E60D5] dark:group-hover:bg-[#1E60D5] group-hover:text-white group-hover:border-[#1E60D5]' 
             : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}
         `}>
-          <IconComponent className="w-5 h-5 shrink-0" />
+          {(() => {
+            const imgUrl = app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null);
+            if (imgUrl) {
+              return (
+                <img 
+                  src={imgUrl} 
+                  alt={app.name} 
+                  className="w-7 h-7 object-contain rounded-md bg-white/80 p-0.5"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              );
+            }
+            return <IconComponent className="w-5 h-5 shrink-0" />;
+          })()}
         </div>
 
         <div className="min-w-0 flex-1 overflow-hidden">

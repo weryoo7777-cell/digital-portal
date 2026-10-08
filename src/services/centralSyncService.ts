@@ -70,7 +70,8 @@ class CentralSyncService {
       const data: PortalDataSyncResponse = await res.json();
       
       const hasChanged = !this.lastData || data.version !== this.lastVersion || 
-        data.latestAnnouncementUpdatedAt !== this.lastData.latestAnnouncementUpdatedAt;
+        data.latestAnnouncementUpdatedAt !== this.lastData.latestAnnouncementUpdatedAt ||
+        data.lastAnnouncementAction !== this.lastData.lastAnnouncementAction;
 
       this.lastData = data;
       this.lastVersion = data.version;

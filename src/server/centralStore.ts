@@ -14,6 +14,7 @@ export interface CentralStoreSchema {
   adminPin: string;
   latestAnnouncementId: string;
   latestAnnouncementUpdatedAt: number;
+  lastAnnouncementAction?: 'create' | 'update' | 'delete' | 'init';
   apps: EnterpriseApp[];
   announcements: CorporateAnnouncement[];
   vendorContacts: VendorContact[];
@@ -124,7 +125,8 @@ class CentralStoreManager {
             version: parsed.version || 1,
             adminPin: parsed.adminPin || '1111',
             latestAnnouncementId: parsed.latestAnnouncementId !== undefined ? parsed.latestAnnouncementId : (parsed.announcements[0]?.id || ''),
-            latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || Date.now(),
+            latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || (parsed.announcements[0]?.updatedAt || Date.now()),
+            lastAnnouncementAction: parsed.lastAnnouncementAction || 'init',
             apps: parsed.apps,
             announcements: parsed.announcements,
             vendorContacts: Array.isArray(parsed.vendorContacts) ? parsed.vendorContacts : [...INITIAL_VENDOR_CONTACTS],
@@ -161,6 +163,7 @@ class CentralStoreManager {
       activityLogs: this.store.activityLogs.slice(0, 20),
       latestAnnouncementId: this.store.latestAnnouncementId,
       latestAnnouncementUpdatedAt: this.store.latestAnnouncementUpdatedAt,
+      lastAnnouncementAction: this.store.lastAnnouncementAction || 'init',
       serverTime: Date.now(),
       version: this.store.version
     };
@@ -222,6 +225,7 @@ class CentralStoreManager {
     this.store.announcements.unshift(newAnn);
     this.store.latestAnnouncementId = newAnn.id;
     this.store.latestAnnouncementUpdatedAt = now;
+    this.store.lastAnnouncementAction = 'create';
     this.store.version += 1;
     this.persistStore();
     return newAnn;
@@ -241,6 +245,7 @@ class CentralStoreManager {
     this.store.announcements[idx] = updated;
     this.store.latestAnnouncementId = updated.id;
     this.store.latestAnnouncementUpdatedAt = now;
+    this.store.lastAnnouncementAction = 'update';
     this.store.version += 1;
     this.persistStore();
     return updated;
@@ -250,12 +255,14 @@ class CentralStoreManager {
     const initialLen = this.store.announcements.length;
     this.store.announcements = this.store.announcements.filter(a => a.id !== annId);
     if (this.store.announcements.length !== initialLen) {
+      this.store.lastAnnouncementAction = 'delete';
       if (this.store.announcements.length > 0) {
         this.store.latestAnnouncementId = this.store.announcements[0].id;
-        this.store.latestAnnouncementUpdatedAt = this.store.announcements[0].updatedAt || Date.now();
+        // Keep the existing announcement's timestamp without bumping to Date.now()
+        this.store.latestAnnouncementUpdatedAt = this.store.announcements[0].updatedAt || 0;
       } else {
         this.store.latestAnnouncementId = '';
-        this.store.latestAnnouncementUpdatedAt = Date.now();
+        this.store.latestAnnouncementUpdatedAt = 0;
       }
       this.store.version += 1;
       this.persistStore();

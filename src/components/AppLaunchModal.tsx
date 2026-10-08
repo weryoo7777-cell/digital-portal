@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { EnterpriseApp, UserProfile } from '../types';
 import { centralSyncService } from '../services/centralSyncService';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface AppLaunchModalProps {
   app: EnterpriseApp | null;
@@ -40,10 +41,12 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
   const hasAccess = roles.length === 0 || !currentUser?.role || roles.includes(currentUser.role);
   const rdpCommand = `mstsc /v:${app.serverHost || 'qs-acc-srv01.qisheng.local'} /f`;
 
-  const handleCopyCommand = () => {
-    navigator.clipboard.writeText(rdpCommand);
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
+  const handleCopyCommand = async () => {
+    const success = await copyToClipboard(rdpCommand);
+    if (success) {
+      setCopiedCmd(true);
+      setTimeout(() => setCopiedCmd(false), 2000);
+    }
   };
 
   const handleSimulateLaunch = () => {

@@ -13,6 +13,7 @@ import {
   Trash2,
   BookmarkPlus
 } from 'lucide-react';
+import { copyToClipboard as copyText } from '../utils/clipboard';
 
 interface GoogleTranslateModalProps {
   isOpen: boolean;
@@ -133,11 +134,13 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
     }
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     const textToCopy = translatedText || inputText;
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyText(textToCopy);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const openGoogleTranslateUrl = () => {

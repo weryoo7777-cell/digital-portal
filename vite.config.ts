@@ -123,6 +123,47 @@ function corporateApiPlugin(): Plugin {
           return res.end(JSON.stringify({ success: deleted, id: annId }));
         }
 
+        // 3.5 Vendor Contacts Management Endpoints
+        if (url.pathname === '/api/vendor-contacts') {
+          if (req.method === 'GET') {
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ vendors: centralStore.getVendorContacts() }));
+          }
+          if (req.method === 'POST') {
+            const body = await parseBody(req);
+            if (body && Array.isArray(body.vendors)) {
+              centralStore.setVendorContacts(body.vendors);
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true, vendors: centralStore.getVendorContacts() }));
+            }
+            if (!body || !body.name || !body.phone) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'Vendor name and phone are required' }));
+            }
+            const saved = body.id ? centralStore.updateVendor(body) : centralStore.addVendor(body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, vendor: saved }));
+          }
+        }
+
+        if (url.pathname === '/api/vendor-contacts/delete' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const vendorId = body?.id || body?.vendorId;
+          if (!vendorId) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: 'Vendor ID is required' }));
+          }
+          const deleted = centralStore.deleteVendor(vendorId);
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: deleted, id: vendorId }));
+        }
+
+        if (url.pathname === '/api/vendor-contacts/reset' && req.method === 'POST') {
+          const reset = centralStore.resetVendors();
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: true, vendors: reset }));
+        }
+
         // 4. Central Activity Logs Endpoints
         if (url.pathname === '/api/activity-logs') {
           if (req.method === 'GET') {

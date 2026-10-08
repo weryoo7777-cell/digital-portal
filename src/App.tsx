@@ -204,6 +204,13 @@ export default function App() {
           localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(data.apps));
         } catch {}
       }
+      if (data.vendorContacts && Array.isArray(data.vendorContacts)) {
+        setVendorContacts(data.vendorContacts);
+        try {
+          localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(data.vendorContacts));
+          localStorage.setItem('qs_vendor_contacts_persisted', 'true');
+        } catch {}
+      }
       if (data.activityLogs && Array.isArray(data.activityLogs)) {
         setActivityLogs(data.activityLogs);
       }
@@ -213,21 +220,17 @@ export default function App() {
           localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
         } catch {}
 
-        // Requirement #3: Smart Announcement Detection
-        // Check date, ID of announcement, AND updated timestamp
+        // Smart Announcement Detection: Only alert when user hasn't dismissed today OR genuinely newer announcement posted
         const latestAnn = data.announcements[0];
         if (latestAnn) {
           const todayStr = new Date().toISOString().split('T')[0];
           const lastDismissedDate = localStorage.getItem('qs_announcement_dismissed_date');
-          const lastDismissedId = localStorage.getItem('qs_announcement_dismissed_id');
           const lastDismissedUpdatedAt = Number(localStorage.getItem('qs_announcement_dismissed_updated_at') || 0);
 
-          const isNewAnnouncementId = Boolean(lastDismissedId && lastDismissedId !== latestAnn.id);
           const isUpdatedTimestamp = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastDismissedUpdatedAt);
           const isNotDismissedToday = lastDismissedDate !== todayStr;
 
-          // If Admin added a new announcement OR updated an existing announcement OR user hasn't dismissed today:
-          if (isNotDismissedToday || isNewAnnouncementId || isUpdatedTimestamp) {
+          if (isNotDismissedToday || isUpdatedTimestamp) {
             setDailyAnnouncementModalOpen(true);
             setIsDismissedToday(false);
           } else {
@@ -279,6 +282,10 @@ export default function App() {
       try {
         localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
         localStorage.setItem('qs_announcements_persisted', 'true');
+        if (updated[0]) {
+          localStorage.setItem('qs_announcement_dismissed_id', updated[0].id);
+          localStorage.setItem('qs_announcement_dismissed_updated_at', String(updated[0].updatedAt || Date.now()));
+        }
       } catch {}
       return updated;
     });
@@ -348,53 +355,63 @@ export default function App() {
     });
   };
 
-  // Vendor Contacts Collection
+  // Vendor Contacts Collection with state persistence and central server sync
   const [vendorContacts, setVendorContacts] = useState<VendorContact[]>(() => {
     try {
+      const persisted = localStorage.getItem('qs_vendor_contacts_persisted');
       const stored = localStorage.getItem('qs_vendor_contacts_v1');
-      if (stored) {
+      if (stored !== null && (persisted === 'true' || stored !== '')) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     return INITIAL_VENDOR_CONTACTS;
   });
 
-  const handleAddVendor = (newVendor: VendorContact) => {
+  const handleAddVendor = async (newVendor: VendorContact) => {
     setVendorContacts((prev) => {
       const updated = [newVendor, ...prev];
       try {
         localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+        localStorage.setItem('qs_vendor_contacts_persisted', 'true');
       } catch {}
       return updated;
     });
+    await centralSyncService.saveVendor(newVendor);
   };
 
-  const handleUpdateVendor = (updatedVendor: VendorContact) => {
+  const handleUpdateVendor = async (updatedVendor: VendorContact) => {
     setVendorContacts((prev) => {
       const updated = prev.map(v => v.id === updatedVendor.id ? updatedVendor : v);
       try {
         localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+        localStorage.setItem('qs_vendor_contacts_persisted', 'true');
       } catch {}
       return updated;
     });
+    await centralSyncService.saveVendor(updatedVendor);
   };
 
-  const handleDeleteVendor = (vendorId: string) => {
+  const handleDeleteVendor = async (vendorId: string) => {
+    // Keep current tab active - never redirect to home or reload
     setVendorContacts((prev) => {
       const updated = prev.filter(v => v.id !== vendorId);
       try {
         localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+        localStorage.setItem('qs_vendor_contacts_persisted', 'true');
       } catch {}
       return updated;
     });
+    await centralSyncService.deleteVendor(vendorId);
   };
 
-  const handleResetVendors = () => {
+  const handleResetVendors = async () => {
     setVendorContacts(INITIAL_VENDOR_CONTACTS);
     try {
       localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(INITIAL_VENDOR_CONTACTS));
+      localStorage.setItem('qs_vendor_contacts_persisted', 'true');
     } catch {}
+    await centralSyncService.resetVendors();
   };
 
   // Launch History tracking
@@ -1121,14 +1138,24 @@ export default function App() {
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
-                onClick={() => setAppToDeleteId(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAppToDeleteId(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
               >
                 {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
               </button>
               <button
-                onClick={() => handleDeleteApp(appToDeleteId)}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteApp(appToDeleteId);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 {language === 'TH' ? 'ยืนยันลบ' : 'Delete App'}
               </button>

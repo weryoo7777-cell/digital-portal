@@ -3,7 +3,8 @@ import {
   CorporateAnnouncement, 
   ActivityLogItem, 
   PortalDataSyncResponse,
-  UserProfile 
+  UserProfile,
+  VendorContact 
 } from '../types';
 
 type SyncListener = (data: PortalDataSyncResponse) => void;
@@ -202,6 +203,74 @@ class CentralSyncService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: annId })
+      });
+      if (res.ok) {
+        await this.syncNow();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  // 4.5 Vendor Contacts Central Persistence
+  public async saveVendor(vendor: VendorContact): Promise<boolean> {
+    try {
+      const res = await fetch('/api/vendor-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vendor)
+      });
+      if (res.ok) {
+        await this.syncNow();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  public async saveAllVendors(vendors: VendorContact[]): Promise<boolean> {
+    try {
+      const res = await fetch('/api/vendor-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendors })
+      });
+      if (res.ok) {
+        await this.syncNow();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  public async deleteVendor(vendorId: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/vendor-contacts/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: vendorId })
+      });
+      if (res.ok) {
+        await this.syncNow();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  public async resetVendors(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/vendor-contacts/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
       });
       if (res.ok) {
         await this.syncNow();

@@ -11,6 +11,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { ClientMachineInfo } from '../types';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface HeaderProps {
   machineInfo?: ClientMachineInfo | null;
@@ -40,10 +41,12 @@ export const Header: React.FC<HeaderProps> = ({
   const clientIpAddress = machineInfo?.localIp || '192.168.7.122';
   const clientCombinedInfo = `${clientDeviceName} | ${clientIpAddress}`;
 
-  const handleCopyClientInfo = () => {
-    navigator.clipboard.writeText(clientCombinedInfo);
-    setCopiedClientInfo(true);
-    setTimeout(() => setCopiedClientInfo(false), 2000);
+  const handleCopyClientInfo = async () => {
+    const success = await copyToClipboard(clientCombinedInfo);
+    if (success) {
+      setCopiedClientInfo(true);
+      setTimeout(() => setCopiedClientInfo(false), 2000);
+    }
   };
 
   return (

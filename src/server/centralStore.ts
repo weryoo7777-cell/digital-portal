@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { EnterpriseApp, CorporateAnnouncement, ActivityLogItem, PortalDataSyncResponse } from '../types';
+import { EnterpriseApp, CorporateAnnouncement, ActivityLogItem, PortalDataSyncResponse, VendorContact } from '../types';
 import { ENTERPRISE_APPS, CORPORATE_ANNOUNCEMENTS } from '../data/portalData';
+import { INITIAL_VENDOR_CONTACTS } from '../data/vendorData';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +16,7 @@ export interface CentralStoreSchema {
   latestAnnouncementUpdatedAt: number;
   apps: EnterpriseApp[];
   announcements: CorporateAnnouncement[];
+  vendorContacts: VendorContact[];
   activityLogs: ActivityLogItem[];
   lastModified: number;
 }
@@ -106,6 +108,7 @@ class CentralStoreManager {
       latestAnnouncementUpdatedAt: seededAnnouncements[0]?.updatedAt || now,
       apps: [...ENTERPRISE_APPS],
       announcements: seededAnnouncements,
+      vendorContacts: [...INITIAL_VENDOR_CONTACTS],
       activityLogs: [...INITIAL_ACTIVITY_LOGS],
       lastModified: now
     };
@@ -124,6 +127,7 @@ class CentralStoreManager {
             latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || Date.now(),
             apps: parsed.apps,
             announcements: parsed.announcements,
+            vendorContacts: Array.isArray(parsed.vendorContacts) ? parsed.vendorContacts : [...INITIAL_VENDOR_CONTACTS],
             activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : [...INITIAL_ACTIVITY_LOGS],
             lastModified: parsed.lastModified || Date.now()
           };
@@ -153,6 +157,7 @@ class CentralStoreManager {
     return {
       apps: this.store.apps,
       announcements: this.store.announcements,
+      vendorContacts: this.store.vendorContacts,
       activityLogs: this.store.activityLogs.slice(0, 20),
       latestAnnouncementId: this.store.latestAnnouncementId,
       latestAnnouncementUpdatedAt: this.store.latestAnnouncementUpdatedAt,
@@ -294,6 +299,57 @@ class CentralStoreManager {
   public verifyPin(pin: string): boolean {
     if (!pin) return false;
     return pin.trim() === this.store.adminPin.trim();
+  }
+
+  public getVendorContacts(): VendorContact[] {
+    return this.store.vendorContacts || [];
+  }
+
+  public setVendorContacts(vendors: VendorContact[]): void {
+    this.store.vendorContacts = [...vendors];
+    this.store.version += 1;
+    this.persistStore();
+  }
+
+  public addVendor(vendor: VendorContact): VendorContact {
+    const existingIdx = this.store.vendorContacts.findIndex(v => v.id === vendor.id);
+    if (existingIdx >= 0) {
+      this.store.vendorContacts[existingIdx] = vendor;
+    } else {
+      this.store.vendorContacts.unshift(vendor);
+    }
+    this.store.version += 1;
+    this.persistStore();
+    return vendor;
+  }
+
+  public updateVendor(vendor: VendorContact): VendorContact | null {
+    const idx = this.store.vendorContacts.findIndex(v => v.id === vendor.id);
+    if (idx === -1) {
+      return this.addVendor(vendor);
+    }
+    this.store.vendorContacts[idx] = { ...this.store.vendorContacts[idx], ...vendor };
+    this.store.version += 1;
+    this.persistStore();
+    return this.store.vendorContacts[idx];
+  }
+
+  public deleteVendor(vendorId: string): boolean {
+    const initialLen = this.store.vendorContacts.length;
+    this.store.vendorContacts = this.store.vendorContacts.filter(v => v.id !== vendorId);
+    if (this.store.vendorContacts.length !== initialLen) {
+      this.store.version += 1;
+      this.persistStore();
+      return true;
+    }
+    return false;
+  }
+
+  public resetVendors(): VendorContact[] {
+    this.store.vendorContacts = [...INITIAL_VENDOR_CONTACTS];
+    this.store.version += 1;
+    this.persistStore();
+    return this.store.vendorContacts;
   }
 
   public changePin(currentPin: string, newPin: string): { success: boolean; error?: string } {

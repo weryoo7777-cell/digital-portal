@@ -160,6 +160,7 @@ export interface PortalDataSyncResponse {
   latestAnnouncementUpdatedAt: number;
   serverTime: number;
   version: number;
+  vendorContacts?: VendorContact[];
 }
 
 export interface HelpdeskTicket {

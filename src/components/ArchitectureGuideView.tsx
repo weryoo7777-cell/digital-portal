@@ -13,6 +13,7 @@ import {
   Cpu,
   Layers
 } from 'lucide-react';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface ArchitectureGuideViewProps {
   language: 'TH' | 'EN';
@@ -21,10 +22,12 @@ interface ArchitectureGuideViewProps {
 export const ArchitectureGuideView: React.FC<ArchitectureGuideViewProps> = ({ language }) => {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
-  const copyCode = (code: string, id: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedSection(id);
-    setTimeout(() => setCopiedSection(null), 2000);
+  const copyCode = async (code: string, id: string) => {
+    const success = await copyToClipboard(code);
+    if (success) {
+      setCopiedSection(id);
+      setTimeout(() => setCopiedSection(null), 2000);
+    }
   };
 
   const nginxConfig = `# /etc/nginx/conf.d/qisheng-portal.conf

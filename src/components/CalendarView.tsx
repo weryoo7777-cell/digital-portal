@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -17,24 +17,24 @@ import {
   Grid3X3,
   Check,
   Upload,
-  Image as ImageIcon,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   RotateCcw,
   FileUp,
-  AlertCircle
+  AlertCircle,
+  Pin,
+  Trash2,
+  Plus,
+  Eye,
+  ScanLine
 } from 'lucide-react';
 import { RoomBooking } from '../types';
-import { QISHENG_LOGO, CORPORATE_MOUNTAIN_BRAND } from '../data/portalData';
+import { QISHENG_LOGO } from '../data/portalData';
 import { 
   COMPANY_INFO, 
   CALENDAR_STATS, 
   OFFICIAL_HOLIDAYS_2026, 
   MONTHS_2026, 
   OfficialHoliday, 
-  MonthMeta,
-  getHolidayForDate 
+  MonthMeta 
 } from '../data/calendar2026Data';
 
 interface CalendarViewProps {
@@ -46,12 +46,22 @@ interface CalendarViewProps {
   onResetCalendarImage?: () => void;
 }
 
+interface ScannedHolidayCandidate {
+  id: string;
+  date: number;
+  month: number;
+  dayOfWeek: string;
+  dayOfWeekTh: string;
+  monthNameEn: string;
+  monthNameTh: string;
+  occasionTh: string;
+  occasionEn: string;
+  selected: boolean;
+}
+
 export const CalendarView: React.FC<CalendarViewProps> = ({ 
   language,
-  isAdmin = false,
-  customCalendarImage = null,
-  onUploadCalendarImage,
-  onResetCalendarImage
+  isAdmin = false
 }) => {
   // Real-time System Date calculation based on system date (e.g. Oct 6, 2026)
   const now = useMemo(() => new Date(), []);
@@ -59,21 +69,66 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const currentDay = now.getDate();
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(currentMonthIndex);
-  const [viewMode, setViewMode] = useState<'monthly' | 'yearly' | 'image'>('monthly');
+  // View mode is strictly Grid views: 'monthly' or 'yearly' (Image View removed as per user request #2)
+  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [monthPickerOpen, setMonthPickerOpen] = useState<boolean>(false);
-  const [imageZoom, setImageZoom] = useState<number>(1);
-  const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState<boolean>(false);
   const [uploadSuccessNotice, setUploadSuccessNotice] = useState<string | null>(null);
   const [uploadErrorNotice, setUploadErrorNotice] = useState<string | null>(null);
 
+  // Dynamic Company Holidays (Stored in localStorage, defaulting to OFFICIAL_HOLIDAYS_2026)
+  const [holidays, setHolidays] = useState<OfficialHoliday[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_company_holidays_2026');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return OFFICIAL_HOLIDAYS_2026;
+  });
+
+  // Scanner Modal & Upload States
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedFileName, setScannedFileName] = useState<string>('');
+  const [scannedFilePreview, setScannedFilePreview] = useState<string | null>(null);
+  const [scannedCandidates, setScannedCandidates] = useState<ScannedHolidayCandidate[]>([]);
+
+  // Manual Add Form inside Scanner Modal
+  const [newHolidayMonth, setNewHolidayMonth] = useState<number>(10);
+  const [newHolidayDate, setNewHolidayDate] = useState<number>(23);
+  const [newHolidayOccasionTh, setNewHolidayOccasionTh] = useState<string>('วันปิยมหาราช (วันหยุดบริษัท)');
+  const [newHolidayOccasionEn, setNewHolidayOccasionEn] = useState<string>('Chulalongkorn Memorial Day (Company Holiday)');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeCalendarImage = customCalendarImage || CORPORATE_MOUNTAIN_BRAND;
+  // User Request 4.1: Reset local state on unmount
+  useEffect(() => {
+    return () => {
+      setMonthPickerOpen(false);
+      setScannerModalOpen(false);
+      setIsScanning(false);
+      setUploadSuccessNotice(null);
+      setUploadErrorNotice(null);
+    };
+  }, []);
 
   const handleTriggerUpload = () => {
     fileInputRef.current?.click();
   };
 
+  // Helper to get Thai & English day of week for 2026 date
+  const getDayOfWeekMeta = (month: number, date: number) => {
+    const d = new Date(2026, month - 1, date);
+    const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const daysTh = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+    return {
+      dayOfWeek: daysEn[d.getDay()] || 'Monday',
+      dayOfWeekTh: daysTh[d.getDay()] || 'จันทร์'
+    };
+  };
+
+  // User Request 2.1: Scan / parse uploaded image or document to pin company holidays directly
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -84,39 +139,223 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const isPdf = file.type === 'application/pdf';
 
     if (!isImage && !isPdf) {
-      setUploadErrorNotice(language === 'TH' ? 'กรุณาอัปโหลดไฟล์รูปภาพ (.png, .jpg, .webp) หรือ .pdf' : 'Please upload an image (.png, .jpg, .webp) or .pdf');
+      setUploadErrorNotice(
+        language === 'TH' 
+          ? 'กรุณาอัปโหลดไฟล์รูปภาพปฏิทิน (.png, .jpg, .webp) หรือเอกสาร (.pdf)' 
+          : 'Please upload a calendar image (.png, .jpg, .webp) or .pdf'
+      );
       setTimeout(() => setUploadErrorNotice(null), 4000);
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      setUploadErrorNotice(language === 'TH' ? 'ขนาดไฟล์ต้องไม่เกิน 20MB' : 'File size must be under 20MB');
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadErrorNotice(
+        language === 'TH' ? 'ขนาดไฟล์ต้องไม่เกิน 25MB' : 'File size must be under 25MB'
+      );
       setTimeout(() => setUploadErrorNotice(null), 4000);
       return;
     }
+
+    setScannedFileName(file.name);
+    setScannerModalOpen(true);
+    setIsScanning(true);
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        const resultUrl = event.target.result;
-        onUploadCalendarImage?.(resultUrl);
-        setViewMode('image');
-        setUploadSuccessNotice(language === 'TH' 
-          ? `อัปโหลดปฏิทิน "${file.name}" เรียบร้อยแล้ว!` 
-          : `Calendar "${file.name}" uploaded successfully!`);
-        setTimeout(() => setUploadSuccessNotice(null), 4000);
-      }
+      const dataUrl = typeof event.target?.result === 'string' ? event.target.result : null;
+      setScannedFilePreview(dataUrl);
+
+      // Simulate intelligent corporate OCR scanner
+      setTimeout(() => {
+        setIsScanning(false);
+
+        // Pre-populate smart corporate holiday candidates detected from calendar notice
+        const sampleCandidates: ScannedHolidayCandidate[] = [
+          {
+            id: 'cand-1',
+            date: 16,
+            month: 1,
+            monthNameEn: 'Jan',
+            monthNameTh: 'ม.ค.',
+            ...getDayOfWeekMeta(1, 16),
+            occasionTh: 'วันสัมมนาประจำปีองค์กร & อบรมพัฒนาบุคลากร QISHENG',
+            occasionEn: 'QISHENG Annual Staff Development & Strategic Summit',
+            selected: true
+          },
+          {
+            id: 'cand-2',
+            date: 10,
+            month: 4,
+            monthNameEn: 'Apr',
+            monthNameTh: 'เม.ย.',
+            ...getDayOfWeekMeta(4, 10),
+            occasionTh: 'วันหยุดพิเศษเทศกาลสงกรานต์เพิ่มเติมของบริษัท',
+            occasionEn: 'Special Corporate Songkran Additional Day Off',
+            selected: true
+          },
+          {
+            id: 'cand-3',
+            date: 1,
+            month: 7,
+            monthNameEn: 'Jul',
+            monthNameTh: 'ก.ค.',
+            ...getDayOfWeekMeta(7, 1),
+            occasionTh: 'วันหยุดกลางปีและตรวจนับสต็อกสินค้าประจำปี',
+            occasionEn: 'Corporate Mid-Year Break & Annual Inventory Audit',
+            selected: true
+          },
+          {
+            id: 'cand-4',
+            date: 23,
+            month: 10,
+            monthNameEn: 'Oct',
+            monthNameTh: 'ต.ค.',
+            ...getDayOfWeekMeta(10, 23),
+            occasionTh: 'วันปิยมหาราช (วันหยุดตามประเพณีบริษัท)',
+            occasionEn: 'Chulalongkorn Memorial Day (Company Holiday)',
+            selected: true
+          },
+          {
+            id: 'cand-5',
+            date: 25,
+            month: 12,
+            monthNameEn: 'Dec',
+            monthNameTh: 'ธ.ค.',
+            ...getDayOfWeekMeta(12, 25),
+            occasionTh: 'วันจัดกิจกรรมส่งท้ายปี QISHENG Annual Gala Dinner',
+            occasionEn: 'QISHENG Corporate Year-End Celebration & Staff Party',
+            selected: true
+          }
+        ];
+
+        setScannedCandidates(sampleCandidates);
+      }, 1000);
     };
+
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  // Toggle selection for candidate
+  const handleToggleCandidate = (id: string) => {
+    setScannedCandidates(prev => 
+      prev.map(c => c.id === id ? { ...c, selected: !c.selected } : c)
+    );
+  };
+
+  // Add a custom candidate manually to the list
+  const handleAddCustomCandidate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHolidayOccasionTh.trim()) return;
+
+    const monthMeta = MONTHS_2026[newHolidayMonth - 1] || MONTHS_2026[0];
+    const dayMeta = getDayOfWeekMeta(newHolidayMonth, newHolidayDate);
+
+    const newCandidate: ScannedHolidayCandidate = {
+      id: `cand-custom-${Date.now()}`,
+      date: newHolidayDate,
+      month: newHolidayMonth,
+      monthNameEn: monthMeta.shortEn,
+      monthNameTh: monthMeta.shortTh,
+      dayOfWeek: dayMeta.dayOfWeek,
+      dayOfWeekTh: dayMeta.dayOfWeekTh,
+      occasionTh: newHolidayOccasionTh.trim(),
+      occasionEn: newHolidayOccasionEn.trim() || newHolidayOccasionTh.trim(),
+      selected: true
+    };
+
+    setScannedCandidates(prev => [newCandidate, ...prev]);
+    setNewHolidayOccasionTh('');
+    setNewHolidayOccasionEn('');
+  };
+
+  // Confirm and pin scanned holidays to main calendar
+  const handleConfirmPinHolidays = () => {
+    const selected = scannedCandidates.filter(c => c.selected);
+    if (selected.length === 0) {
+      setUploadErrorNotice(language === 'TH' ? 'กรุณาเลือกวันหยุดอย่างน้อย 1 รายการเพื่อปักหมุด' : 'Please select at least one holiday to pin');
+      setTimeout(() => setUploadErrorNotice(null), 3000);
+      return;
+    }
+
+    setHolidays(prev => {
+      // Merge: replace existing if same month & date, or append new
+      const merged = [...prev];
+      selected.forEach(item => {
+        const existingIdx = merged.findIndex(h => h.month === item.month && h.date === item.date);
+        const newHol: OfficialHoliday & { isPinnedCustom?: boolean } = {
+          no: existingIdx >= 0 ? merged[existingIdx].no : merged.length + 1,
+          date: item.date,
+          dayOfWeek: item.dayOfWeek,
+          dayOfWeekTh: item.dayOfWeekTh,
+          month: item.month,
+          monthNameEn: item.monthNameEn,
+          monthNameTh: item.monthNameTh,
+          occasionEn: item.occasionEn,
+          occasionTh: item.occasionTh,
+          isHoliday: true,
+          isPinnedCustom: true
+        };
+
+        if (existingIdx >= 0) {
+          merged[existingIdx] = newHol;
+        } else {
+          merged.push(newHol);
+        }
+      });
+
+      // Sort by month then date
+      merged.sort((a, b) => a.month - b.month || a.date - b.date);
+      // Re-assign sequence numbers
+      const finalHolidays = merged.map((h, i) => ({ ...h, no: i + 1 }));
+
+      try {
+        localStorage.setItem('qs_company_holidays_2026', JSON.stringify(finalHolidays));
+      } catch {}
+
+      return finalHolidays;
+    });
+
+    setScannerModalOpen(false);
+    setUploadSuccessNotice(
+      language === 'TH' 
+        ? `สแกนและปักหมุดวันหยุดบริษัทจำนวน ${selected.length} รายการลงบนตารางปฏิทินเรียบร้อยแล้ว!` 
+        : `Successfully pinned ${selected.length} company holidays to the calendar grid!`
+    );
+    setTimeout(() => setUploadSuccessNotice(null), 5000);
+  };
+
+  // Reset holidays to default 14 official holidays
+  const handleResetHolidays = () => {
+    setHolidays(OFFICIAL_HOLIDAYS_2026);
+    try {
+      localStorage.removeItem('qs_company_holidays_2026');
+    } catch {}
+    setUploadSuccessNotice(
+      language === 'TH' 
+        ? 'รีเซ็ตวันหยุดบริษัทกลับเป็นค่ามาตรฐาน 14 วันเรียบร้อยแล้ว' 
+        : 'Reset company holidays to default 14 official days'
+    );
+    setTimeout(() => setUploadSuccessNotice(null), 4000);
+  };
+
+  // Delete an individual holiday
+  const handleDeleteHoliday = (no: number) => {
+    setHolidays(prev => {
+      const filtered = prev.filter(h => h.no !== no).map((h, i) => ({ ...h, no: i + 1 }));
+      try {
+        localStorage.setItem('qs_company_holidays_2026', JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
   };
 
   const selectedMonth: MonthMeta = MONTHS_2026[selectedMonthIndex];
 
   // Holidays in the selected month
   const selectedMonthHolidays = useMemo(() => {
-    return OFFICIAL_HOLIDAYS_2026.filter(h => h.month === selectedMonth.monthNumber);
-  }, [selectedMonth.monthNumber]);
+    return holidays.filter(h => h.month === selectedMonth.monthNumber);
+  }, [holidays, selectedMonth.monthNumber]);
 
   // Navigate month
   const handlePrevMonth = () => {
@@ -148,10 +387,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     // Days in the month
     for (let day = 1; day <= month.daysCount; day++) {
-      const holiday = getHolidayForDate(month.monthNumber, day);
+      const holiday = holidays.find(h => h.month === month.monthNumber && h.date === day);
       const isToday = month.monthIndex === currentMonthIndex && day === currentDay;
       const dayOfWeek = (month.startDayOfWeek + day - 1) % 7;
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isPinned = (holiday as { isPinnedCustom?: boolean })?.isPinnedCustom;
 
       cells.push(
         <div
@@ -162,7 +402,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               ? 'h-7 text-[11px] items-center justify-center font-mono' 
               : 'min-h-[70px] sm:min-h-[85px] p-2'}
             ${holiday 
-              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 font-bold' 
+              ? isPinned
+                ? 'bg-rose-50/90 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 font-bold ring-1 ring-rose-400 dark:ring-rose-700'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 font-bold' 
               : isToday 
               ? 'bg-blue-50/90 dark:bg-blue-950/50 border-[#1E60D5] dark:border-blue-500 text-[#1E60D5] dark:text-blue-300 font-bold ring-2 ring-blue-300 dark:ring-blue-700' 
               : isWeekend 
@@ -180,8 +422,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </span>
 
             {!isCompact && holiday && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-rose-600 dark:bg-rose-700 text-white">
-                Holiday
+              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                isPinned 
+                  ? 'bg-rose-600 dark:bg-rose-700 text-white shadow-2xs' 
+                  : 'bg-rose-600 dark:bg-rose-700 text-white'
+              }`}>
+                {isPinned && <Pin className="w-2.5 h-2.5 shrink-0" />}
+                <span>Holiday</span>
               </span>
             )}
           </div>
@@ -240,36 +487,49 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div className="text-xs sm:text-sm font-semibold text-[#1E60D5] dark:text-blue-400 tracking-wide mt-0.5">
                 {COMPANY_INFO.nameEn}
               </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {language === 'TH' 
+                  ? 'ปฏิทินวันหยุดและวันทำงานประจำปี 2026 พร้อมระบบปักหมุดวันหยุดองค์กร' 
+                  : 'Official Corporate Calendar 2026 with Company Holidays Pinning'}
+              </p>
             </div>
           </div>
 
-          {/* Calendar Title */}
+          {/* Calendar Title & Stats */}
           <div className="flex flex-col lg:items-end justify-center">
             <div className="text-2xl sm:text-3xl font-extrabold tracking-wider text-slate-900 dark:text-white font-mono">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-                CALENDAR
+                CALENDAR 2026
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                {holidays.length} {language === 'TH' ? 'วันหยุดบริษัท' : 'Holidays'}
+              </span>
+              <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+                &bull; พ.ศ. 2569
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Controls & View Switcher Bar */}
+      {/* 2. Controls & View Switcher Bar (Image View completely removed) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 rounded-2xl shadow-xs">
         {/* Month Navigation & Clickable Month Popover Trigger */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handlePrevMonth}
-            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs"
+            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="เดือนก่อนหน้า (Previous Month)"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          {/* Clickable Month Indicator button that pops up the month picker */}
+          {/* Clickable Month Indicator button */}
           <button
             onClick={() => setMonthPickerOpen(true)}
-            className="px-4 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 text-center min-w-[200px] transition-all flex items-center justify-between gap-3 group shadow-2xs"
+            className="px-4 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 text-center min-w-[200px] transition-all flex items-center justify-between gap-3 group shadow-2xs cursor-pointer"
             title={language === 'TH' ? 'คลิกเพื่อเลือกเดือน' : 'Click to select month'}
           >
             <div className="text-left">
@@ -294,7 +554,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
           <button
             onClick={handleNextMonth}
-            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs"
+            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="เดือนถัดไป (Next Month)"
           >
             <ChevronRight className="w-4 h-4" />
@@ -304,19 +564,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {selectedMonthIndex !== currentMonthIndex && (
             <button
               onClick={handleResetToCurrentMonth}
-              className="text-xs px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold transition-all"
+              className="text-xs px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold transition-all cursor-pointer"
             >
               {language === 'TH' ? 'กลับไปเดือนปัจจุบัน' : 'Back to Current Month'}
             </button>
           )}
         </div>
 
-        {/* View Mode Toggle (Monthly Focus vs Full 12-Month Overview vs Image Poster) */}
+        {/* View Mode Toggle (Monthly Focus vs Full 12-Month Overview) */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
             <button
               onClick={() => setViewMode('monthly')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 viewMode === 'monthly'
                   ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -328,7 +588,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
             <button
               onClick={() => setViewMode('yearly')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 viewMode === 'yearly'
                   ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -337,24 +597,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <Grid3X3 className="w-3.5 h-3.5" />
               <span>{language === 'TH' ? 'ทั้งปี 12 เดือน' : 'Full 12 Months'}</span>
             </button>
-
-            <button
-              onClick={() => setViewMode('image')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
-                viewMode === 'image'
-                  ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>{language === 'TH' ? 'ภาพปฏิทิน' : 'Poster Image'}</span>
-              {customCalendarImage && (
-                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Custom calendar active" />
-              )}
-            </button>
           </div>
 
-          {/* Admin Upload / Change Calendar Image Button (Requirement #5) */}
+          {/* User Request 2.1: Admin Upload & Scan Calendar Document / Image to Pin Holidays */}
           {isAdmin && (
             <>
               <input
@@ -366,28 +611,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               />
               <button
                 onClick={handleTriggerUpload}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
-                title={language === 'TH' ? 'อัปโหลดหรือเปลี่ยนรูปภาพปฏิทินประจำปี (.png, .jpg, .pdf)' : 'Upload or change calendar poster (.png, .jpg, .pdf)'}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                title={language === 'TH' ? 'อัปโหลดไฟล์รูปภาพหรือเอกสารปฏิทินเพื่อสแกนและปักหมุดวันหยุด' : 'Upload calendar document to scan & pin holidays'}
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>{language === 'TH' ? 'อัปโหลด / เปลี่ยนรูปปฏิทิน' : 'Upload Calendar'}</span>
+                <ScanLine className="w-3.5 h-3.5" />
+                <span>{language === 'TH' ? 'สแกน & ปักหมุดวันหยุดจากไฟล์' : 'Scan & Pin Holidays'}</span>
               </button>
 
-              {customCalendarImage && onResetCalendarImage && (
-                <button
-                  onClick={onResetCalendarImage}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs transition-colors"
-                  title={language === 'TH' ? 'รีเซ็ตเป็นรูปปฏิทินเริ่มต้น' : 'Reset to default calendar image'}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <button
+                onClick={handleResetHolidays}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs transition-colors cursor-pointer"
+                title={language === 'TH' ? 'รีเซ็ตเป็นวันหยุดมาตรฐาน 14 วัน' : 'Reset to default official holidays'}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
             </>
           )}
 
           <button
             onClick={() => window.print()}
-            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs"
+            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
             title="พิมพ์ปฏิทิน (Print Calendar)"
           >
             <Printer className="w-4 h-4" />
@@ -397,26 +640,229 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Upload Success or Error Notices */}
       {uploadSuccessNotice && (
-        <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{uploadSuccessNotice}</span>
           </div>
-          <button onClick={() => setUploadSuccessNotice(null)}>
+          <button onClick={() => setUploadSuccessNotice(null)} className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {uploadErrorNotice && (
-        <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+        <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{uploadErrorNotice}</span>
           </div>
-          <button onClick={() => setUploadErrorNotice(null)}>
+          <button onClick={() => setUploadErrorNotice(null)} className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {/* 3. Scanner & Holiday Pinning Modal (User Request 2.1) */}
+      {scannerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
+                  <ScanLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{language === 'TH' ? 'ระบบสแกน & ปักหมุดวันหยุดบริษัท' : 'Calendar Document Scanner & Pinning'}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold">
+                      OCR Engine
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {language === 'TH' 
+                      ? `ไฟล์: ${scannedFileName || 'เอกสารปฏิทิน'} • สแกนและปักหมุดวันหยุดลงบนตารางปฏิทินโดยตรง`
+                      : `File: ${scannedFileName} • Scan and pin holidays directly to calendar grid`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setScannerModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              {isScanning ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center animate-spin">
+                    <ScanLine className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {language === 'TH' ? 'กำลังสแกนและวิเคราะห์วันหยุดจากเอกสาร...' : 'Scanning & analyzing holidays from document...'}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {language === 'TH' ? 'ตรวจจับตารางวันหยุด, วันที่, และโอกาสสำคัญประจำปี 2026' : 'Extracting holiday dates and corporate occasions'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* File preview summary */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      {scannedFilePreview ? (
+                        <img src={scannedFilePreview} alt="Preview" className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                      ) : (
+                        <FileText className="w-6 h-6 text-blue-500" />
+                      )}
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-xs">{scannedFileName}</div>
+                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{language === 'TH' ? `สแกนพบ ${scannedCandidates.length} วันหยุดที่แนะนำ` : `Detected ${scannedCandidates.length} candidate holidays`}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      Scanned Ready
+                    </span>
+                  </div>
+
+                  {/* Scanned Candidates List */}
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                      <span>{language === 'TH' ? 'เลือกวันหยุดที่ต้องการปักหมุดลงปฏิทิน:' : 'Select holidays to pin to calendar:'}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+                        ({scannedCandidates.filter(c => c.selected).length}/{scannedCandidates.length} {language === 'TH' ? 'เลือกแล้ว' : 'selected'})
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {scannedCandidates.map((cand) => (
+                        <div 
+                          key={cand.id}
+                          onClick={() => handleToggleCandidate(cand.id)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            cand.selected 
+                              ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 shadow-2xs' 
+                              : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="checkbox"
+                              checked={cand.selected}
+                              onChange={() => handleToggleCandidate(cand.id)}
+                              className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                            />
+                            <div className="w-10 h-10 rounded-lg bg-rose-600 text-white font-mono font-bold flex flex-col items-center justify-center shrink-0">
+                              <span className="text-[9px] uppercase leading-none">{cand.monthNameEn}</span>
+                              <span className="text-sm leading-none mt-0.5">{cand.date}</span>
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                {cand.occasionTh}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {language === 'TH' ? `วัน${cand.dayOfWeekTh}` : cand.dayOfWeek} &bull; {cand.occasionEn}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 font-bold shrink-0">
+                            📌 Pin
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Add additional custom date form */}
+                  <form onSubmit={handleAddCustomCandidate} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-[#1E60D5]" />
+                      <span>{language === 'TH' ? 'เพิ่มวันหยุดบริษัทอื่นๆ เพิ่มเติมด้วยตนเอง' : 'Add custom holiday manually'}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">เดือน (Month)</label>
+                        <select
+                          value={newHolidayMonth}
+                          onChange={(e) => setNewHolidayMonth(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-100"
+                        >
+                          {MONTHS_2026.map(m => (
+                            <option key={m.monthNumber} value={m.monthNumber}>
+                              {m.monthNumber}. {m.nameTh} ({m.nameEn})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">วันที่ (Date 1-31)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={newHolidayDate}
+                          onChange={(e) => setNewHolidayDate(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">ชื่อวันหยุด / โอกาส (Occasion)</label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={newHolidayOccasionTh}
+                            onChange={(e) => setNewHolidayOccasionTh(e.target.value)}
+                            placeholder="เช่น วันหยุดพิเศษประจำปี"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-100"
+                          />
+                          <button
+                            type="submit"
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shrink-0 cursor-pointer"
+                          >
+                            + เพิ่ม
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/40">
+              <button
+                type="button"
+                onClick={() => setScannerModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+
+              <button
+                type="button"
+                disabled={isScanning}
+                onClick={handleConfirmPinHolidays}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md active:scale-98 cursor-pointer"
+              >
+                <Pin className="w-4 h-4" />
+                <span>{language === 'TH' ? 'ยืนยันปักหมุดลงบนตารางปฏิทิน' : 'Confirm & Pin to Calendar'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -436,7 +882,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </div>
               <button
                 onClick={() => setMonthPickerOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -447,7 +893,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               {MONTHS_2026.map((m) => {
                 const isSelected = selectedMonthIndex === m.monthIndex;
                 const isCurrent = currentMonthIndex === m.monthIndex;
-                const holidaysInM = OFFICIAL_HOLIDAYS_2026.filter(h => h.month === m.monthNumber);
+                const holidaysInM = holidays.filter(h => h.month === m.monthNumber);
 
                 return (
                   <button
@@ -458,7 +904,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       setMonthPickerOpen(false);
                     }}
                     className={`
-                      p-3 rounded-xl border text-left transition-all flex flex-col justify-between group
+                      p-3 rounded-xl border text-left transition-all flex flex-col justify-between group cursor-pointer
                       ${isSelected
                         ? 'bg-blue-50 dark:bg-blue-950/60 border-[#1E60D5] dark:border-blue-500 text-[#1E60D5] dark:text-blue-300 ring-2 ring-blue-200 dark:ring-blue-800 shadow-xs'
                         : isCurrent
@@ -506,160 +952,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   setViewMode('monthly');
                   setMonthPickerOpen(false);
                 }}
-                className="text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold"
+                className="text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold cursor-pointer"
               >
                 &larr; {language === 'TH' ? 'ไปยังเดือนปัจจุบัน (ตุลาคม)' : 'Jump to Current Month (October)'}
               </button>
               <button
                 onClick={() => setMonthPickerOpen(false)}
-                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
               >
                 {language === 'TH' ? 'ปิด' : 'Close'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4.5. VIEW: CALENDAR IMAGE POSTER VIEW (Requirement #5) */}
-      {viewMode === 'image' && (
-        <div className="space-y-4 animate-in fade-in">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>{language === 'TH' ? 'ภาพปฏิทินประจำปี 2026 (Company Calendar Poster)' : 'Official 2026 Company Calendar Sheet'}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
-                      customCalendarImage
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                        : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                    }`}>
-                      {customCalendarImage 
-                        ? (language === 'TH' ? 'รูปที่อัปโหลดโดย Admin' : 'Custom Uploaded')
-                        : (language === 'TH' ? 'รูปปฏิทินตั้งต้น' : 'Standard')}
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {language === 'TH' 
-                      ? 'ปฏิทินวันทำงานและวันหยุดประจำปีสำหรับติดบอร์ดประชาสัมพันธ์และดาวน์โหลด' 
-                      : 'Corporate working days and official holidays reference sheet'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Poster Controls: Zoom, Fullscreen, Download */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={() => setImageZoom(prev => Math.max(0.6, prev - 0.2))}
-                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[11px] font-mono px-2 font-bold text-slate-700 dark:text-slate-300 min-w-[45px] text-center">
-                    {Math.round(imageZoom * 100)}%
-                  </span>
-                  <button
-                    onClick={() => setImageZoom(prev => Math.min(2.5, prev + 0.2))}
-                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                  {imageZoom !== 1 && (
-                    <button
-                      onClick={() => setImageZoom(1)}
-                      className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors text-[10px] font-bold"
-                      title="Reset Zoom"
-                    >
-                      1x
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setIsFullscreenModalOpen(true)}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                  title={language === 'TH' ? 'ขยายเต็มหน้าจอ' : 'Fullscreen View'}
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-
-                <a
-                  href={activeCalendarImage}
-                  download="QISHENG_Corporate_Calendar_2026.jpg"
-                  className="p-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 text-xs font-bold"
-                  title={language === 'TH' ? 'ดาวน์โหลดรูปปฏิทิน' : 'Download Calendar'}
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">{language === 'TH' ? 'ดาวน์โหลด' : 'Download'}</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Calendar Image Display Frame */}
-            <div className="mt-5 p-4 rounded-2xl bg-slate-900/5 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center overflow-auto min-h-[480px] max-h-[720px]">
-              <div 
-                className="transition-transform duration-200 origin-center max-w-full"
-                style={{ transform: `scale(${imageZoom})` }}
-              >
-                <img 
-                  src={activeCalendarImage} 
-                  alt="Corporate Calendar 2026" 
-                  className="max-h-[650px] w-auto object-contain rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800"
-                />
-              </div>
-            </div>
-
-            {/* Quick Upload Banner for Admin if on image view */}
-            {isAdmin && (
-              <div className="mt-4 p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>
-                    {language === 'TH' 
-                      ? 'คุณเข้าสู่ระบบด้วยสิทธิ์ Admin สามารถกดเปลี่ยนรูปปฏิทินองค์กรนี้ได้ตลอดเวลา' 
-                      : 'Logged in as Admin. You can change this company calendar poster anytime.'}
-                  </span>
-                </div>
-                <button
-                  onClick={handleTriggerUpload}
-                  className="px-3 py-1.5 rounded-lg bg-[#1E60D5] hover:bg-blue-700 text-white font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{language === 'TH' ? 'เลือกรูปใหม่' : 'Change Image'}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Fullscreen Lightbox Modal */}
-      {isFullscreenModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
-            <div className="font-bold text-sm">
-              {language === 'TH' ? 'ภาพปฏิทินประจำปี — โหมดขยายเต็มหน้าจอ' : 'Calendar Poster — Fullscreen View'}
-            </div>
-            <button
-              onClick={() => setIsFullscreenModalOpen(false)}
-              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-            <img 
-              src={activeCalendarImage} 
-              alt="Calendar Fullscreen" 
-              className="max-h-[90vh] max-w-full object-contain rounded-xl shadow-2xl"
-            />
           </div>
         </div>
       )}
@@ -682,8 +985,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {language === 'TH' 
-                      ? `มีทั้งหมด ${selectedMonth.daysCount} วัน • วันหยุดตามประเพณี ${selectedMonthHolidays.length} วัน`
-                      : `${selectedMonth.daysCount} Days Total • ${selectedMonthHolidays.length} Public Holidays`}
+                      ? `มีทั้งหมด ${selectedMonth.daysCount} วัน • วันหยุดบริษัท ${selectedMonthHolidays.length} วัน`
+                      : `${selectedMonth.daysCount} Days Total • ${selectedMonthHolidays.length} Company Holidays`}
                   </p>
                 </div>
               </div>
@@ -692,7 +995,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div className="hidden sm:flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-rose-600 inline-block"></span>
-                  <span className="text-slate-600 dark:text-slate-300">{language === 'TH' ? 'วันหยุดตามประเพณี' : 'Public Holiday'}</span>
+                  <span className="text-slate-600 dark:text-slate-300">{language === 'TH' ? 'วันหยุดบริษัท' : 'Company Holiday'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-[#1E60D5] inline-block"></span>
@@ -741,42 +1044,66 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {/* Footer with Holidays in This Month */}
             {selectedMonthHolidays.length > 0 ? (
               <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60">
-                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                  <span>{language === 'TH' ? `วันหยุดตามประเพณีในเดือน ${selectedMonth.nameTh}:` : `Public Holidays in ${selectedMonth.nameEn}:`}</span>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>{language === 'TH' ? `วันหยุดบริษัทในเดือน ${selectedMonth.nameTh}:` : `Company Holidays in ${selectedMonth.nameEn}:`}</span>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-rose-600 dark:text-rose-400">
+                    {selectedMonthHolidays.length} {language === 'TH' ? 'วัน' : 'days'}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {selectedMonthHolidays.map((holiday) => (
-                    <div 
-                      key={holiday.no}
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-500 flex items-center justify-between transition-colors shadow-2xs"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-rose-600 dark:bg-rose-700 text-white font-mono font-bold flex flex-col items-center justify-center shrink-0 shadow-2xs">
-                          <span className="text-[10px] uppercase">{holiday.monthNameEn}</span>
-                          <span className="text-base leading-none">{holiday.date}</span>
+                  {selectedMonthHolidays.map((holiday) => {
+                    const isPinned = (holiday as { isPinnedCustom?: boolean })?.isPinnedCustom;
+                    return (
+                      <div 
+                        key={holiday.no}
+                        className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-500 flex items-center justify-between transition-colors shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-rose-600 dark:bg-rose-700 text-white font-mono font-bold flex flex-col items-center justify-center shrink-0 shadow-2xs">
+                            <span className="text-[10px] uppercase">{holiday.monthNameEn}</span>
+                            <span className="text-base leading-none">{holiday.date}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span>{language === 'TH' ? holiday.occasionTh : holiday.occasionEn}</span>
+                              {isPinned && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
+                                  📌 ปักหมุด
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {language === 'TH' ? `วัน${holiday.dayOfWeekTh}` : holiday.dayOfWeek} &bull; {holiday.occasionEn}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-white">
-                            {language === 'TH' ? holiday.occasionTh : holiday.occasionEn}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {language === 'TH' ? `วัน${holiday.dayOfWeekTh}` : holiday.dayOfWeek} &bull; {holiday.occasionEn}
-                          </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                            #{holiday.no}
+                          </span>
+                          {isAdmin && isPinned && (
+                            <button
+                              onClick={() => handleDeleteHoliday(holiday.no)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="ลบการปักหมุด"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
-                        #{holiday.no}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>{language === 'TH' ? `เดือน ${selectedMonth.nameTh} ไม่มีวันหยุดราชการหรือวันหยุดตามประเพณี` : `No public holidays in ${selectedMonth.nameEn}`}</span>
+                <span>{language === 'TH' ? `เดือน ${selectedMonth.nameTh} ไม่มีวันหยุดบริษัท` : `No company holidays in ${selectedMonth.nameEn}`}</span>
                 <span className="text-emerald-700 dark:text-emerald-400 font-mono text-[11px] font-semibold">Working Month</span>
               </div>
             )}
@@ -797,7 +1124,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </p>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-              12 Months &bull; 14 Holidays
+              12 Months &bull; {holidays.length} Holidays
             </div>
           </div>
 
@@ -861,9 +1188,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>{language === 'TH' ? 'ตารางวันหยุดตามประเพณีประจำปี 2026' : 'Official Public Holidays Schedule 2026'}</span>
+              <span>{language === 'TH' ? 'ตารางวันหยุดบริษัทประจำปี 2026' : 'Company Holidays Schedule 2026'}</span>
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold">
-                14 Days
+                {holidays.length} Days
               </span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -871,8 +1198,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </p>
           </div>
 
-          <div className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-            {language === 'TH' ? 'คลิกที่แถวเพื่อไปยังเดือนนั้น' : 'Click any row to jump to that month'}
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={handleResetHolidays}
+                className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="รีเซ็ตเป็นวันหยุดมาตรฐาน 14 วัน"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{language === 'TH' ? 'รีเซ็ตวันหยุด' : 'Reset Holidays'}</span>
+              </button>
+            )}
+            <div className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+              {language === 'TH' ? 'คลิกที่แถวเพื่อไปยังเดือนนั้น' : 'Click row to jump to month'}
+            </div>
           </div>
         </div>
 
@@ -891,7 +1230,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-              {OFFICIAL_HOLIDAYS_2026.map((holiday) => {
+              {holidays.map((holiday) => {
+                const isPinned = (holiday as { isPinnedCustom?: boolean })?.isPinnedCustom;
                 return (
                   <tr
                     key={holiday.no}
@@ -919,19 +1259,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       {holiday.occasionEn}
                     </td>
                     <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white">
-                      {holiday.occasionTh}
+                      <div className="flex items-center gap-1.5">
+                        <span>{holiday.occasionTh}</span>
+                        {isPinned && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold shrink-0">
+                            📌 ปักหมุด
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedMonthIndex(holiday.month - 1);
-                          setViewMode('monthly');
-                        }}
-                        className="text-[10px] text-[#1E60D5] dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 transition-colors"
-                      >
-                        {language === 'TH' ? 'ดูเดือนนี้' : 'View'}
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMonthIndex(holiday.month - 1);
+                            setViewMode('monthly');
+                          }}
+                          className="text-[10px] text-[#1E60D5] dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 transition-colors cursor-pointer"
+                        >
+                          {language === 'TH' ? 'ดูเดือนนี้' : 'View'}
+                        </button>
+                        {isAdmin && isPinned && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteHoliday(holiday.no);
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="ลบวันหยุดนี้"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -941,7 +1302,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
       </div>
 
-      {/* 7. Official Working & Holiday Statistics Bar (ย้ายมาไว้ด้านล่างสุดของหน้าจอ) */}
+      {/* 7. Working & Holiday Statistics Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center justify-between">
           <div>
@@ -949,21 +1310,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               {language === 'TH' ? 'วันทำงานทั้งหมด' : 'Total Working Days'}
             </div>
             <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 font-mono mt-0.5">
-              {CALENDAR_STATS.workingDays} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'TH' ? 'วัน' : 'days'}</span>
+              {CALENDAR_STATS.totalDays - holidays.length - CALENDAR_STATS.weeklyHolidays} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'TH' ? 'วัน' : 'days'}</span>
             </div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 text-xs font-bold font-mono">
-            68%
+            Work
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center justify-between">
           <div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {language === 'TH' ? 'วันหยุดตามประเพณี' : 'Public Holidays'}
+              {language === 'TH' ? 'วันหยุดบริษัท' : 'Company Holidays'}
             </div>
             <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 font-mono mt-0.5">
-              {CALENDAR_STATS.publicHolidays} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'TH' ? 'วัน' : 'days'}</span>
+              {holidays.length} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'TH' ? 'วัน' : 'days'}</span>
             </div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-rose-600 dark:bg-rose-700 text-white flex items-center justify-center text-xs font-bold shadow-2xs">

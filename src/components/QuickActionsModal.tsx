@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Smartphone
 } from 'lucide-react';
-import { UserProfile, ClientMachineInfo, HelpdeskTicket } from '../types';
+import { UserProfile, ClientMachineInfo, HelpdeskTicket, EnterpriseApp } from '../types';
 import { ENTERPRISE_APPS } from '../data/portalData';
 
 interface QuickActionsModalProps {
@@ -19,20 +19,26 @@ interface QuickActionsModalProps {
   initialType?: 'helpdesk' | 'sspr' | 'access';
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
   machineInfo?: ClientMachineInfo | null;
+  app?: EnterpriseApp | null;
+  apps?: EnterpriseApp[];
+  selectedApp?: EnterpriseApp | null;
   onAddTicket?: (ticket: HelpdeskTicket) => void;
   onSubmitTicket?: (ticket: HelpdeskTicket) => void;
   language: 'TH' | 'EN';
 }
 
-export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
+const QuickActionsModalContent: React.FC<QuickActionsModalProps> = ({
   initialTab,
   initialType,
   isOpen,
   onClose,
   currentUser,
   machineInfo,
+  app,
+  apps,
+  selectedApp,
   onAddTicket,
   onSubmitTicket,
   language
@@ -54,8 +60,14 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [unlockOnly, setUnlockOnly] = useState(false);
 
-  // Form states - Access Request
-  const [selectedAppId, setSelectedAppId] = useState(ENTERPRISE_APPS[0].id);
+  // Available apps list safe fallback
+  const availableApps: EnterpriseApp[] = (apps && apps.length > 0) 
+    ? apps 
+    : ((ENTERPRISE_APPS && ENTERPRISE_APPS.length > 0) ? ENTERPRISE_APPS : []);
+
+  // Form states - Access Request with safe optional chaining
+  const defaultAppId = app?.id || selectedApp?.id || availableApps?.[0]?.id || '';
+  const [selectedAppId, setSelectedAppId] = useState<string>(defaultAppId);
   const [accessReason, setAccessReason] = useState('');
   const [accessPeriod, setAccessPeriod] = useState('Permanent (พนักงานประจำ)');
 
@@ -71,8 +83,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
       status: 'Pending',
       createdAt: 'Just now',
       description: ticketDesc,
-      reportedBy: currentUser.name,
-      workstation: `${machineInfo?.hostname || currentUser.workstationHostname} (${machineInfo?.localIp || currentUser.localIp})`
+      reportedBy: currentUser?.name || 'Employee',
+      workstation: `${machineInfo?.hostname || currentUser?.workstationHostname || 'Client-PC'} (${machineInfo?.localIp || currentUser?.localIp || '192.168.7.x'})`
     };
 
     if (onAddTicket) onAddTicket(newTicket);
@@ -80,8 +92,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
 
     setSubmittedMessage(
       language === 'TH' 
-        ? `สร้างตั๋วงาน ${newTicket.id} สำเร็จ! เจ้าหน้าที่ไอทีกำลังตรวจสอบ` 
-        : `Ticket ${newTicket.id} submitted! Support team notified.`
+        ? `สร้างตั๋วงาน ${newTicket?.id || ''} สำเร็จ! เจ้าหน้าที่ไอทีกำลังตรวจสอบ` 
+        : `Ticket ${newTicket?.id || ''} submitted! Support team notified.`
     );
     setTimeout(() => {
       setSubmittedMessage(null);
@@ -112,11 +124,12 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
 
   const handleSubmitAccess = (e: React.FormEvent) => {
     e.preventDefault();
-    const app = ENTERPRISE_APPS.find(a => a.id === selectedAppId);
+    const targetApp = availableApps.find(a => a?.id === selectedAppId) || app || selectedApp;
+    const appName = targetApp?.name || targetApp?.nameTh || 'Application';
     setSubmittedMessage(
       language === 'TH' 
-        ? `ส่งคำขอเปิดสิทธิ์ใช้งาน ${app?.name} ไปยังหัวหน้างานเรียบร้อยแล้ว` 
-        : `Access request for ${app?.name} submitted to manager.`
+        ? `ส่งคำขอเปิดสิทธิ์ใช้งาน ${appName} ไปยังหัวหน้างานเรียบร้อยแล้ว` 
+        : `Access request for ${appName} submitted to manager.`
     );
     setTimeout(() => {
       setSubmittedMessage(null);
@@ -204,7 +217,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 <span>{language === 'TH' ? 'แนบข้อมูลเครื่องอัตโนมัติ:' : 'Auto-attached Machine:'}</span>
               </div>
               <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold text-[11px] truncate max-w-[200px]">
-                {machineInfo?.hostname || currentUser.workstationHostname} ({machineInfo?.localIp || currentUser.localIp})
+                {machineInfo?.hostname || currentUser?.workstationHostname || 'Client-PC'} ({machineInfo?.localIp || currentUser?.localIp || '192.168.7.x'})
               </span>
             </div>
 
@@ -294,11 +307,11 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span>{language === 'TH' ? 'บัญชีพนักงาน:' : 'Employee Account:'}</span>
-                <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold">{currentUser.email}</span>
+                <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold">{currentUser?.email || 'user@qisheng.local'}</span>
               </div>
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span>{language === 'TH' ? 'รหัสพนักงาน:' : 'Employee ID:'}</span>
-                <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{currentUser.employeeId}</span>
+                <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{currentUser?.employeeId || 'QS-USER'}</span>
               </div>
             </div>
 
@@ -430,11 +443,17 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 onChange={(e) => setSelectedAppId(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500"
               >
-                {ENTERPRISE_APPS.map((app) => (
-                  <option key={app.id} value={app.id}>
-                    {app.name} — {app.nameTh}
+                {availableApps.length > 0 ? (
+                  availableApps.map((target) => (
+                    <option key={target?.id || ''} value={target?.id || ''}>
+                      {target?.name || 'Application'} {target?.nameTh ? `— ${target.nameTh}` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">
+                    {language === 'TH' ? '-- ยังไม่มีรายการแอปพลิเคชัน --' : '-- No applications available --'}
                   </option>
-                ))}
+                )}
               </select>
             </div>
 
@@ -488,4 +507,15 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
       </div>
     </div>
   );
+};
+
+/**
+ * Top-level Guard Clause component:
+ * If modal is not open, return null immediately without running internal state or hooks.
+ */
+export const QuickActionsModal: React.FC<QuickActionsModalProps> = (props) => {
+  if (!props?.isOpen) {
+    return null;
+  }
+  return <QuickActionsModalContent {...props} />;
 };

@@ -3,81 +3,70 @@ import {
   CORPORATE_USERS, 
   DEFAULT_ADMIN_ACCOUNT,
   DEFAULT_USER_ACCOUNT,
-  ENTERPRISE_APPS, 
-  CORPORATE_ANNOUNCEMENTS, 
-  INITIAL_HELPDESK_TICKETS,
-  INITIAL_ROOM_BOOKINGS 
+  SOMCHAI_AVATAR,
+  INITIAL_ROOM_BOOKINGS,
+  CORPORATE_ANNOUNCEMENTS,
+  ENTERPRISE_APPS
 } from './data/portalData';
 import { 
   UserProfile, 
   EnterpriseApp, 
   AppCategory, 
   ClientMachineInfo, 
-  HelpdeskTicket, 
-  CorporateAnnouncement,
   RoomBooking,
-  isAdminUser 
+  VendorContact,
+  CorporateAnnouncement,
+  NavTab
 } from './types';
 import { detectClientMachineInfo } from './utils/clientMachineDetector';
+import { ADMIN_PIN } from './config/adminConfig';
+import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
 
-import { Sidebar, NavTab } from './components/Sidebar';
+import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { HeroClientInfo } from './components/HeroClientInfo';
 import { AppCard } from './components/AppCard';
 import { AppLaunchModal } from './components/AppLaunchModal';
 import { QuickActionsModal } from './components/QuickActionsModal';
 import { SystemStatusDrawer } from './components/SystemStatusDrawer';
-import { KnowledgeBaseView } from './components/KnowledgeBaseView';
-import { AnnouncementsView } from './components/AnnouncementsView';
 import { CalendarView } from './components/CalendarView';
 import { ExternalPortalsView } from './components/ExternalPortalsView';
 import { GoogleSearchModal } from './components/GoogleSearchModal';
 import { GoogleTranslateModal } from './components/GoogleTranslateModal';
-import { LoginModal } from './components/LoginModal';
-import { LoginPage } from './components/LoginPage';
-import { UserManagementView } from './components/UserManagementView';
+import { AnnouncementsView } from './components/AnnouncementsView';
 import { AppManageModal } from './components/AppManageModal';
-import { AvatarModal, PasswordResetModal } from './components/ProfileModals';
-import { EXTERNAL_PORTALS } from './data/externalPortalsData';
+import { VendorContactView } from './components/VendorContactView';
+import { AdminPinModal } from './components/AdminPinModal';
+import { DailyAnnouncementModal } from './components/DailyAnnouncementModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { 
   Clock, 
   Grid, 
-  ArrowUpRight, 
-  Bell, 
-  CheckCircle2,
-  Calendar as CalendarIcon,
-  Landmark,
-  Languages,
-  Search,
-  ExternalLink,
-  ShieldCheck,
-  Headphones,
-  KeyRound,
-  PhoneCall,
-  Activity,
+  Search, 
+  Plus, 
+  Trash2, 
+  Calculator, 
+  ReceiptText, 
+  Network, 
+  Landmark, 
+  Activity, 
+  HardDrive, 
   Layers,
-  Sparkles,
-  ChevronRight,
-  Calculator,
-  ReceiptText,
-  Users,
-  HardDrive,
-  Mail,
-  Network,
-  BookOpen,
-  Globe2,
-  Filter,
-  Check,
-  SlidersHorizontal,
-  ChevronDown,
-  RotateCcw,
-  Plus,
-  Trash2
+  BookUser,
+  Bell,
+  Star
 } from 'lucide-react';
 
 export default function App() {
-  // 1. Available User Accounts (Stored in localStorage)
+  // Requirement #1: Ensure default route is '/' and clear any leftover '/login'
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname !== '/' && window.location.pathname.includes('login')) {
+      window.history.replaceState(null, '', '/');
+    }
+  }, []);
+
+  // 1. Available User Accounts (Stored in localStorage for User Management)
   const [availableUsers, setAvailableUsers] = useState<UserProfile[]>(() => {
     try {
       const stored = localStorage.getItem('qs_user_accounts');
@@ -89,48 +78,203 @@ export default function App() {
     return CORPORATE_USERS;
   });
 
-  // 2. Authentication & Profile state (Stored in localStorage)
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+  // Requirement #1: Admin PIN Mode (PIN 1111)
+  // Replaced automatic IP/Hostname authentication with explicit Admin PIN Unlock
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
     try {
-      const stored = localStorage.getItem('qs_auth_user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.id) return parsed;
-      }
-    } catch {}
-    return DEFAULT_ADMIN_ACCOUNT;
-  });
-
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem('qs_is_logged_in');
-      return stored === 'true';
+      return sessionStorage.getItem('qs_admin_mode') === 'true';
     } catch {
       return false;
     }
   });
 
-  const isAdmin = isAdminUser(currentUser);
+  const [adminPinModalOpen, setAdminPinModalOpen] = useState(false);
 
-  // 3. Enterprise Apps Collection (Stored in localStorage)
+  // Client Machine Info (for badge display and telemetry only)
+  const [machineInfo, setMachineInfo] = useState<ClientMachineInfo | null>(null);
+
+  // Default initial user state is regular User role
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    return {
+      ...DEFAULT_USER_ACCOUNT,
+      workstationHostname: 'QISHENG-122',
+      localIp: '192.168.7.122',
+      role: 'user',
+      roleLevel: 'user',
+      name: 'General User',
+      nameTh: 'ผู้ใช้งานทั่วไป (User)',
+    };
+  });
+
+  // Effective Admin privilege is strictly driven by Admin Mode (PIN 1111)
+  const isAdmin = isAdminMode;
+
+  // Sync currentUser with Admin Mode toggle
+  useEffect(() => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      role: isAdminMode ? 'admin' : 'user',
+      roleLevel: isAdminMode ? 'admin' : 'user',
+      nameTh: isAdminMode ? 'ผู้ดูแลระบบ (Admin)' : 'ผู้ใช้งานทั่วไป (User)',
+      name: isAdminMode ? 'System Administrator' : 'General User',
+    }));
+  }, [isAdminMode]);
+
+  // Handle Admin PIN Unlock / Exit
+  const handleAdminPinSuccess = () => {
+    setIsAdminMode(true);
+    try {
+      sessionStorage.setItem('qs_admin_mode', 'true');
+    } catch {}
+  };
+
+  const handleExitAdminMode = () => {
+    setIsAdminMode(false);
+    try {
+      sessionStorage.removeItem('qs_admin_mode');
+    } catch {}
+  };
+
+  // Detect Client Machine on startup for badge display only
+  useEffect(() => {
+    let isMounted = true;
+    detectClientMachineInfo(currentUser).then((info) => {
+      if (!isMounted) return;
+      setMachineInfo(info);
+      const clientIp = info.localIp || '192.168.7.122';
+      const clientHostname = info.deviceName || info.hostname || 'QISHENG-122';
+
+      setCurrentUser((prev) => ({
+        ...prev,
+        workstationHostname: clientHostname,
+        localIp: clientIp,
+      }));
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  // Requirement #3.2 & #4.2: Corporate Announcements with daily dismissal logic and Admin CRUD
+  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_announcements_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return CORPORATE_ANNOUNCEMENTS;
+  });
+
+  const handleAddAnnouncement = (newAnn: CorporateAnnouncement) => {
+    setAnnouncements((prev) => {
+      const updated = [newAnn, ...prev];
+      try {
+        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDeleteAnnouncement = (annId: string) => {
+    setAnnouncements((prev) => {
+      const updated = prev.filter(a => a.id !== annId);
+      try {
+        localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const [dailyAnnouncementModalOpen, setDailyAnnouncementModalOpen] = useState<boolean>(false);
+  const [isDismissedToday, setIsDismissedToday] = useState<boolean>(() => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return localStorage.getItem('qs_announcement_dismissed_' + todayStr) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Automatically show Announcement Modal when opening the app for the first time of the day
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      const dismissed = localStorage.getItem('qs_announcement_dismissed_' + todayStr);
+      if (!dismissed) {
+        setDailyAnnouncementModalOpen(true);
+      }
+    } catch {}
+  }, []);
+
+  const handleDismissAnnouncementToday = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      localStorage.setItem('qs_announcement_dismissed_' + todayStr, 'true');
+    } catch {}
+    setIsDismissedToday(true);
+    setDailyAnnouncementModalOpen(false);
+  };
+
+  // Requirement #2 & #4: Vendor Contacts Collection (Stored in localStorage)
+  const [vendorContacts, setVendorContacts] = useState<VendorContact[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_vendor_contacts_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_VENDOR_CONTACTS;
+  });
+
+  const handleAddVendor = (newVendor: VendorContact) => {
+    setVendorContacts((prev) => {
+      const updated = [newVendor, ...prev];
+      try {
+        localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleUpdateVendor = (updatedVendor: VendorContact) => {
+    setVendorContacts((prev) => {
+      const updated = prev.map(v => v.id === updatedVendor.id ? updatedVendor : v);
+      try {
+        localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDeleteVendor = (vendorId: string) => {
+    setVendorContacts((prev) => {
+      const updated = prev.filter(v => v.id !== vendorId);
+      try {
+        localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleResetVendors = () => {
+    setVendorContacts(INITIAL_VENDOR_CONTACTS);
+    try {
+      localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(INITIAL_VENDOR_CONTACTS));
+    } catch {}
+  };
+
+
+  // 3. Enterprise Apps Collection
   const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
     try {
-      const stored = localStorage.getItem('qs_enterprise_apps');
+      const stored = localStorage.getItem('qs_enterprise_apps_v2');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
     return ENTERPRISE_APPS;
-  });
-
-  // 4. Custom Calendar Image (Stored in localStorage)
-  const [customCalendarImage, setCustomCalendarImage] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('qs_calendar_custom_image');
-    } catch {
-      return null;
-    }
   });
 
   // App CRUD Modal States
@@ -145,17 +289,19 @@ export default function App() {
         ? prev.map(a => a.id === app.id ? app : a)
         : [app, ...prev];
       try {
-        localStorage.setItem('qs_enterprise_apps', JSON.stringify(updated));
+        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
       } catch {}
       return updated;
     });
+    setAppModalOpen(false);
+    setEditingApp(null);
   };
 
   const handleDeleteApp = (appId: string) => {
     setEnterpriseApps((prev) => {
       const updated = prev.filter(a => a.id !== appId);
       try {
-        localStorage.setItem('qs_enterprise_apps', JSON.stringify(updated));
+        localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -183,9 +329,6 @@ export default function App() {
     });
     if (currentUser.id === updatedUser.id) {
       setCurrentUser(updatedUser);
-      try {
-        localStorage.setItem('qs_auth_user', JSON.stringify(updatedUser));
-      } catch {}
     }
   };
 
@@ -200,40 +343,14 @@ export default function App() {
     });
   };
 
-  // Calendar Image Handlers
-  const handleUploadCalendarImage = (imageUrl: string) => {
-    setCustomCalendarImage(imageUrl);
+  // Launch History tracking
+  const [launchHistory, setLaunchHistory] = useState<Record<string, number>>(() => {
     try {
-      localStorage.setItem('qs_calendar_custom_image', imageUrl);
+      const stored = localStorage.getItem('qs_launch_history');
+      if (stored) return JSON.parse(stored);
     } catch {}
-  };
-
-  const handleResetCalendarImage = () => {
-    setCustomCalendarImage(null);
-    try {
-      localStorage.removeItem('qs_calendar_custom_image');
-    } catch {}
-  };
-
-  // Authentication Handlers
-  const handleLoginSuccess = (user: UserProfile) => {
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    try {
-      localStorage.setItem('qs_is_logged_in', 'true');
-      localStorage.setItem('qs_auth_user', JSON.stringify(user));
-    } catch {}
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    try {
-      localStorage.removeItem('qs_is_logged_in');
-    } catch {}
-    if (currentTab === 'user-management') {
-      setCurrentTab('dashboard');
-    }
-  };
+    return {};
+  });
 
   // Layout & Navigation state
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -242,21 +359,19 @@ export default function App() {
 
   // Search & Filtering
   const [searchQuery, setSearchQuery] = useState('');
+  // Requirement #3: Default category is 'all' (All Apps)
   const [selectedCategory, setSelectedCategory] = useState<AppCategory>('all');
-  const [allAppsFilterDropdownOpen, setAllAppsFilterDropdownOpen] = useState(false);
 
-  // Client Machine Info
-  const [machineInfo, setMachineInfo] = useState<ClientMachineInfo | null>(null);
-  const [isDetectingMachine, setIsDetectingMachine] = useState(false);
-
-  // Favorites (Stored in localStorage)
+  // Favorites (Requirement #2.2: Stored in localStorage with sensible defaults)
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('qs_favorites');
-      return stored ? JSON.parse(stored) : ['app-express-accounting', 'app-dataforge-ocr', 'app-rd-efiling', 'app-google-drive', 'app-corporate-mail', 'app-router-config'];
-    } catch {
-      return ['app-express-accounting', 'app-dataforge-ocr', 'app-rd-efiling', 'app-google-drive', 'app-corporate-mail', 'app-router-config'];
-    }
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return ['app-express', 'app-boi-sw'];
   });
 
   // Modals & Drawers
@@ -266,157 +381,51 @@ export default function App() {
     type: 'helpdesk' | 'sspr' | 'access';
   }>({ isOpen: false, type: 'helpdesk' });
   const [systemStatusOpen, setSystemStatusOpen] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<CorporateAnnouncement | null>(null);
   const [googleSearchModalOpen, setGoogleSearchModalOpen] = useState(false);
   const [googleSearchInitialQuery, setGoogleSearchInitialQuery] = useState('');
   const [googleTranslateModalOpen, setGoogleTranslateModalOpen] = useState(false);
 
-  // Profile Settings Modals & Theme Mode (User Request #3)
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [passwordResetModalOpen, setPasswordResetModalOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('qs_theme') === 'dark';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('qs_theme', next ? 'dark' : 'light');
-      } catch {}
-      return next;
-    });
+  // Centralized Navigation with State Reset
+  const handleTabChange = (newTab: NavTab) => {
+    setSelectedAppForLaunch(null);
+    setQuickActionModal({ isOpen: false, type: 'helpdesk' });
+    setSystemStatusOpen(false);
+    setGoogleSearchModalOpen(false);
+    setGoogleTranslateModalOpen(false);
+    setAppModalOpen(false);
+    setEditingApp(null);
+    setAppToDeleteId(null);
+    setMobileSidebarOpen(false);
+    setSearchQuery('');
+    setCurrentTab(newTab);
   };
 
-  // Synchronize dark class to documentElement (html) and body
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  const handleSaveAvatar = (newAvatarUrl: string) => {
-    setCurrentUser((prev) => {
-      const updated = { ...prev, avatar: newAvatarUrl };
+  // Launch App Handler
+  const handleLaunchApp = (app: EnterpriseApp) => {
+    if (!app || !app.id) return;
+    setSelectedAppForLaunch(app);
+    setLaunchHistory((prev) => {
+      const updated = { ...prev, [app.id]: (prev[app.id] || 0) + 1 };
       try {
-        localStorage.setItem(`qs_avatar_${prev.id}`, newAvatarUrl);
+        localStorage.setItem('qs_launch_history', JSON.stringify(updated));
       } catch {}
       return updated;
     });
   };
 
-  // Restore custom avatar if stored in localStorage
-  useEffect(() => {
-    try {
-      const storedAvatar = localStorage.getItem(`qs_avatar_${currentUser.id}`);
-      if (storedAvatar && storedAvatar !== currentUser.avatar) {
-        setCurrentUser(prev => ({ ...prev, avatar: storedAvatar }));
-      }
-    } catch {}
-  }, [currentUser.id]);
+  // Theme Mode
+  const [darkMode] = useState<boolean>(false);
 
-  // Interactive Collections
-  const [tickets, setTickets] = useState<HelpdeskTicket[]>(INITIAL_HELPDESK_TICKETS);
+  // Corporate Calendar Data
   const [roomBookings] = useState<RoomBooking[]>(INITIAL_ROOM_BOOKINGS);
-  const [announcements, setAnnouncements] = useState<CorporateAnnouncement[]>(CORPORATE_ANNOUNCEMENTS);
 
-  // Announcements read tracking
-  const [readAnnouncementIds, setReadAnnouncementIds] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('qs_read_announcements');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const unreadAnnouncementsCount = announcements.filter(a => !readAnnouncementIds.includes(a.id)).length;
-
-  const handleMarkAnnouncementAsRead = (id: string) => {
-    setReadAnnouncementIds(prev => {
-      if (!prev.includes(id)) {
-        const next = [...prev, id];
-        try {
-          localStorage.setItem('qs_read_announcements', JSON.stringify(next));
-        } catch {}
-        return next;
-      }
-      return prev;
-    });
-  };
-
-  const handleMarkAllAnnouncementsAsRead = () => {
-    const allIds = announcements.map(a => a.id);
-    setReadAnnouncementIds(allIds);
-    try {
-      localStorage.setItem('qs_read_announcements', JSON.stringify(allIds));
-    } catch {}
-  };
-
-  // High-Priority Notifications Alert Feed for Right Sidebar
-  const highPriorityAlerts = [
-    {
-      id: 'al-1',
-      title: 'Router & Core Network Restored',
-      titleTh: 'สลับเราเตอร์สำรองและระบบเครือข่ายกลับสู่ปกติ',
-      time: '10m ago',
-      type: 'resolved',
-      badge: 'Urgent Resolved',
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    },
-    {
-      id: 'al-2',
-      title: 'October 2026 Company Holidays Released',
-      titleTh: 'ประกาศวันหยุดราชการประจำเดือนตุลาคม 2026',
-      time: '2h ago',
-      type: 'notice',
-      badge: 'Notice',
-      badgeColor: 'bg-blue-50 text-[#1E60D5] border-blue-200'
-    },
-    {
-      id: 'al-3',
-      title: 'DataForge OCR Engine v3.2 Updated',
-      titleTh: 'อัปเดตโมเดลอ่านบิลและใบเสร็จภาษีอัตโนมัติ',
-      time: '1d ago',
-      type: 'update',
-      badge: 'System Update',
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200'
-    }
-  ];
-
-  // Recently accessed apps with relative timestamps for 2-column recent updates
+  // Recently accessed apps log
   const recentAccessLog = [
     { appName: 'Express Accounting', appTh: 'ระบบบัญชี Express', time: '10m ago', icon: Calculator, color: 'text-[#1E60D5] bg-blue-50' },
-    { appName: 'DataForge OCR', appTh: 'ระบบสแกนเอกสารบิล AI', time: '35m ago', icon: Layers, color: 'text-purple-600 bg-purple-50' },
-    { appName: 'RD e-Filing (สรรพากร)', appTh: 'ยื่นแบบภาษีออนไลน์', time: '2h ago', icon: ReceiptText, color: 'text-emerald-600 bg-emerald-50' },
-    { appName: 'Google Drive Workspace', appTh: 'เอกสารส่วนกลางองค์กร', time: '4h ago', icon: HardDrive, color: 'text-amber-600 bg-amber-50' },
-    { appName: 'Qisheng Router & Firewall', appTh: 'เราเตอร์ & ระบบไฟร์วอลล์', time: 'Yesterday', icon: Network, color: 'text-indigo-600 bg-indigo-50' }
+    { appName: 'BOI Privileges Online', appTh: 'ระบบสิทธิประโยชน์ BOI', time: '35m ago', icon: ReceiptText, color: 'text-emerald-600 bg-emerald-50' },
+    { appName: 'Qisheng Core Router', appTh: 'เราเตอร์ & ระบบไฟร์วอลล์', time: '1h ago', icon: Network, color: 'text-purple-600 bg-purple-50' },
+    { appName: 'RD e-Filing (สรรพากร)', appTh: 'ยื่นแบบภาษีออนไลน์', time: '2h ago', icon: Landmark, color: 'text-amber-600 bg-amber-50' }
   ];
-
-  // Trigger Machine Info Detection when user changes
-  const runMachineDetection = async (user: UserProfile) => {
-    setIsDetectingMachine(true);
-    try {
-      const info = await detectClientMachineInfo(user);
-      setMachineInfo(info);
-    } catch (e) {
-      console.error('Failed to detect machine info', e);
-    } finally {
-      setIsDetectingMachine(false);
-    }
-  };
-
-  useEffect(() => {
-    runMachineDetection(currentUser);
-  }, [currentUser]);
 
   // Persist favorites
   const toggleFavorite = (appId: string) => {
@@ -429,145 +438,91 @@ export default function App() {
     });
   };
 
-  // Filter apps based on role, category, and search query
+  // Filter apps based on category and search query
   const filteredApps = useMemo(() => {
     return enterpriseApps.filter((app) => {
       const matchesSearch = 
-        searchQuery === '' ||
+        !searchQuery.trim() || 
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.nameTh.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.descriptionTh.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.category.toLowerCase().includes(searchQuery.toLowerCase());
+        app.descriptionTh.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCategory = selectedCategory === 'all' || app.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'all' || selectedCategory === app.category;
 
       return matchesSearch && matchesCategory;
     });
   }, [enterpriseApps, searchQuery, selectedCategory]);
 
-  // Frequently used & Favorites combined for Section 2 (Top 6 apps)
-  const frequentAndFavoriteApps = useMemo(() => {
-    const list: EnterpriseApp[] = [];
-    const seen = new Set<string>();
-
-    // 1. Favorites first
-    enterpriseApps.forEach(app => {
-      if (favorites.includes(app.id) && !seen.has(app.id)) {
-        seen.add(app.id);
-        list.push(app);
-      }
-    });
-
-    // 2. Then frequent apps
-    enterpriseApps.forEach(app => {
-      if (app.isFrequent && !seen.has(app.id)) {
-        seen.add(app.id);
-        list.push(app);
-      }
-    });
-
-    return list.slice(0, 6);
+  // Requirement #2.2: Pinned Favorites Apps Collection
+  const favoriteApps = useMemo(() => {
+    return enterpriseApps.filter((app) => favorites.includes(app.id));
   }, [enterpriseApps, favorites]);
 
-  // Home Page Filter State (User Request: เพิ่มปุ่มกรองลงไปแทนที่จะให้มันโชว์ทั้งหมด)
-  type HomeFilterType = 'all' | 'favorites' | 'accounting' | 'tax' | 'it' | 'operations' | 'productivity';
-  const [homeFilter, setHomeFilter] = useState<HomeFilterType>('all');
-  const [homeFilterOpen, setHomeFilterOpen] = useState(false);
-
-  const homeFilterOptions: { id: HomeFilterType; labelTh: string; labelEn: string; count?: number }[] = [
-    { id: 'all', labelTh: 'ทั้งหมด (ใช้บ่อย)', labelEn: 'All (Frequent)' },
-    { id: 'favorites', labelTh: '⭐ รายการโปรด', labelEn: 'Favorites', count: favorites.length },
-    { id: 'accounting', labelTh: 'การบัญชี', labelEn: 'Accounting', count: enterpriseApps.filter(a => a.category === 'accounting').length },
-    { id: 'tax', labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: enterpriseApps.filter(a => a.category === 'tax').length },
-    { id: 'it', labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: enterpriseApps.filter(a => a.category === 'it').length },
-    { id: 'operations', labelTh: 'ปฏิบัติการ & AI', labelEn: 'Operations & AI', count: enterpriseApps.filter(a => a.category === 'operations').length },
-    { id: 'productivity', labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: enterpriseApps.filter(a => a.category === 'productivity').length },
-  ];
-
-  const displayedHomeApps = useMemo(() => {
-    if (homeFilter === 'favorites') {
-      return enterpriseApps.filter(app => favorites.includes(app.id));
-    }
-    if (homeFilter === 'all') {
-      return frequentAndFavoriteApps;
-    }
-    return enterpriseApps.filter(app => app.category === homeFilter);
-  }, [homeFilter, favorites, frequentAndFavoriteApps, enterpriseApps]);
-
-  // System Categories specification
+  // Dashboard Category Matrix
   const categoryGridItems = [
     {
       id: 'accounting' as const,
-      nameTh: 'การบัญชี',
+      nameTh: 'บัญชี (Accounting)',
       nameEn: 'Accounting',
-      descTh: 'Express, GL, AP/AR, DataForge',
+      descTh: 'ระบบบัญชี การเงิน งบทดลอง ผังบัญชี',
       icon: Calculator,
       badgeStyle: 'bg-blue-50 text-[#1E60D5] border-blue-200 group-hover:bg-[#1E60D5] group-hover:text-white',
-      onClick: () => { setSelectedCategory('accounting'); setSearchQuery(''); setCurrentTab('all-apps'); }
+      onClick: () => { 
+        setSelectedCategory('accounting'); 
+        setSearchQuery(''); 
+        handleTabChange('all-apps'); 
+      }
     },
     {
-      id: 'tax' as const,
-      nameTh: 'ภาษี & ภาครัฐ',
-      nameEn: 'Tax / Gov',
-      descTh: 'RD e-Filing, e-Tax, สรรพากร',
+      id: 'boi' as const,
+      nameTh: 'BOI',
+      nameEn: 'BOI',
+      descTh: 'ระบบสิทธิประโยชน์ BOI งานนำเข้าส่งออก',
       icon: ReceiptText,
       badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white',
-      onClick: () => { setSelectedCategory('tax'); setSearchQuery(''); setCurrentTab('all-apps'); }
-    },
-    {
-      id: 'hr' as const,
-      nameTh: 'ทรัพยากรบุคคล',
-      nameEn: 'HR',
-      descTh: 'HRMS, บันทึกเวลา, ลางาน',
-      icon: Users,
-      badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-600 group-hover:text-white',
-      onClick: () => { setSelectedCategory('hr'); setSearchQuery(''); setCurrentTab('all-apps'); }
+      onClick: () => { 
+        setSelectedCategory('boi'); 
+        setSearchQuery(''); 
+        handleTabChange('all-apps'); 
+      }
     },
     {
       id: 'it' as const,
-      nameTh: 'โครงสร้างพื้นฐานไอที',
+      nameTh: 'IT',
       nameEn: 'IT Infrastructure',
-      descTh: 'Router, Firewall, WireGuard VPN',
+      descTh: 'ระบบเครือข่าย เราเตอร์ และไอทีองค์กร',
       icon: Network,
       badgeStyle: 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-600 group-hover:text-white',
-      onClick: () => { setSelectedCategory('it'); setSearchQuery(''); setCurrentTab('all-apps'); }
-    },
-    {
-      id: 'operations' as const,
-      nameTh: 'ปฏิบัติการ & ERP',
-      nameEn: 'Operations & ERP',
-      descTh: 'ERP Central, WMS, Supply Chain',
-      icon: Layers,
-      badgeStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white',
-      onClick: () => { setSelectedCategory('operations'); setSearchQuery(''); setCurrentTab('all-apps'); }
-    },
-    {
-      id: 'productivity' as const,
-      nameTh: 'เครื่องมือสำนักงาน',
-      nameEn: 'Workspace & Docs',
-      descTh: 'Google Workspace, Cloud Drive',
-      icon: Sparkles,
-      badgeStyle: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 group-hover:bg-fuchsia-600 group-hover:text-white',
-      onClick: () => { setSelectedCategory('productivity'); setSearchQuery(''); setCurrentTab('all-apps'); }
+      onClick: () => { 
+        setSelectedCategory('it'); 
+        setSearchQuery(''); 
+        handleTabChange('all-apps'); 
+      }
     },
     {
       id: 'external' as const,
-      nameTh: 'เว็บไซต์ภายนอก',
-      nameEn: 'External Sites',
-      descTh: '16 พอร์ทัลราชการ & สถาบันการเงิน',
-      icon: Globe2,
-      badgeStyle: 'bg-rose-50 text-rose-700 border-rose-200 group-hover:bg-rose-600 group-hover:text-white',
-      onClick: () => { setCurrentTab('external-portals'); }
+      nameTh: 'ระบบราชการ & ธนาคาร',
+      nameEn: 'Government & Banking',
+      descTh: 'สรรพากร ประกันสังคม DBD ธนาคารพาณิชย์',
+      icon: Landmark,
+      badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-600 group-hover:text-white',
+      onClick: () => { 
+        setSelectedCategory('external'); 
+        setSearchQuery(''); 
+        handleTabChange('all-apps'); 
+      }
     },
     {
-      id: 'all' as const,
-      nameTh: 'ระบบทั้งหมด',
-      nameEn: 'All Applications',
-      descTh: 'ศูนย์รวมทุกระบบงานขององค์กร',
-      icon: Grid,
-      badgeStyle: 'bg-slate-100 text-slate-800 border-slate-300 group-hover:bg-slate-900 group-hover:text-white',
-      onClick: () => { setSelectedCategory('all'); setSearchQuery(''); setCurrentTab('all-apps'); }
+      id: 'vendor' as const,
+      nameTh: 'จัดการผู้ให้บริการ (Vendor)',
+      nameEn: 'Vendor Contacts',
+      descTh: 'รายชื่อคู่ค้า ซัพพอร์ตโปรแกรม บัญชี และไอที',
+      icon: BookUser,
+      badgeStyle: 'bg-teal-50 text-teal-700 border-teal-200 group-hover:bg-teal-600 group-hover:text-white',
+      onClick: () => { 
+        handleTabChange('vendor-contact'); 
+      }
     }
   ];
 
@@ -575,43 +530,25 @@ export default function App() {
     switch (currentTab) {
       case 'dashboard': return language === 'TH' ? 'หน้าหลัก' : 'Home';
       case 'all-apps': return language === 'TH' ? 'แอปพลิเคชันทั้งหมด' : 'All Applications';
-      case 'external-portals': return language === 'TH' ? 'ระบบราชการ & ธนาคาร (External Portals)' : 'External Corporate Portals';
-      case 'announcements': return language === 'TH' ? 'ข่าวสาร & ประกาศ' : 'Announcements';
-      case 'calendar': return language === 'TH' ? 'ปฏิทินบริษัท' : 'Company Calendar';
-      case 'documents': return language === 'TH' ? 'เอกสาร & คู่มือการใช้งาน (Documents & Manuals)' : 'Documents & Manuals';
-      case 'user-management': return language === 'TH' ? 'จัดการผู้ใช้งานระบบ (User Management)' : 'User Management';
-      default: return 'QISHENG Digital Portal';
+      case 'vendor-contact': return language === 'TH' ? 'จัดการผู้ให้บริการ (Vendor Contact)' : 'Vendor Contacts';
+      case 'calendar': return language === 'TH' ? 'ปฏิทินองค์กร' : 'Organization Calendar';
+      case 'announcements': return language === 'TH' ? 'จัดการประกาศข่าวสาร (Announcements)' : 'Manage Announcements';
+      default: return 'QISHENG';
     }
   };
-
-  // Requirement #1: If user is not logged in, redirect to dedicated Login Page
-  if (!isLoggedIn) {
-    return (
-      <LoginPage
-        onLoginSuccess={handleLoginSuccess}
-        availableUsers={availableUsers}
-        language={language}
-        onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
-      />
-    );
-  }
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-[#0B0F19] text-slate-100' : 'bg-[#F4F6F9] text-slate-900'} flex font-sans antialiased transition-colors duration-200`}>
       {/* 1. Left Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
-        unreadAnnouncementsCount={unreadAnnouncementsCount}
-        onOpenQuickAction={(action) => setQuickActionModal({ isOpen: true, type: action })}
-        onOpenSystemStatus={() => setSystemStatusOpen(true)}
+        onSelectTab={handleTabChange}
         onOpenGoogleSearch={() => {
           setGoogleSearchInitialQuery(searchQuery);
           setGoogleSearchModalOpen(true);
         }}
         onOpenGoogleTranslate={() => setGoogleTranslateModalOpen(true)}
         language={language}
-        onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         isAdmin={isAdmin}
@@ -619,93 +556,88 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-72 flex flex-col min-w-0">
-        {/* 2. Top App Bar */}
+        {/* 2. Top App Bar (Only [ชื่อเครื่อง | IP] Badge + Copy + Language Toggle + Admin Mode button) */}
         <Header
-          currentUser={currentUser}
           machineInfo={machineInfo}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
-          onOpenSystemStatus={() => setSystemStatusOpen(true)}
-          onOpenGoogleSearch={() => {
-            setGoogleSearchInitialQuery(searchQuery);
-            setGoogleSearchModalOpen(true);
-          }}
-          onOpenGoogleTranslate={() => setGoogleTranslateModalOpen(true)}
-          onOpenAvatarModal={() => setAvatarModalOpen(true)}
-          onSaveAvatar={handleSaveAvatar}
-          onOpenPasswordResetModal={() => setPasswordResetModalOpen(true)}
-          darkMode={darkMode}
-          onToggleDarkMode={toggleDarkMode}
-          announcements={announcements}
-          unreadAnnouncementsCount={unreadAnnouncementsCount}
-          onOpenAnnouncements={() => setCurrentTab('announcements')}
-          onLogout={handleLogout}
           language={language}
           onToggleLanguage={() => setLanguage(l => l === 'TH' ? 'EN' : 'TH')}
           currentTabName={getTabTitle()}
+          isAdmin={isAdmin}
+          onOpenAdminPinModal={() => setAdminPinModalOpen(true)}
+          onExitAdminMode={handleExitAdminMode}
         />
 
         {/* Viewport Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto">
-          {/* Real-time Search Filter Results Banner */}
-          {searchQuery && (
-            <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs flex items-center justify-between">
-              <div className="text-xs text-slate-700 dark:text-slate-300">
-                {language === 'TH' ? 'ผลการค้นหาสำหรับ:' : 'Search results for:'}{' '}
-                <span className="font-mono text-[#1E60D5] dark:text-blue-400 font-bold">"{searchQuery}"</span>{' '}
-                <span className="text-slate-400 dark:text-slate-500">({filteredApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})</span>
-              </div>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-xs text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold"
-              >
-                {language === 'TH' ? 'ล้างการค้นหา' : 'Clear Search'}
-              </button>
-            </div>
-          )}
-
-          {/* 3. HOME VIEW: CLEAN MODERN ENTERPRISE DASHBOARD */}
+          {/* 3. HOME VIEW: DASHBOARD */}
           {currentTab === 'dashboard' && (
             <div className="space-y-7 max-w-7xl mx-auto">
-              {/* 1) Clean Welcome Banner */}
+              {/* 1) Clean Welcome Banner (No 'สวัสดี, คุณ Corporate', Navigator Welcome description) */}
               <HeroClientInfo
-                currentUser={currentUser}
                 language={language}
+                onOpenAnnouncements={() => setDailyAnnouncementModalOpen(true)}
+                hasUnreadAnnouncements={!isDismissedToday}
               />
 
-              {/* 2) Frequently Used Apps & Favorites (Hidden completely if no favorites or frequent apps) */}
-              {frequentAndFavoriteApps.length > 0 && (
-                <section className="space-y-3.5">
-                  <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center font-bold">
-                      <Clock className="w-3.5 h-3.5" />
+
+              {/* 2) Favorites Section (Requirement #2.2: Pinned & Favorite Apps) */}
+              <section className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-500 dark:text-amber-400 flex items-center justify-center font-bold">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                     </div>
                     <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                      {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used Applications'}
+                      {language === 'TH' ? 'รายการโปรด (Favorites / Pinned Apps)' : 'Favorites & Pinned Applications'}
                     </h2>
                     <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                      ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
+                      ({favoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
                     </span>
                   </div>
+                  {favoriteApps.length > 0 && (
+                    <button
+                      onClick={() => handleTabChange('all-apps')}
+                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
+                    >
+                      {language === 'TH' ? 'ดูระบบทั้งหมด →' : 'View all apps →'}
+                    </button>
+                  )}
+                </div>
 
+                {favoriteApps.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {frequentAndFavoriteApps.map((app) => (
+                    {favoriteApps.map((app) => (
                       <AppCard
                         key={app.id}
                         app={app}
                         currentUserRole={currentUser.role}
                         isFavorite={favorites.includes(app.id)}
                         onToggleFavorite={toggleFavorite}
-                        onLaunchApp={setSelectedAppForLaunch}
+                        onLaunchApp={handleLaunchApp}
                         language={language}
                       />
                     ))}
                   </div>
-                </section>
-              )}
+                ) : (
+                  <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+                    <Star className="w-6 h-6 text-amber-400 mx-auto opacity-75" />
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      {language === 'TH'
+                        ? 'ยังไม่มีรายการโปรด สามารถกดไอคอนรูปดาว (⭐) ที่การ์ดระบบในหน้า "แอปพลิเคชันทั้งหมด" เพื่อนำมาปักหมุดไว้ที่นี่'
+                        : 'No favorites pinned yet. Click the star icon (⭐) on any app in "All Applications" to pin it here.'}
+                    </p>
+                    <button
+                      onClick={() => handleTabChange('all-apps')}
+                      className="mt-1 px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 text-xs font-bold hover:bg-blue-100 transition-colors"
+                    >
+                      {language === 'TH' ? 'ไปยังหน้าแอปพลิเคชันทั้งหมด' : 'Go to All Applications'}
+                    </button>
+                  </div>
+                )}
+              </section>
 
-              {/* 3) System Categories */}
+              {/* 3) System Categories Matrix */}
               <section className="space-y-3.5">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
@@ -720,27 +652,27 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Category Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* 5 Category Cards (Navigates directly to category) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   {categoryGridItems.map((cat) => {
                     const Icon = cat.icon;
                     return (
                       <div
                         key={cat.id}
                         onClick={cat.onClick}
-                        className="group p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/50 cursor-pointer transition-all flex flex-col justify-between"
+                        className="group p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between"
                       >
-                        <div className="flex items-center mb-2.5">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
-                            <Icon className="w-4 h-4" />
+                        <div className="flex items-center mb-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
+                            <Icon className="w-5 h-5" />
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
+                          <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
                             {language === 'TH' ? cat.nameTh : cat.nameEn}
                           </div>
-                          <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate mt-0.5">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
                             {cat.descTh}
                           </div>
                         </div>
@@ -750,334 +682,270 @@ export default function App() {
                 </div>
               </section>
 
-                {/* 4) Recent Activity / Updates (Two Columns) */}
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Left Column: Recently Accessed Apps */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-[#1E60D5] dark:text-blue-400" />
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {language === 'TH' ? 'ประวัติการเข้าใช้งานล่าสุด' : 'Recent App Activity'}
-                        </h3>
-                      </div>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">Live Log</span>
+              {/* 4) Recent Activity & Fast Links */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-[#1E60D5] dark:text-blue-400" />
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {language === 'TH' ? 'ประวัติการเข้าใช้งานล่าสุด' : 'Recent App Activity'}
+                      </h3>
                     </div>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">Live Log</span>
+                  </div>
 
-                    <div className="space-y-2.5">
-                      {recentAccessLog.map((log, idx) => {
-                        const Icon = log.icon;
-                        return (
-                          <div 
-                            key={idx} 
-                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${log.color}`}>
-                                <Icon className="w-3.5 h-3.5" />
+                  <div className="space-y-2.5">
+                    {recentAccessLog.map((log, idx) => {
+                      const Icon = log.icon;
+                      return (
+                        <div 
+                          key={idx} 
+                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${log.color}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                {language === 'TH' ? log.appTh : log.appName}
                               </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                                  {language === 'TH' ? log.appTh : log.appName}
-                                </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                  {log.appName}
-                                </div>
+                              <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                {log.appName}
                               </div>
                             </div>
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
-                              {log.time}
-                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Important Announcements with Status Badges */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {language === 'TH' ? 'ประกาศสำคัญขององค์กร' : 'Company Announcements'}
-                        </h3>
-                      </div>
-                      <button
-                        onClick={() => setCurrentTab('announcements')}
-                        className="text-xs text-[#1E60D5] dark:text-blue-400 hover:underline font-semibold"
-                      >
-                        {language === 'TH' ? 'ดูทั้งหมด' : 'View All'}
-                      </button>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {announcements.slice(0, 3).map((ann) => (
-                        <div
-                          key={ann.id}
-                          onClick={() => setSelectedAnnouncement(ann)}
-                          className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800/70 hover:bg-blue-50/30 dark:hover:bg-slate-800/50 cursor-pointer transition-all group"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
-                              ann.priority === 'urgent'
-                                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
-                                : ann.tag === 'Tax Deadline'
-                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-                                : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
-                            }`}>
-                              {ann.priority === 'urgent' ? 'Urgent' : ann.tag === 'Tax Deadline' ? 'Notice' : 'News'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{ann.date}</span>
-                          </div>
-
-                          <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 line-clamp-1">
-                            {language === 'TH' ? ann.title : ann.titleEn}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                            {ann.summary}
-                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
+                            {log.time}
+                          </span>
                         </div>
-                      ))}
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Machine Network & Workstation Status */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Network className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {language === 'TH' ? 'สถานะเครื่องลูกข่าย (Client Machine)' : 'Workstation Status'}
+                      </h3>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Online
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'ชื่อเครื่อง Workstation' : 'Hostname'}:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">{currentUser.workstationHostname || 'QISHENG-122'}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'ที่อยู่ IP เครือข่าย' : 'Client IP Address'}:</span>
+                      <span className="font-mono font-bold text-[#1E60D5] dark:text-blue-400">{currentUser.localIp || '192.168.7.122'}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'สิทธิ์การใช้งานระบบ' : 'Access Role'}:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-lg text-[11px] ${isAdmin ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-blue-100 text-[#1E60D5]'}`}>
+                        {isAdmin ? 'Admin (ผู้ดูแลระบบ)' : 'User (พนักงานทั่วไป)'}
+                      </span>
                     </div>
                   </div>
-                </section>
+                </div>
+              </section>
             </div>
           )}
 
-          {/* ALL APPS VIEW */}
-          {currentTab === 'all-apps' && (() => {
-            const allAppsCategories = [
-              { id: 'all' as AppCategory, labelTh: 'ทั้งหมด', labelEn: 'All Apps', count: enterpriseApps.length },
-              { id: 'accounting' as AppCategory, labelTh: 'การบัญชี', labelEn: 'Accounting', count: enterpriseApps.filter(a => a.category === 'accounting').length },
-              { id: 'tax' as AppCategory, labelTh: 'ภาษี & ราชการ', labelEn: 'Tax / Gov', count: enterpriseApps.filter(a => a.category === 'tax').length },
-              { id: 'hr' as AppCategory, labelTh: 'ทรัพยากรบุคคล', labelEn: 'HR', count: enterpriseApps.filter(a => a.category === 'hr').length },
-              { id: 'it' as AppCategory, labelTh: 'โครงสร้างไอที', labelEn: 'IT Infra', count: enterpriseApps.filter(a => a.category === 'it').length },
-              { id: 'operations' as AppCategory, labelTh: 'ปฏิบัติการ & ERP', labelEn: 'Operations', count: enterpriseApps.filter(a => a.category === 'operations').length },
-              { id: 'productivity' as AppCategory, labelTh: 'เครื่องมือสำนักงาน', labelEn: 'Workspace', count: enterpriseApps.filter(a => a.category === 'productivity').length },
-            ];
-
-            return (
-              <div className="space-y-6 animate-in fade-in">
-                {/* Filter and Search Bar & Admin Add App button */}
-                <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 relative ${allAppsFilterDropdownOpen ? 'z-40' : 'z-20'}`}>
-                  {/* Left: Icon-Only Filter Button & ทั้งหมด only */}
-                  <div className="flex items-center gap-2">
-                    {/* ปุ่มกรองมีแค่รูป (Icon-only Filter Button) */}
-                    <div className="relative z-50">
+          {/* 4. ALL APPS VIEW */}
+          {currentTab === 'all-apps' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Category Tabs & Search Bar / Add App Button */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                {/* 5 Tabs: 1) ทั้งหมด (All) 2) บัญชี (Accounting) 3) BOI 4) IT 5) ระบบราชการ & ธนาคาร */}
+                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-x-auto">
+                  {[
+                    { id: 'all' as const, labelTh: 'ทั้งหมด (All)', labelEn: 'All Apps', icon: Grid },
+                    { id: 'accounting' as const, labelTh: 'บัญชี (Accounting)', labelEn: 'Accounting', icon: Calculator },
+                    { id: 'boi' as const, labelTh: 'BOI', labelEn: 'BOI', icon: ReceiptText },
+                    { id: 'it' as const, labelTh: 'IT', labelEn: 'IT', icon: Network },
+                    { id: 'external' as const, labelTh: 'ระบบราชการ & ธนาคาร', labelEn: 'Gov & Banking', icon: Landmark }
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = selectedCategory === tab.id;
+                    return (
                       <button
-                        onClick={() => setAllAppsFilterDropdownOpen(!allAppsFilterDropdownOpen)}
-                        className={`w-9 h-9 rounded-xl border transition-all shadow-2xs flex items-center justify-center shrink-0 relative ${
-                          selectedCategory !== 'all'
-                            ? 'bg-[#1E60D5] text-white border-[#1E60D5] shadow-xs'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        key={tab.id}
+                        onClick={() => {
+                          setSelectedCategory(tab.id);
+                          setSearchQuery('');
+                        }}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                          isActive
+                            ? 'bg-[#1E60D5] text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
-                        title={
-                          selectedCategory !== 'all'
-                            ? `${language === 'TH' ? 'ตัวกรอง:' : 'Filter:'} ${allAppsCategories.find(c => c.id === selectedCategory)?.labelTh}`
-                            : (language === 'TH' ? 'ตัวกรอง' : 'Filter')
-                        }
-                        aria-label="Filter"
                       >
-                        <Filter className="w-4 h-4" />
-                        {selectedCategory !== 'all' && (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
-                        )}
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{language === 'TH' ? tab.labelTh : tab.labelEn}</span>
                       </button>
+                    );
+                  })}
+                </div>
 
-                      {/* Click outside backdrop */}
-                      {allAppsFilterDropdownOpen && (
-                        <div 
-                          className="fixed inset-0 z-[90]" 
-                          onClick={() => setAllAppsFilterDropdownOpen(false)} 
-                        />
-                      )}
-
-                      {/* Filter Dropdown Menu */}
-                      {allAppsFilterDropdownOpen && (
-                        <div className="absolute left-0 top-full mt-2 z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl dark:shadow-slate-950/80 p-2.5 animate-in fade-in zoom-in-95">
-                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            {language === 'TH' ? 'เลือกหมวดหมู่ที่ต้องการกรอง' : 'Select Category to Filter'}
-                          </div>
-                          <div className="space-y-1 mt-1 max-h-80 overflow-y-auto">
-                            {allAppsCategories.map((cat) => (
-                              <button
-                                key={cat.id}
-                                onClick={() => {
-                                  setSelectedCategory(cat.id);
-                                  setAllAppsFilterDropdownOpen(false);
-                                }}
-                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left ${
-                                  selectedCategory === cat.id
-                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300'
-                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                }`}
-                              >
-                                <span>{language === 'TH' ? cat.labelTh : cat.labelEn}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                                  selectedCategory === cat.id
-                                    ? 'bg-[#1E60D5] text-white'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                                }`}>
-                                  {cat.count}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ปุ่มแสดงชื่อหมวดหมู่ที่เลือก */}
-                    {(() => {
-                      const currentCatObj = allAppsCategories.find(c => c.id === selectedCategory) || allAppsCategories[0];
-                      return (
-                        <button
-                          onClick={() => {
-                            if (selectedCategory !== 'all') {
-                              setSelectedCategory('all');
-                            }
-                          }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 bg-[#1E60D5] text-white shadow-2xs"
-                          title={selectedCategory !== 'all' ? (language === 'TH' ? 'คลิกเพื่อกลับไปแสดงทั้งหมด' : 'Click to reset to all') : undefined}
-                        >
-                          <span>{language === 'TH' ? currentCatObj.labelTh : currentCatObj.labelEn}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-blue-800 text-white">
-                            {currentCatObj.count}
-                          </span>
-                        </button>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Right: Search input & Admin "+ Add App" Button (Requirement #4) */}
-                  <div className="flex items-center gap-2">
+                {/* Right: Search Input & Admin "+ Add App" Button */}
+                <div className="flex items-center gap-2">
+                  {selectedCategory !== 'external' && (
                     <div className="relative min-w-[180px] sm:w-60 shrink-0">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={language === 'TH' ? 'ค้นหาระบบงานองค์กร...' : 'Filter apps...'}
+                        placeholder={language === 'TH' ? 'ค้นหาระบบงาน...' : 'Search apps...'}
                         className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
                       />
                     </div>
+                  )}
 
-                    {/* Admin "+ Add New App" button */}
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          setEditingApp(null);
-                          setAppModalOpen(true);
-                        }}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
-                        title={language === 'TH' ? 'เพิ่มแอปพลิเคชันองค์กรใหม่' : 'Add new enterprise app'}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>{language === 'TH' ? '+ เพิ่มแอป' : '+ Add App'}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Grid of All Application Cards */}
-                {filteredApps.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {filteredApps.map((app) => (
-                      <AppCard
-                        key={app.id}
-                        app={app}
-                        currentUserRole={currentUser.role}
-                        isFavorite={favorites.includes(app.id)}
-                        onToggleFavorite={toggleFavorite}
-                        onLaunchApp={setSelectedAppForLaunch}
-                        language={language}
-                        isAdmin={isAdmin}
-                        onEditApp={(appToEdit) => {
-                          setEditingApp(appToEdit);
-                          setAppModalOpen(true);
-                        }}
-                        onDeleteApp={(appIdToDelete) => {
-                          setAppToDeleteId(appIdToDelete);
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2.5">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      {language === 'TH' ? 'ไม่พบระบบงานที่ตรงกับตัวกรองที่เลือก' : 'No applications match the current filter.'}
-                    </p>
+                  {isAdmin && selectedCategory !== 'external' && (
                     <button
-                      onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
-                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
+                      onClick={() => {
+                        setEditingApp(null);
+                        setAppModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                      title={language === 'TH' ? 'เพิ่มแอปพลิเคชันองค์กรใหม่' : 'Add new enterprise app'}
                     >
-                      {language === 'TH' ? 'ล้างตัวกรองเพื่อแสดงทั้งหมด' : 'Reset filter to show all'}
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{language === 'TH' ? '+ เพิ่มแอป' : '+ Add App'}</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            );
-          })()}
 
-          {/* EXTERNAL PORTALS VIEW */}
-          {currentTab === 'external-portals' && (
-            <ExternalPortalsView
+              {/* Sub-view: If External Portals tab, show ExternalPortalsView */}
+              {selectedCategory === 'external' ? (
+                <ExternalPortalsView
+                  language={language}
+                  onOpenGoogleSearchWithQuery={(q) => {
+                    setGoogleSearchInitialQuery(q);
+                    setGoogleSearchModalOpen(true);
+                  }}
+                />
+              ) : (
+                /* Otherwise show Corporate Apps Grid or Empty State */
+                <div>
+                  {filteredApps.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {filteredApps.map((app) => (
+                        <AppCard
+                          key={app.id}
+                          app={app}
+                          currentUserRole={currentUser.role}
+                          isFavorite={favorites.includes(app.id)}
+                          onToggleFavorite={toggleFavorite}
+                          onLaunchApp={handleLaunchApp}
+                          language={language}
+                          isAdmin={isAdmin}
+                          onEditApp={(appToEdit) => {
+                            setEditingApp(appToEdit);
+                            setAppModalOpen(true);
+                          }}
+                          onDeleteApp={(appIdToDelete) => {
+                            setAppToDeleteId(appIdToDelete);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    /* Requirement #4: Clean empty state prepared for real apps with Admin + Add App */
+                    <div className="py-16 px-6 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 max-w-xl mx-auto my-4">
+                      <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
+                        {selectedCategory === 'accounting' ? (
+                          <Calculator className="w-7 h-7" />
+                        ) : selectedCategory === 'boi' ? (
+                          <ReceiptText className="w-7 h-7" />
+                        ) : selectedCategory === 'it' ? (
+                          <Network className="w-7 h-7" />
+                        ) : (
+                          <Grid className="w-7 h-7" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                          {language === 'TH' 
+                            ? `ยังไม่มีระบบงาน${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี (Accounting)' : selectedCategory === 'boi' ? 'BOI' : 'IT'}`}`
+                            : `No applications found`}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                          {language === 'TH'
+                            ? 'เว้นพื้นที่ว่างเตรียมรับลิงก์ระบบงานจริงขององค์กร ผู้ดูแลระบบสามารถกดปุ่ม "+ เพิ่มแอป" เพื่อเพิ่มลิงก์ใช้งาน'
+                            : 'Clean empty space reserved for real corporate application links. Administrators can use "+ Add App" to add links.'}
+                        </p>
+                      </div>
+                      {isAdmin && (
+                        <div className="pt-2">
+                          <button
+                            onClick={() => {
+                              setEditingApp(null);
+                              setAppModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>
+                              {language === 'TH' 
+                                ? `+ เพิ่มแอป${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี' : selectedCategory === 'boi' ? 'BOI' : 'IT'}`}` 
+                                : `+ Add App`}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. VENDOR CONTACT VIEW */}
+          {currentTab === 'vendor-contact' && (
+            <VendorContactView
+              vendors={vendorContacts}
+              onAddVendor={handleAddVendor}
+              onUpdateVendor={handleUpdateVendor}
+              onDeleteVendor={handleDeleteVendor}
+              onResetDefaultVendors={handleResetVendors}
+              isAdmin={isAdmin}
               language={language}
-              onOpenGoogleSearchWithQuery={(q) => {
-                setGoogleSearchInitialQuery(q);
-                setGoogleSearchModalOpen(true);
-              }}
+              onOpenAdminPinModal={() => setAdminPinModalOpen(true)}
             />
           )}
 
-          {/* ANNOUNCEMENTS VIEW */}
+          {/* 6. CALENDAR VIEW */}
+          {currentTab === 'calendar' && (
+            <CalendarView
+              key="calendar"
+              roomBookings={roomBookings}
+              language={language}
+              isAdmin={isAdmin}
+            />
+          )}
+
+          {/* 7. MANAGE ANNOUNCEMENTS VIEW (Requirement #4.2: Admin Announcements Management) */}
           {currentTab === 'announcements' && (
             <AnnouncementsView
               announcements={announcements}
               language={language}
-              readAnnouncementIds={readAnnouncementIds}
-              onMarkAsRead={handleMarkAnnouncementAsRead}
-              onMarkAllAsRead={handleMarkAllAnnouncementsAsRead}
-              onAddWelcomeAnnouncement={() => setAnnouncements(CORPORATE_ANNOUNCEMENTS)}
-            />
-          )}
-
-          {/* CALENDAR VIEW (Requirement #5: with Admin Upload Support) */}
-          {currentTab === 'calendar' && (
-            <CalendarView
-              roomBookings={roomBookings}
-              language={language}
               isAdmin={isAdmin}
-              customCalendarImage={customCalendarImage}
-              onUploadCalendarImage={handleUploadCalendarImage}
-              onResetCalendarImage={handleResetCalendarImage}
+              onAddAnnouncement={handleAddAnnouncement}
+              onDeleteAnnouncement={handleDeleteAnnouncement}
             />
-          )}
-
-          {/* DOCUMENTS & MANUALS VIEW */}
-          {currentTab === 'documents' && (
-            <KnowledgeBaseView language={language} />
-          )}
-
-          {/* USER MANAGEMENT VIEW (Requirement #3: Admin Only) */}
-          {currentTab === 'user-management' && (
-            isAdmin ? (
-              <UserManagementView
-                currentUser={currentUser}
-                users={availableUsers}
-                onAddUser={handleAddUser}
-                onUpdateUser={handleUpdateUser}
-                onDeleteUser={handleDeleteUser}
-                language={language}
-              />
-            ) : (
-              <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <p className="text-sm font-semibold text-rose-600">
-                  {language === 'TH' ? 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเข้าถึงหน้านี้ได้' : 'Access Restricted to Administrators'}
-                </p>
-              </div>
-            )
           )}
         </main>
       </div>
@@ -1094,6 +962,7 @@ export default function App() {
       <AppManageModal
         isOpen={appModalOpen}
         editingApp={editingApp}
+        defaultCategory={selectedCategory === 'external' ? 'accounting' : selectedCategory}
         onClose={() => {
           setAppModalOpen(false);
           setEditingApp(null);
@@ -1137,15 +1006,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Quick Actions Modal (Helpdesk, SSPR, Access Request) */}
+      {/* Quick Actions Modal */}
       <QuickActionsModal
         isOpen={quickActionModal.isOpen}
         initialType={quickActionModal.type}
         currentUser={currentUser}
+        machineInfo={machineInfo}
+        apps={enterpriseApps}
         onClose={() => setQuickActionModal({ isOpen: false, type: 'helpdesk' })}
-        onSubmitTicket={(newTicket) => {
-          setTickets([newTicket, ...tickets]);
-        }}
         language={language}
       />
 
@@ -1171,21 +1039,23 @@ export default function App() {
         language={language}
       />
 
-      {/* User Profile Settings Modals (Avatar & Password Reset) */}
-      <AvatarModal
-        isOpen={avatarModalOpen}
-        currentUser={currentUser}
-        onClose={() => setAvatarModalOpen(false)}
-        onSaveAvatar={handleSaveAvatar}
+      {/* Admin PIN Unlock Modal (PIN 1111 Mode) */}
+      <AdminPinModal
+        isOpen={adminPinModalOpen}
+        onClose={() => setAdminPinModalOpen(false)}
+        onSuccess={handleAdminPinSuccess}
         language={language}
       />
 
-      <PasswordResetModal
-        isOpen={passwordResetModalOpen}
-        currentUser={currentUser}
-        onClose={() => setPasswordResetModalOpen(false)}
+      {/* Daily Announcement Modal (Daily Auto-popup / Dismissed by Date in LocalStorage) */}
+      <DailyAnnouncementModal
+        isOpen={dailyAnnouncementModalOpen}
+        onClose={() => setDailyAnnouncementModalOpen(false)}
+        onDismissToday={handleDismissAnnouncementToday}
+        announcements={announcements}
         language={language}
       />
     </div>
   );
 }
+

@@ -1,12 +1,12 @@
 import { ClientMachineInfo, UserProfile, DeviceHardwareSpecs } from '../types';
 
 export const DEFAULT_DEVICE_SPECS: DeviceHardwareSpecs = {
-  deviceName: 'QISHENG-022',
+  deviceName: 'QISHENG-122',
   domainSuffix: 'qisheng.local',
-  processor: 'Intel(R) Core(TM) i3-9100 CPU @ 3.60GHz (3.60 GHz)',
+  processor: 'Intel(R) Core(TM) i5-12400 CPU @ 2.50GHz (2.50 GHz)',
   installedRam: '16.0 GB (15.8 GB usable)',
-  graphicsCard: 'Intel(R) UHD Graphics 630 (128 MB)',
-  storage: '73 GB of 932 GB used',
+  graphicsCard: 'Intel(R) UHD Graphics 730 (128 MB)',
+  storage: '128 GB of 512 GB NVMe SSD used',
   deviceId: '1FCD6E1E-F35D-44D1-A065-5DA078A8061B',
   productId: '00327-35195-21387-AAOEM',
   systemType: '64-bit operating system, x64-based processor',
@@ -193,9 +193,6 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     }
   }
 
-  // The actual, dynamically detected IP for THIS client machine
-  const effectiveClientIp = rtcLocalIp || requestClientIp || publicClientIp || (isLocalhostBrowser ? '127.0.0.1' : '192.168.1.100');
-
   // 4. Derive or retrieve Client Device Name
   let savedDeviceName = '';
   try {
@@ -205,51 +202,40 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     }
   } catch {}
 
+  let customStoredIp = '';
+  try {
+    customStoredIp = localStorage.getItem('qs_client_ip') || '';
+  } catch {}
+
+  // The actual, dynamically detected IP for THIS client machine (defaults to 192.168.7.122)
+  const effectiveClientIp = customStoredIp || rtcLocalIp || requestClientIp || (publicClientIp && publicClientIp !== '127.0.0.1' ? publicClientIp : null) || '192.168.7.122';
+
   // Stable client identifier for this specific machine/browser instance
   let clientMachineId = '';
   try {
     clientMachineId = localStorage.getItem('qs_client_machine_id') || '';
     if (!clientMachineId) {
-      const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-      clientMachineId = randomPart;
+      clientMachineId = '122';
       localStorage.setItem('qs_client_machine_id', clientMachineId);
     }
   } catch {
-    clientMachineId = '022';
+    clientMachineId = '122';
   }
 
-  // Derive suffix from IP if available (e.g. 192.168.1.22 -> 022)
+  // Derive suffix from IP if available (e.g. 192.168.7.122 -> 122)
   let ipSuffix = '';
   if (effectiveClientIp && effectiveClientIp.includes('.')) {
     const segments = effectiveClientIp.split('.');
     const lastOctet = segments[segments.length - 1];
     if (lastOctet && !isNaN(Number(lastOctet))) {
-      ipSuffix = lastOctet.padStart(3, '0');
+      ipSuffix = lastOctet;
     }
   }
 
-  const machineSuffix = ipSuffix || clientMachineId;
+  const machineSuffix = ipSuffix || clientMachineId || '122';
 
-  // Generate dynamic client device name matching client's OS if none saved
-  let dynamicDeviceName = '';
-  if (savedDeviceName) {
-    dynamicDeviceName = savedDeviceName;
-  } else {
-    const os = env.osName.toLowerCase();
-    if (os.includes('win')) {
-      dynamicDeviceName = `QISHENG-${machineSuffix}`;
-    } else if (os.includes('mac')) {
-      dynamicDeviceName = `MAC-${machineSuffix}`;
-    } else if (os.includes('linux')) {
-      dynamicDeviceName = `LINUX-${machineSuffix}`;
-    } else if (os.includes('android')) {
-      dynamicDeviceName = `AND-${machineSuffix}`;
-    } else if (os.includes('ios')) {
-      dynamicDeviceName = `IOS-${machineSuffix}`;
-    } else {
-      dynamicDeviceName = `PC-${machineSuffix}`;
-    }
-  }
+  // Generate client device name (defaults to QISHENG-122 unless configured otherwise)
+  let dynamicDeviceName = savedDeviceName || `QISHENG-${machineSuffix}`;
 
   // Read stored device specs
   let deviceSpecs = { ...DEFAULT_DEVICE_SPECS };

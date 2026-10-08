@@ -36,6 +36,7 @@ interface AppManageModalProps {
   onClose: () => void;
   onSaveApp: (app: EnterpriseApp) => void;
   language: 'TH' | 'EN';
+  defaultCategory?: AppCategory;
 }
 
 export const AVAILABLE_APP_ICONS: Array<{ name: string; label: string; icon: React.ElementType }> = [
@@ -65,11 +66,15 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
   editingApp,
   onClose,
   onSaveApp,
-  language
+  language,
+  defaultCategory = 'accounting'
 }) => {
+  const resolvedDefaultCat: Exclude<AppCategory, 'all'> = 
+    defaultCategory === 'boi' ? 'boi' : defaultCategory === 'it' ? 'it' : 'accounting';
+
   const [name, setName] = useState('');
   const [nameTh, setNameTh] = useState('');
-  const [category, setCategory] = useState<Exclude<AppCategory, 'all'>>('operations');
+  const [category, setCategory] = useState<Exclude<AppCategory, 'all'>>(resolvedDefaultCat);
   const [description, setDescription] = useState('');
   const [descriptionTh, setDescriptionTh] = useState('');
   const [url, setUrl] = useState('');
@@ -96,7 +101,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
     } else {
       setName('');
       setNameTh('');
-      setCategory('operations');
+      setCategory(resolvedDefaultCat);
       setDescription('');
       setDescriptionTh('');
       setUrl('https://');
@@ -107,7 +112,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       setAccessLevel('all');
     }
     setError(null);
-  }, [editingApp, isOpen]);
+  }, [editingApp, isOpen, resolvedDefaultCat]);
 
   if (!isOpen) return null;
 
@@ -232,12 +237,9 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
                 onChange={(e) => setCategory(e.target.value as any)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1E60D5]"
               >
-                <option value="accounting">Accounting (การบัญชี)</option>
-                <option value="tax">Tax / Gov (ภาษีและราชการ)</option>
-                <option value="hr">HR & People (ทรัพยากรบุคคล)</option>
-                <option value="it">IT Infra (ระบบไอที)</option>
-                <option value="operations">Operations (ปฏิบัติการ & ERP)</option>
-                <option value="productivity">Productivity (เครื่องมือทำงาน)</option>
+                <option value="accounting">บัญชี (Accounting)</option>
+                <option value="boi">BOI</option>
+                <option value="it">IT</option>
               </select>
             </div>
 

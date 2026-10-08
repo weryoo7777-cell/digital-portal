@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -21,7 +21,10 @@ import {
   Sparkles,
   RefreshCw,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet,
+  Download,
+  CheckCircle2
 } from 'lucide-react';
 import { UserProfile, RoleLevel, isAdminUser } from '../types';
 import { SOMCHAI_AVATAR } from '../data/portalData';
@@ -74,6 +77,91 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formRole, setFormRole] = useState<RoleLevel>('user');
   const [formAvatar, setFormAvatar] = useState(AVATAR_PRESETS[0]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // User Request 4.1: Reset local state on unmount
+  useEffect(() => {
+    return () => {
+      setSearchQuery('');
+      setRoleFilter('all');
+      setIsModalOpen(false);
+      setEditingUser(null);
+      setDeleteConfirmId(null);
+      setExportNotice(null);
+    };
+  }, []);
+
+  // User Request 3.1: Export all user accounts to Excel (.csv with UTF-8 BOM)
+  const handleExportUsers = () => {
+    try {
+      const headers = [
+        'ลำดับ (No.)',
+        'รหัสพนักงาน (Employee ID)',
+        'ชื่อผู้ใช้งาน (Username)',
+        'ชื่อ-สกุล (ภาษาไทย)',
+        'Name (English)',
+        'อีเมล (Email)',
+        'สิทธิ์การใช้งาน (Role)',
+        'ระดับสิทธิ์ (Role Level)',
+        'แผนก (ภาษาไทย)',
+        'Department (English)',
+        'ตำแหน่ง (Position)',
+        'สถานะการใช้งาน (Status)',
+        'ระบบล็อกอิน (SSO Provider)',
+        'คอมพิวเตอร์ประจำตัว (Workstation)',
+        'VLAN ที่สังกัด',
+        'IP Address',
+        'วันที่สร้างบัญชี (Created At)'
+      ];
+
+      const escapeCsvCell = (val?: string | number | null) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = users.map((u, idx) => [
+        escapeCsvCell(idx + 1),
+        escapeCsvCell(u.employeeId || '-'),
+        escapeCsvCell(u.username || '-'),
+        escapeCsvCell(u.nameTh || u.name),
+        escapeCsvCell(u.name),
+        escapeCsvCell(u.email),
+        escapeCsvCell(isAdminUser(u) ? 'ผู้ดูแลระบบ (Admin)' : 'ผู้ใช้ทั่วไป (User)'),
+        escapeCsvCell(u.roleLevel || (isAdminUser(u) ? 'admin' : 'user')),
+        escapeCsvCell(u.departmentTh || u.department),
+        escapeCsvCell(u.department),
+        escapeCsvCell(u.position || '-'),
+        escapeCsvCell('Active (เปิดใช้งาน)'),
+        escapeCsvCell(u.ssoProvider || 'DirectAuth'),
+        escapeCsvCell(u.workstationHostname || '-'),
+        escapeCsvCell(u.assignedVlan || '-'),
+        escapeCsvCell(u.localIp || '-'),
+        escapeCsvCell(u.createdAt || '-')
+      ].join(','));
+
+      // UTF-8 BOM (\uFEFF) ensures Excel opens Thai and English text without garbled characters
+      const csvString = '\uFEFF' + [headers.map(h => `"${h}"`).join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      const filename = `QISHENG_User_Accounts_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      downloadLink.setAttribute('href', url);
+      downloadLink.setAttribute('download', filename);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(url);
+
+      setExportNotice(language === 'TH' 
+        ? `ส่งออกข้อมูลผู้ใช้ ${users.length} รายการเป็นไฟล์ Excel (.csv) สำเร็จ!` 
+        : `Exported ${users.length} user accounts to Excel (.csv) successfully!`);
+      setTimeout(() => setExportNotice(null), 4000);
+    } catch (err) {
+      console.error('Failed to export users to Excel:', err);
+    }
+  };
 
   const isAdmin = isAdminUser(currentUser);
 
@@ -249,18 +337,42 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             </div>
           </div>
 
-          {/* Add User Button (Only visible to Admin) */}
-          {isAdmin && (
+          {/* Action Buttons: Export to Excel & Add User */}
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={handleOpenAddModal}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-98 shrink-0"
+              onClick={handleExportUsers}
+              className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-98 shrink-0 cursor-pointer"
+              title={language === 'TH' ? 'ส่งออกข้อมูลผู้ใช้ทั้งหมดเป็นไฟล์ Excel (.csv)' : 'Export all user accounts to Excel (.csv)'}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>{language === 'TH' ? '+ เพิ่มผู้ใช้ (Add User)' : '+ Add New User'}</span>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{language === 'TH' ? 'Export ข้อมูลผู้ใช้' : 'Export to Excel'}</span>
             </button>
-          )}
+
+            {isAdmin && (
+              <button
+                onClick={handleOpenAddModal}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-98 shrink-0 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{language === 'TH' ? '+ เพิ่มผู้ใช้ (Add User)' : '+ Add New User'}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Export Notice Banner */}
+      {exportNotice && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{exportNotice}</span>
+          </div>
+          <button onClick={() => setExportNotice(null)} className="p-1 text-emerald-600 hover:text-emerald-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* 2. Statistical Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -388,7 +500,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => {
                   const isCurrentAdmin = isAdminUser(user);
-                  const isSelf = user.id === currentUser.id;
+                  const isSelf = user.id === currentUser?.id;
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">

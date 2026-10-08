@@ -4,31 +4,22 @@ import { UserProfile } from '../types';
 import { CORPORATE_BUILDING_BANNER } from '../data/portalData';
 
 interface HeroClientInfoProps {
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
   language: 'TH' | 'EN';
   machineInfo?: any;
   isLoading?: boolean;
   onRefreshInfo?: () => void;
   onUpdateLocalIp?: (ip: string) => void;
   onUpdateDeviceName?: (deviceName: string) => void;
+  onOpenAnnouncements?: () => void;
+  hasUnreadAnnouncements?: boolean;
 }
 
 export const HeroClientInfo: React.FC<HeroClientInfoProps> = ({
-  currentUser,
-  language
+  language,
+  onOpenAnnouncements,
+  hasUnreadAnnouncements = false
 }) => {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (language === 'TH') {
-      if (hour < 12) return 'สวัสดีตอนเช้า';
-      if (hour < 18) return 'สวัสดีตอนบ่าย';
-      return 'สวัสดีตอนเย็น';
-    }
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   const formattedDate = new Date().toLocaleDateString(language === 'TH' ? 'th-TH' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -57,22 +48,35 @@ export const HeroClientInfo: React.FC<HeroClientInfoProps> = ({
               <span>{formattedDate}</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex flex-wrap items-center gap-2">
-              <span>{language === 'TH' ? 'สวัสดี,' : getGreeting() + ','}</span>
-              <span className="text-blue-100 underline decoration-blue-300/60 underline-offset-4">
-                {language === 'TH' ? `คุณ ${currentUser.name.split(' ')[0]}` : currentUser.name}
-              </span>
-            </h1>
-
-            {/* Clean Welcome text without user role/permission info */}
-            <p className="text-blue-100 text-xs sm:text-sm mt-1.5 max-w-xl font-normal opacity-95">
+            {/* Requirement #2.1: Main Banner Title displays "ยินดีต้อนรับสู่ Navigator Website" prominently as title */}
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
               {language === 'TH'
-                ? 'ยินดีต้อนรับสู่ระบบอินทราเน็ตกลาง บริษัท ฉีเชิ่ง จำกัด'
-                : 'Welcome to Qisheng Group Employee Digital Portal'}
-            </p>
+                ? 'ยินดีต้อนรับสู่ Navigator Website'
+                : 'Welcome to Navigator Website'}
+            </h1>
           </div>
+
+          {/* Quick Action: Open Today's Announcement */}
+          {onOpenAnnouncements && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={onOpenAnnouncements}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white text-xs font-bold transition-all shadow-xs cursor-pointer group"
+                title={language === 'TH' ? 'ดูประกาศข่าวสารประจำวัน' : "View Today's Announcements"}
+              >
+                <span className="relative flex h-2 w-2">
+                  {hasUnreadAnnouncements && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${hasUnreadAnnouncements ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                </span>
+                <span>{language === 'TH' ? '📢 ประกาศข่าวสารประจำวัน' : '📢 Daily Announcements'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+

@@ -42,15 +42,11 @@ export const HeroGreetingBanner: React.FC<HeroGreetingBannerProps> = ({ currentU
               <Sun className="w-6 h-6 animate-[spin_12s_linear_infinite]" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              {language === 'TH' ? `สวัสดี, คุณ ${firstName}` : `Welcome back, ${firstName}`}
+              {language === 'TH' 
+                ? 'ยินดีต้อนรับสู่ Navigator Website' 
+                : 'Welcome to Navigator Website'}
             </h1>
           </div>
-
-          <p className="text-xs sm:text-sm text-slate-500 mt-2 font-normal">
-            {language === 'TH' 
-              ? 'ขอให้วันนี้เป็นวันที่ดี และมีประสิทธิภาพในการทำงานนะครับ' 
-              : 'Wishing you a productive and successful working day.'}
-          </p>
         </div>
 
         {/* Date Row / Chip */}

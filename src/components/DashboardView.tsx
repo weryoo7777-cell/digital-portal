@@ -73,21 +73,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       name: 'Express',
       category: 'บัญชี / Express',
       icon: <ExpressIcon className="w-10 h-10" />,
-      app: apps.find(a => a.id === 'app-express-accounting') || apps[0]
+      app: apps?.find(a => a?.id === 'app-express-accounting') || {
+        id: 'app-express-accounting',
+        name: 'Express Accounting',
+        nameTh: 'ระบบบัญชี Express for Windows',
+        category: 'accounting',
+        description: 'General ledger, AP/AR, Inventory and tax report generation.',
+        descriptionTh: 'ระบบบัญชีแยกประเภท ลูกหนี้ เจ้าหนี้ และสินค้าคงคลัง',
+        iconName: 'Calculator',
+        badge: 'Accounting',
+        url: 'app://express.local',
+        allowedRoles: ['ADMIN', 'ACCOUNTING'],
+        status: 'online',
+        launchType: 'intranet',
+        isFrequent: true
+      } as EnterpriseApp
     },
     {
       id: 'app-dataforge-ocr',
       name: 'DataForge OCR',
       category: 'บัญชี / OCR',
       icon: <DataForgeOcrIcon className="w-10 h-10" />,
-      app: apps.find(a => a.id === 'app-dataforge-ocr') || apps[1]
+      app: apps?.find(a => a?.id === 'app-dataforge-ocr') || {
+        id: 'app-dataforge-ocr',
+        name: 'DataForge OCR',
+        nameTh: 'ระบบแปลงเอกสารใบกำกับภาษี DataForge OCR',
+        category: 'accounting',
+        description: 'Automated invoice and receipt OCR data extraction.',
+        descriptionTh: 'ระบบอ่านเอกสารใบกำกับภาษีอัตโนมัติด้วย AI OCR',
+        iconName: 'ScanText',
+        badge: 'Smart OCR',
+        url: 'https://ocr.qisheng.local',
+        allowedRoles: ['ADMIN', 'ACCOUNTING'],
+        status: 'online',
+        launchType: 'web',
+        isFrequent: true
+      } as EnterpriseApp
     },
     {
       id: 'app-rd-efiling',
       name: 'RD e-Filing',
       category: 'ภาษี / RD',
       icon: <RdEfilingIcon className="w-10 h-10" />,
-      app: apps.find(a => a.id === 'app-rd-efiling') || apps[2]
+      app: apps?.find(a => a?.id === 'app-rd-efiling') || {
+        id: 'app-rd-efiling',
+        name: 'RD e-Filing (กรมสรรพากร)',
+        nameTh: 'ระบบยื่นแบบภาษีออนไลน์ กรมสรรพากร',
+        category: 'accounting',
+        description: 'Online tax return submission (ภ.พ.30, ภ.ง.ด.1/3/53).',
+        descriptionTh: 'ระบบยื่นแบบแสดงรายการภาษีผ่านเครือข่ายอินเทอร์เน็ต',
+        iconName: 'ReceiptText',
+        badge: 'Gov Portal',
+        url: 'https://efiling.rd.go.th',
+        allowedRoles: ['ADMIN', 'ACCOUNTING', 'USER'],
+        status: 'online',
+        launchType: 'web',
+        isFrequent: true
+      } as EnterpriseApp
     },
     {
       id: 'app-google-drive',
@@ -98,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'app-google-drive',
         name: 'Google Drive',
         nameTh: 'Google Drive สำหรับองค์กร',
-        category: 'operations',
+        category: 'it',
         description: 'Cloud document storage and collaborative spreadsheets.',
         descriptionTh: 'พื้นที่จัดเก็บเอกสารและแชร์ไฟล์บนคลาวด์องค์กร',
         iconName: 'HardDrive',
@@ -119,7 +161,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'app-gmail',
         name: 'Gmail',
         nameTh: 'ระบบอีเมลองค์กร Gmail',
-        category: 'operations',
+        category: 'it',
         description: 'Corporate email and contact directory.',
         descriptionTh: 'กล่องจดหมายอีเมลองค์กร',
         iconName: 'Mail',
@@ -437,7 +479,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  onClick={() => onLaunchApp(item.app)}
+                  onClick={() => {
+                    if (item?.app) {
+                      onLaunchApp(item.app);
+                    }
+                  }}
                   className="relative rounded-2xl bg-white border border-slate-200/80 hover:border-blue-400/80 hover:shadow-md transition-all p-4 flex flex-col items-center text-center cursor-pointer group shadow-xs"
                 >
                   {/* Star Top-Right */}

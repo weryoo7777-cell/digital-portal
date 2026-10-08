@@ -13,7 +13,9 @@ import {
   Search, 
   RotateCcw,
   FileText,
-  Sparkles
+  Sparkles,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { CorporateAnnouncement } from '../types';
 
@@ -24,6 +26,9 @@ interface AnnouncementsViewProps {
   onMarkAsRead?: (id: string) => void;
   onMarkAllAsRead?: () => void;
   onAddWelcomeAnnouncement?: () => void;
+  isAdmin?: boolean;
+  onAddAnnouncement?: (announcement: CorporateAnnouncement) => void;
+  onDeleteAnnouncement?: (id: string) => void;
 }
 
 export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ 
@@ -32,12 +37,52 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   readAnnouncementIds = [],
   onMarkAsRead,
   onMarkAllAsRead,
-  onAddWelcomeAnnouncement 
+  onAddWelcomeAnnouncement,
+  isAdmin = false,
+  onAddAnnouncement,
+  onDeleteAnnouncement
 }) => {
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState<boolean>(false);
   const [activeAnn, setActiveAnn] = useState<CorporateAnnouncement | null>(null);
+
+  // Admin New Announcement Modal State
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newTitleEn, setNewTitleEn] = useState('');
+  const [newSummary, setNewSummary] = useState('');
+  const [newTag, setNewTag] = useState<'General' | 'Tax Deadline' | 'IT Maintenance' | 'Policy'>('General');
+  const [newPriority, setNewPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
+  const [newAuthor, setNewAuthor] = useState('ฝ่ายบริหารและสื่อสารองค์กร (Admin)');
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newSummary.trim()) return;
+
+    const todayStr = new Date().toLocaleDateString(language === 'TH' ? 'th-TH' : 'en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const newAnnouncement: CorporateAnnouncement = {
+      id: `ann-${Date.now()}`,
+      title: newTitle.trim(),
+      titleEn: newTitleEn.trim() || newTitle.trim(),
+      summary: newSummary.trim(),
+      date: todayStr,
+      tag: newTag,
+      priority: newPriority,
+      author: newAuthor.trim() || 'Admin'
+    };
+
+    onAddAnnouncement?.(newAnnouncement);
+    setCreateModalOpen(false);
+    setNewTitle('');
+    setNewTitleEn('');
+    setNewSummary('');
+  };
 
   const unreadCount = announcements.filter(a => !readAnnouncementIds.includes(a.id)).length;
 
@@ -204,8 +249,19 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               })()}
             </div>
 
-            {/* Right: Search and Mark All Read */}
+            {/* Right: Search, Admin Create, and Mark All Read */}
             <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  onClick={() => setCreateModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+                  title={language === 'TH' ? 'สร้างประกาศข่าวสารใหม่' : 'Create new announcement'}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{language === 'TH' ? '+ สร้างประกาศใหม่' : '+ New Notice'}</span>
+                </button>
+              )}
+
               {unreadCount > 0 && onMarkAllAsRead && (
                 <button
                   onClick={onMarkAllAsRead}
@@ -286,7 +342,23 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                       </div>
                     </div>
 
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0 mt-2" />
+                    <div className="flex items-center gap-1 shrink-0 mt-2">
+                      {isAdmin && onDeleteAnnouncement && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(language === 'TH' ? `คุณต้องการลบประกาศ "${ann.title}" ใช่หรือไม่?` : `Delete announcement "${ann.title}"?`)) {
+                              onDeleteAnnouncement(ann.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                          title={language === 'TH' ? 'ลบประกาศ' : 'Delete announcement'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
                   </div>
                 </div>
               );
@@ -307,6 +379,138 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           )}
         </>
       )}
+
+      {/* Admin Create Announcement Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    {language === 'TH' ? 'สร้างประกาศข่าวสารองค์กรใหม่' : 'Create New Announcement'}
+                  </h3>
+                  <p className="text-xs text-slate-400">Admin Announcement Management</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreateModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'TH' ? 'หัวข้อประกาศ (ภาษาไทย) *' : 'Title (Thai) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder={language === 'TH' ? 'เช่น แจ้งวันหยุดเทศกาลสงกรานต์...' : 'e.g. System upgrade notification...'}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'TH' ? 'หัวข้อประกาศ (ภาษาอังกฤษ)' : 'Title (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={newTitleEn}
+                  onChange={(e) => setNewTitleEn(e.target.value)}
+                  placeholder="English title (optional)..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {language === 'TH' ? 'หมวดหมู่ประกาศ' : 'Category / Tag'}
+                  </label>
+                  <select
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                  >
+                    <option value="General">General (ทั่วไป)</option>
+                    <option value="IT Maintenance">IT Maintenance (ซ่อมบำรุง IT)</option>
+                    <option value="Tax Deadline">Tax Deadline (กำหนดการภาษี)</option>
+                    <option value="Policy">Policy (นโยบายองค์กร)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {language === 'TH' ? 'ระดับความสำคัญ' : 'Priority'}
+                  </label>
+                  <select
+                    value={newPriority}
+                    onChange={(e) => setNewPriority(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                  >
+                    <option value="normal">Normal (ปกติ)</option>
+                    <option value="high">High (สำคัญ)</option>
+                    <option value="urgent">Urgent (ด่วนมาก)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'TH' ? 'เนื้อหา / รายละเอียดประกาศ *' : 'Summary / Content *'}
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newSummary}
+                  onChange={(e) => setNewSummary(e.target.value)}
+                  placeholder={language === 'TH' ? 'ระบุรายละเอียดประกาศ ข้อมูลสำคัญ ข้อปฏิบัติ...' : 'Provide notice content and instructions...'}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'TH' ? 'ผู้ออกประกาศ / แผนก' : 'Issuer / Department'}
+                </label>
+                <input
+                  type="text"
+                  value={newAuthor}
+                  onChange={(e) => setNewAuthor(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:outline-none focus:border-[#1E60D5]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 font-semibold"
+                >
+                  {language === 'TH' ? 'ยกเลิก' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white font-bold transition-all shadow-md"
+                >
+                  {language === 'TH' ? 'บันทึกและเผยแพร่' : 'Publish Announcement'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
 
       {/* Announcement Detail Modal */}
       {activeAnn && (

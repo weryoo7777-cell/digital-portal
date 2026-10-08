@@ -2,36 +2,21 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   Grid, 
-  BookOpen, 
-  Bell,
-  Calendar,
-  Landmark,
-  Languages,
-  Users,
-  ShieldCheck,
-  Crown
+  Calendar, 
+  Languages, 
+  Bell, 
+  BookUser 
 } from 'lucide-react';
-import { QISHENG_LOGO } from '../data/portalData';
+import { NavTab } from '../types';
 
-export type NavTab = 
-  | 'dashboard' 
-  | 'all-apps' 
-  | 'external-portals'
-  | 'announcements' 
-  | 'calendar' 
-  | 'documents'
-  | 'user-management';
+export type { NavTab };
 
 interface SidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
-  unreadAnnouncementsCount?: number;
-  onOpenQuickAction?: (action: 'helpdesk' | 'sspr' | 'access') => void;
-  onOpenSystemStatus?: () => void;
   onOpenGoogleSearch?: () => void;
   onOpenGoogleTranslate?: () => void;
   language: 'TH' | 'EN';
-  onToggleLanguage?: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
   isAdmin?: boolean;
@@ -40,7 +25,6 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   onSelectTab,
-  unreadAnnouncementsCount = 0,
   onOpenGoogleSearch,
   onOpenGoogleTranslate,
   language,
@@ -63,36 +47,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Grid,
     },
     {
-      id: 'external-portals' as NavTab,
-      labelTh: 'ระบบราชการ & ธนาคาร',
-      labelEn: 'External Portals',
-      icon: Landmark,
+      id: 'vendor-contact' as NavTab,
+      labelTh: 'จัดการผู้ให้บริการ (Vendor Contact)',
+      labelEn: 'Vendor Contacts',
+      icon: BookUser,
     },
   ];
 
-  // Secondary Navigation
-  const secondaryNavItems = [
-    {
-      id: 'announcements' as NavTab,
-      labelTh: 'ข่าวสาร & ประกาศ',
-      labelEn: 'Announcements',
-      icon: Bell,
-      badge: unreadAnnouncementsCount > 0 ? unreadAnnouncementsCount : null,
-      badgeColor: 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-900/60'
-    },
-    {
-      id: 'calendar' as NavTab,
-      labelTh: 'ปฏิทินบริษัท',
-      labelEn: 'Corporate Calendar',
-      icon: Calendar,
-    },
-    {
-      id: 'documents' as NavTab,
-      labelTh: 'เอกสาร & คู่มือระบบ',
-      labelEn: 'Documents & Manuals',
-      icon: BookOpen,
-    },
-  ];
+  // Calendar Navigation
+  const calendarNavItem = {
+    id: 'calendar' as NavTab,
+    labelTh: 'ปฏิทินองค์กร',
+    labelEn: 'Organization Calendar',
+    icon: Calendar,
+  };
 
   return (
     <>
@@ -109,25 +77,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         shadow-sm transition-transform duration-300 ease-in-out lg:translate-x-0
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* 1. Top Header: Logo & "QISHENG" text only */}
+        {/* 1. Top Header: Clean "QISHENG" typography only (No Q logo emblem icon, No "DIGITAL PORTAL" subtitle) */}
         <div className="h-20 px-6 flex items-center border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-blue-100 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/50 shadow-xs flex items-center justify-center shrink-0">
-              <img 
-                src={QISHENG_LOGO} 
-                alt="QISHENG Logo" 
-                className="w-full h-full object-cover" 
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-              <span className="font-extrabold text-[#1E60D5] dark:text-blue-400 text-lg tracking-wider">QS</span>
-            </div>
-            <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
-              QISHENG
-            </span>
-          </div>
+          <span className="font-black text-2xl tracking-wider text-slate-900 dark:text-white leading-none">
+            QISHENG
+          </span>
         </div>
 
         {/* 2. Navigation List */}
@@ -162,19 +116,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
 
-          {/* Secondary Navigation Section */}
+          {/* Calendar Navigation Section */}
           <div className="pt-4 pb-1 px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            {language === 'TH' ? 'ข้อมูล & ปฏิทินองค์กร' : 'Organization & Docs'}
+            {language === 'TH' ? 'ปฏิทินองค์กร' : 'Organization Calendar'}
           </div>
-          {secondaryNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            const hasUnread = typeof item.badge === 'number' && item.badge > 0;
+          {(() => {
+            const Icon = calendarNavItem.icon;
+            const isActive = currentTab === calendarNavItem.id;
             return (
               <button
-                key={item.id}
                 onClick={() => {
-                  onSelectTab(item.id);
+                  onSelectTab(calendarNavItem.id);
                   onCloseMobile();
                 }}
                 className={`
@@ -187,43 +139,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center gap-3">
                   <Icon className={`w-4 h-4 ${isActive ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span className="truncate">
-                    {language === 'TH' ? item.labelTh : item.labelEn}
+                    {language === 'TH' ? calendarNavItem.labelTh : calendarNavItem.labelEn}
                   </span>
                 </div>
-                {hasUnread && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${item.badgeColor} shadow-2xs`}>
-                    {item.badge}
-                  </span>
-                )}
               </button>
             );
-          })}
+          })()}
 
-          {/* Admin Management Section (Requirement #3: Only visible to Admin) */}
+          {/* Admin Section: Manage Announcements (Requirement #4: Removed User Management, replaced with Manage Announcements) */}
           {isAdmin && (
             <>
               <div className="pt-4 pb-1 px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-between">
                 <span>{language === 'TH' ? 'ผู้ดูแลระบบ (Admin)' : 'Administration'}</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-blue-100 dark:bg-blue-900/60 text-[#1E60D5] dark:text-blue-300">
-                  RBAC
+                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                  PIN 1111
                 </span>
               </div>
               <button
                 onClick={() => {
-                  onSelectTab('user-management');
+                  onSelectTab('announcements');
                   onCloseMobile();
                 }}
                 className={`
                   w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all text-left cursor-pointer
-                  ${currentTab === 'user-management'
+                  ${currentTab === 'announcements'
                     ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 font-bold border-l-4 border-[#1E60D5] dark:border-blue-400 shadow-xs' 
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium'}
                 `}
               >
                 <div className="flex items-center gap-3">
-                  <Users className={`w-4 h-4 ${currentTab === 'user-management' ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Bell className={`w-4 h-4 ${currentTab === 'announcements' ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span className="truncate">
-                    {language === 'TH' ? 'จัดการผู้ใช้งาน' : 'User Management'}
+                    {language === 'TH' ? 'จัดการประกาศข่าวสาร' : 'Manage Announcements'}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-mono">

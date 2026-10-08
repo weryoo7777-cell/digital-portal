@@ -35,11 +35,8 @@ export const getUserRoleLevel = (user?: UserProfile | null): RoleLevel => {
 export type AppCategory = 
   | 'all'
   | 'accounting' 
-  | 'tax' 
-  | 'hr' 
+  | 'boi' 
   | 'it' 
-  | 'operations' 
-  | 'productivity'
   | 'external';
 
 export type AppStatus = 'online' | 'maintenance' | 'restricted';
@@ -62,6 +59,7 @@ export interface EnterpriseApp {
   version?: string;
   internalPort?: string;
   serverHost?: string;
+  documentationUrl?: string;
 }
 
 export interface NetworkAdapterInfo {
@@ -130,7 +128,7 @@ export interface CorporateAnnouncement {
   titleEn: string;
   summary: string;
   date: string;
-  tag: 'IT Maintenance' | 'HR Policy' | 'General' | 'Tax Deadline';
+  tag: 'IT Maintenance' | 'HR Policy' | 'General' | 'Tax Deadline' | 'Policy' | string;
   priority: 'normal' | 'high' | 'urgent';
   author: string;
   read?: boolean;
@@ -158,3 +156,37 @@ export interface RoomBooking {
   bookedBy: string;
   department: string;
 }
+
+export type VendorCategory = 
+  | 'accounting' 
+  | 'boi' 
+  | 'it' 
+  | 'isp' 
+  | 'facility' 
+  | 'other';
+
+export interface VendorContact {
+  id: string;
+  name: string;
+  nameEn?: string;
+  category: VendorCategory;
+  serviceDescription: string;
+  contactPerson?: string;
+  phone: string;
+  phoneSecondary?: string;
+  email?: string;
+  lineId?: string;
+  website?: string;
+  operatingHours?: string;
+  contractNumber?: string;
+  notes?: string;
+  isHotline24h?: boolean;
+  updatedAt?: string;
+}
+
+export type NavTab = 
+  | 'dashboard' 
+  | 'all-apps' 
+  | 'vendor-contact'
+  | 'calendar' 
+  | 'announcements';

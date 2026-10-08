@@ -35,7 +35,8 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
 
   if (!app) return null;
 
-  const hasAccess = app.allowedRoles.includes(currentUser.role);
+  const roles = app.allowedRoles || [];
+  const hasAccess = roles.length === 0 || !currentUser?.role || roles.includes(currentUser.role);
   const rdpCommand = `mstsc /v:${app.serverHost || 'qs-acc-srv01.qisheng.local'} /f`;
 
   const handleCopyCommand = () => {

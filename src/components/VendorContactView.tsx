@@ -255,7 +255,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           {isAdmin ? (
             <button
-              onClick={openCreateModal}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openCreateModal();
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -263,7 +268,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
             </button>
           ) : (
             <button
-              onClick={onOpenAdminPinModal}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenAdminPinModal?.();
+              }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
               title={language === 'TH' ? 'ปลดล็อกสิทธิ์ Admin เพื่อเพิ่มหรือแก้ไขคู่ค้า' : 'Unlock Admin to manage vendors'}
             >
@@ -274,7 +284,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
 
           {isAdmin && onResetDefaultVendors && (
             <button
-              onClick={onResetDefaultVendors}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onResetDefaultVendors();
+              }}
               className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
               title={language === 'TH' ? 'รีเซ็ตข้อมูลคู่ค้าเป็นค่าเริ่มต้น' : 'Reset to default vendors'}
             >
@@ -294,7 +309,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
             return (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedCategory(cat.id);
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                   isActive
                     ? 'bg-[#1E60D5] text-white shadow-xs'
@@ -350,14 +370,24 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                     {isAdmin && (
                       <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => openEditModal(vendor)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openEditModal(vendor);
+                          }}
                           className="p-1 rounded-lg text-slate-400 hover:text-[#1E60D5] hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                           title={language === 'TH' ? 'แก้ไขข้อมูล' : 'Edit'}
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setVendorToDelete(vendor)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setVendorToDelete(vendor);
+                          }}
                           className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                           title={language === 'TH' ? 'ลบข้อมูล' : 'Delete'}
                         >
@@ -408,7 +438,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                         </a>
                       </div>
                       <button
-                        onClick={() => handleCopy(vendor.phone, `phone-${vendor.id}`)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCopy(vendor.phone, `phone-${vendor.id}`);
+                        }}
                         className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                         title={language === 'TH' ? 'คัดลอกเบอร์โทร' : 'Copy Phone'}
                       >
@@ -433,7 +468,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                           </a>
                         </div>
                         <button
-                          onClick={() => handleCopy(vendor.phoneSecondary!, `phone2-${vendor.id}`)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCopy(vendor.phoneSecondary!, `phone2-${vendor.id}`);
+                          }}
                           className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                           title="Copy Secondary Phone"
                         >
@@ -459,7 +499,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                           </a>
                         </div>
                         <button
-                          onClick={() => handleCopy(vendor.email!, `email-${vendor.id}`)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCopy(vendor.email!, `email-${vendor.id}`);
+                          }}
                           className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                           title="Copy Email"
                         >
@@ -532,7 +577,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
           </div>
           {isAdmin && (
             <button
-              onClick={openCreateModal}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openCreateModal();
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -566,7 +616,12 @@ export const VendorContactView: React.FC<VendorContactViewProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsModalOpen(false);
+                }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />

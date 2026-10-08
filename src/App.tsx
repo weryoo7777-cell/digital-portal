@@ -196,22 +196,36 @@ export default function App() {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
-      // Rule 1: If user closed announcements today, never show modal on refresh
-      if (lastClosedDate === todayStr) return false;
-
-      const closedIds: string[] = JSON.parse(localStorage.getItem('qs_announcement_closed_ids') || '[]');
       const lastClosedTimestamp = Number(localStorage.getItem('qs_announcement_last_closed_timestamp') || 0);
+
+      const rawClosedIds = localStorage.getItem('qs_announcement_closed_ids');
+      const closedIds: string[] = rawClosedIds ? JSON.parse(rawClosedIds) : [];
+
       const rawStored = localStorage.getItem('qs_announcements_v1');
       const anns = rawStored ? JSON.parse(rawStored) : CORPORATE_ANNOUNCEMENTS;
       const latest = anns[0];
       if (!latest || !latest.id) return false;
 
-      // Rule 2: If existing closed ID, only pop up if updated_at is newer than last_closed_timestamp
+      // Rule 1: If user closed announcements today, NEVER show on refresh unless a brand new notice was added after dismissal
+      if (lastClosedDate === todayStr) {
+        const isBrandNewNotice = !closedIds.includes(latest.id) && Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
+        console.log('[Qisheng Portal] Initial announcement check (Closed today):', {
+          todayStr,
+          lastClosedDate,
+          isBrandNewNotice,
+          willShow: isBrandNewNotice
+        });
+        return isBrandNewNotice;
+      }
+
+      // Rule 2: If from a previous day, check if this announcement ID was already closed and not updated
       if (closedIds.includes(latest.id)) {
-        return Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
+        const isUpdated = Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
+        return isUpdated;
       }
       return true;
-    } catch {
+    } catch (err) {
+      console.warn('[Qisheng Portal] Announcement init error:', err);
       return false;
     }
   });
@@ -246,6 +260,7 @@ export default function App() {
         setActivityLogs(data.activityLogs);
       }
       if (data.announcements && Array.isArray(data.announcements)) {
+        console.log('[Qisheng Portal] Synced announcements received:', data.announcements.length, 'action:', data.lastAnnouncementAction);
         setAnnouncements(data.announcements);
         try {
           localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
@@ -253,6 +268,7 @@ export default function App() {
 
         // When an announcement is DELETED, never trigger popup notification
         if (data.lastAnnouncementAction === 'delete') {
+          console.log('[Qisheng Portal] Announcement deleted, keeping modal closed');
           setDailyAnnouncementModalOpen(false);
           return;
         }
@@ -270,35 +286,54 @@ export default function App() {
             closedIds = [];
           }
 
-          // Case A: Admin explicitly created new notice or updated existing notice right now
-          if (data.lastAnnouncementAction === 'create' || data.lastAnnouncementAction === 'update') {
-            setDailyAnnouncementModalOpen(true);
-            setIsDismissedToday(false);
-            return;
-          }
+          const hasDismissedToday = lastClosedDate === todayStr;
+          const isClosedId = closedIds.includes(latestAnn.id);
+          const isNewerThanDismissal = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastClosedTimestamp);
 
-          // Case B: User already closed announcements today -> DO NOT POP UP ON REFRESH
-          if (lastClosedDate === todayStr) {
-            setIsDismissedToday(true);
-            setDailyAnnouncementModalOpen(false);
-            return;
-          }
+          console.log('[Qisheng Portal] Sync announcement evaluation:', {
+            todayStr,
+            lastClosedDate,
+            hasDismissedToday,
+            latestAnnId: latestAnn.id,
+            isClosedId,
+            latestUpdatedAt: latestAnn.updatedAt,
+            lastClosedTimestamp,
+            isNewerThanDismissal,
+            lastAnnouncementAction: data.lastAnnouncementAction
+          });
 
-          // Case C: Existing announcement ID that was already closed previously
-          if (closedIds.includes(latestAnn.id)) {
-            const updatedAt = latestAnn.updatedAt || 0;
-            // Only pop up if updatedAt is newer than the timestamp when closed
-            if (updatedAt > lastClosedTimestamp) {
+          // Case A: User already closed announcements today -> NEVER POP UP ON REFRESH!
+          // Only pop up if an admin explicitly added a brand new announcement ID that was NOT in closedIds
+          // AND was created after the user dismissed it!
+          if (hasDismissedToday) {
+            if (!isClosedId && isNewerThanDismissal) {
+              console.log('[Qisheng Portal] New announcement added after dismissal today -> opening modal');
               setDailyAnnouncementModalOpen(true);
               setIsDismissedToday(false);
             } else {
+              console.log('[Qisheng Portal] Already dismissed today -> keeping modal closed');
               setIsDismissedToday(true);
               setDailyAnnouncementModalOpen(false);
             }
             return;
           }
 
-          // Case D: Brand new announcement ID not yet closed and not dismissed today -> pop up
+          // Case B: Announcement ID was already closed previously
+          if (isClosedId) {
+            if (isNewerThanDismissal) {
+              console.log('[Qisheng Portal] Existing announcement updated -> opening modal');
+              setDailyAnnouncementModalOpen(true);
+              setIsDismissedToday(false);
+            } else {
+              console.log('[Qisheng Portal] Existing announcement unchanged -> keeping modal closed');
+              setIsDismissedToday(true);
+              setDailyAnnouncementModalOpen(false);
+            }
+            return;
+          }
+
+          // Case C: Brand new announcement ID not yet closed
+          console.log('[Qisheng Portal] Unseen announcement detected -> opening modal');
           setDailyAnnouncementModalOpen(true);
           setIsDismissedToday(false);
         } else {
@@ -315,6 +350,7 @@ export default function App() {
   const handleDismissAnnouncementToday = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const nowTs = Date.now();
+    console.log('[Qisheng Portal] handleDismissAnnouncementToday executed at:', todayStr, nowTs);
     try {
       localStorage.setItem('qs_announcement_last_closed_date', todayStr);
       localStorage.setItem('qs_announcement_last_closed_timestamp', String(nowTs));
@@ -330,13 +366,17 @@ export default function App() {
       const currentIds = announcements.map(a => a.id).filter(Boolean);
       const combined = Array.from(new Set([...closedIds, ...currentIds]));
       localStorage.setItem('qs_announcement_closed_ids', JSON.stringify(combined));
-    } catch {}
+      console.log('[Qisheng Portal] Updated closed announcement IDs in localStorage:', combined);
+    } catch (err) {
+      console.warn('[Qisheng Portal] Failed to save dismiss info:', err);
+    }
 
     setIsDismissedToday(true);
     setDailyAnnouncementModalOpen(false);
   };
 
   const handleAddAnnouncement = async (newAnn: CorporateAnnouncement) => {
+    console.log('[Qisheng Portal] Adding new announcement:', newAnn.title);
     // 1. Save to LocalStorage immediately
     setAnnouncements((prev) => {
       const updated = [newAnn, ...prev];
@@ -354,6 +394,7 @@ export default function App() {
   };
 
   const handleDeleteAnnouncement = async (annId: string) => {
+    console.log('[Qisheng Portal] handleDeleteAnnouncement for:', annId, 'Staying on tab:', currentTab);
     // Requirement #3: In case of deletion, DO NOT show notification popup
     setDailyAnnouncementModalOpen(false);
 
@@ -392,6 +433,7 @@ export default function App() {
   };
 
   const handleDeleteApp = async (appId: string) => {
+    console.log('[Qisheng Portal] handleDeleteApp for:', appId, 'Keeping current tab:', currentTab);
     setEnterpriseApps((prev) => {
       const updated = prev.filter(a => a.id !== appId);
       try {
@@ -399,12 +441,13 @@ export default function App() {
       } catch {}
       return updated;
     });
-    await centralSyncService.deleteApp(appId);
     setAppToDeleteId(null);
+    await centralSyncService.deleteApp(appId);
   };
 
   // User CRUD Handlers
   const handleAddUser = (newUser: UserProfile) => {
+    console.log('[Qisheng Portal] Adding user:', newUser.name);
     setAvailableUsers((prev) => {
       const updated = [newUser, ...prev];
       try {
@@ -415,6 +458,7 @@ export default function App() {
   };
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
+    console.log('[Qisheng Portal] Updating user:', updatedUser.name);
     setAvailableUsers((prev) => {
       const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
       try {
@@ -428,6 +472,7 @@ export default function App() {
   };
 
   const handleDeleteUser = (userId: string) => {
+    console.log('[Qisheng Portal] handleDeleteUser for:', userId, 'Keeping current tab:', currentTab);
     if (userId === currentUser.id) return;
     setAvailableUsers((prev) => {
       const updated = prev.filter(u => u.id !== userId);
@@ -452,6 +497,7 @@ export default function App() {
   });
 
   const handleAddVendor = async (newVendor: VendorContact) => {
+    console.log('[Qisheng Portal] Adding vendor:', newVendor.name);
     setVendorContacts((prev) => {
       const updated = [newVendor, ...prev];
       try {
@@ -464,6 +510,7 @@ export default function App() {
   };
 
   const handleUpdateVendor = async (updatedVendor: VendorContact) => {
+    console.log('[Qisheng Portal] Updating vendor:', updatedVendor.name);
     setVendorContacts((prev) => {
       const updated = prev.map(v => v.id === updatedVendor.id ? updatedVendor : v);
       try {
@@ -476,6 +523,7 @@ export default function App() {
   };
 
   const handleDeleteVendor = async (vendorId: string) => {
+    console.log('[Qisheng Portal] handleDeleteVendor for:', vendorId, 'Keeping current tab:', currentTab);
     // Keep current tab active - never redirect to home or reload
     let remainingLength = 0;
     setVendorContacts((prev) => {
@@ -497,6 +545,7 @@ export default function App() {
   };
 
   const handleResetVendors = async () => {
+    console.log('[Qisheng Portal] Resetting vendors to default');
     setVendorContacts(INITIAL_VENDOR_CONTACTS);
     try {
       localStorage.setItem('qs_vendor_contacts_v1', JSON.stringify(INITIAL_VENDOR_CONTACTS));
@@ -514,8 +563,17 @@ export default function App() {
     return {};
   });
 
-  // Layout & Navigation state
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  // Layout & Navigation state - Persisted to localStorage so user stays on current tab during delete/save/refresh
+  const [currentTab, setCurrentTab] = useState<NavTab>(() => {
+    try {
+      const saved = localStorage.getItem('qs_active_tab');
+      if (saved && typeof saved === 'string') {
+        console.log('[Qisheng Portal] Restoring active tab from localStorage:', saved);
+        return saved as NavTab;
+      }
+    } catch {}
+    return 'dashboard';
+  });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<'TH' | 'EN'>('TH');
 
@@ -547,8 +605,12 @@ export default function App() {
   const [googleSearchInitialQuery, setGoogleSearchInitialQuery] = useState('');
   const [googleTranslateModalOpen, setGoogleTranslateModalOpen] = useState(false);
 
-  // Centralized Navigation with State Reset
+  // Centralized Navigation with State Reset & LocalStorage Synchronization
   const handleTabChange = (newTab: NavTab) => {
+    console.log('[Qisheng Portal] Navigating to tab:', newTab);
+    try {
+      localStorage.setItem('qs_active_tab', newTab);
+    } catch {}
     setSelectedAppForLaunch(null);
     setQuickActionModal({ isOpen: false, type: 'helpdesk' });
     setSystemStatusOpen(false);
@@ -1295,7 +1357,7 @@ export default function App() {
       {/* Daily Announcement Modal (Daily Auto-popup / Dismissed by Date in LocalStorage) */}
       <DailyAnnouncementModal
         isOpen={dailyAnnouncementModalOpen}
-        onClose={() => setDailyAnnouncementModalOpen(false)}
+        onClose={handleDismissAnnouncementToday}
         onDismissToday={handleDismissAnnouncementToday}
         announcements={announcements}
         language={language}

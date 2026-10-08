@@ -441,8 +441,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3 rounded-2xl shadow-xs">
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
           <button
-            onClick={() => setRoleFilter('all')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setRoleFilter('all');
+            }}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
               roleFilter === 'all'
                 ? 'bg-white dark:bg-slate-900 text-[#1E60D5] dark:text-blue-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -451,8 +456,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             {language === 'TH' ? 'ทั้งหมด' : 'All Roles'} ({users.length})
           </button>
           <button
-            onClick={() => setRoleFilter('admin')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setRoleFilter('admin');
+            }}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               roleFilter === 'admin'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -462,8 +472,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             <span>Admin ({adminCount})</span>
           </button>
           <button
-            onClick={() => setRoleFilter('user')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setRoleFilter('user');
+            }}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               roleFilter === 'user'
                 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

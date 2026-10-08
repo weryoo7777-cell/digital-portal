@@ -3,7 +3,7 @@
   "adminPin": "1111",
   "latestAnnouncementId": "ann-1791446159289",
   "latestAnnouncementUpdatedAt": 1791446159290,
-  "lastAnnouncementAction": "create",
+  "lastAnnouncementAction": "init",
   "apps": [],
   "announcements": [
     {

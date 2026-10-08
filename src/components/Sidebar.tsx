@@ -95,7 +95,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onSelectTab(item.id);
                   onCloseMobile();
                 }}
@@ -125,7 +128,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isActive = currentTab === calendarNavItem.id;
             return (
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onSelectTab(calendarNavItem.id);
                   onCloseMobile();
                 }}
@@ -156,7 +162,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onSelectTab('announcements');
                   onCloseMobile();
                 }}
@@ -185,7 +194,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => {
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 onOpenGoogleSearch?.();
                 onCloseMobile();
               }}
@@ -196,7 +208,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>{language === 'TH' ? 'ค้นหา' : 'Search'}</span>
             </button>
             <button
-              onClick={() => {
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 onOpenGoogleTranslate?.();
                 onCloseMobile();
               }}

@@ -429,8 +429,14 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 {language === 'TH' ? 'ไม่พบประกาศที่ตรงกับตัวกรองที่เลือก' : 'No announcements match the current filter.'}
               </p>
               <button
-                onClick={() => { setSelectedTag('all'); setSearchQuery(''); }}
-                className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedTag('all');
+                  setSearchQuery('');
+                }}
+                className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline cursor-pointer"
               >
                 {language === 'TH' ? 'ล้างตัวกรองเพื่อแสดงทั้งหมด' : 'Reset filter to show all'}
               </button>

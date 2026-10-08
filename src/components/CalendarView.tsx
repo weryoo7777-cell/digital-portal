@@ -655,7 +655,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{uploadSuccessNotice}</span>
           </div>
-          <button onClick={() => setUploadSuccessNotice(null)} className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setUploadSuccessNotice(null);
+            }}
+            className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -667,7 +675,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{uploadErrorNotice}</span>
           </div>
-          <button onClick={() => setUploadErrorNotice(null)} className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setUploadErrorNotice(null);
+            }}
+            className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -698,7 +714,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setScannerModalOpen(false)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setScannerModalOpen(false);
+                }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -891,7 +912,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => setMonthPickerOpen(false)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMonthPickerOpen(false);
+                }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -908,7 +934,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 return (
                   <button
                     key={m.monthNumber}
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setSelectedMonthIndex(m.monthIndex);
                       setViewMode('monthly');
                       setMonthPickerOpen(false);
@@ -957,7 +986,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
             <div className="pt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setSelectedMonthIndex(currentMonthIndex);
                   setViewMode('monthly');
                   setMonthPickerOpen(false);
@@ -967,7 +999,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 &larr; {language === 'TH' ? 'ไปยังเดือนปัจจุบัน (ตุลาคม)' : 'Jump to Current Month (October)'}
               </button>
               <button
-                onClick={() => setMonthPickerOpen(false)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMonthPickerOpen(false);
+                }}
                 className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
               >
                 {language === 'TH' ? 'ปิด' : 'Close'}
@@ -1098,7 +1135,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           </span>
                           {isAdmin && isPinned && (
                             <button
-                              onClick={() => handleDeleteHoliday(holiday.no)}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteHoliday(holiday.no);
+                              }}
                               className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                               title="ลบการปักหมุด"
                             >
@@ -1211,7 +1253,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex items-center gap-2">
             {isAdmin && (
               <button
-                onClick={handleResetHolidays}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleResetHolidays();
+                }}
                 className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="รีเซ็ตเป็นวันหยุดมาตรฐาน 14 วัน"
               >

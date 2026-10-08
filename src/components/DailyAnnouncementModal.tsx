@@ -100,11 +100,7 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
 
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClose();
-              }}
+              onClick={handleDismiss}
               className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
               title={language === 'TH' ? 'ปิด' : 'Close'}
             >

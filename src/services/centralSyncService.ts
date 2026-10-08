@@ -148,6 +148,7 @@ class CentralSyncService {
   // 3. Central Apps Management
   public async saveApp(app: EnterpriseApp, isEdit: boolean = false): Promise<boolean> {
     try {
+      console.log(`[CentralSyncService] ${isEdit ? 'Updating' : 'Creating'} app:`, app.name);
       const res = await fetch('/api/apps', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -155,16 +156,19 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log(`[CentralSyncService] App ${isEdit ? 'updated' : 'created'} successfully:`, app.name);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save app:', err);
       return false;
     }
   }
 
   public async deleteApp(appId: string): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Deleting app from backend:', appId);
       const res = await fetch('/api/apps/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,10 +176,12 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] App deleted successfully:', appId);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to delete app:', err);
       return false;
     }
   }
@@ -183,6 +189,7 @@ class CentralSyncService {
   // 4. Central Announcements Management
   public async saveAnnouncement(ann: CorporateAnnouncement, isEdit: boolean = false): Promise<boolean> {
     try {
+      console.log(`[CentralSyncService] ${isEdit ? 'Updating' : 'Creating'} announcement:`, ann.title);
       const res = await fetch('/api/announcements', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,16 +197,19 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log(`[CentralSyncService] Announcement ${isEdit ? 'updated' : 'created'} successfully:`, ann.title);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save announcement:', err);
       return false;
     }
   }
 
   public async deleteAnnouncement(annId: string): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Deleting announcement from backend:', annId);
       const res = await fetch('/api/announcements/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,10 +217,12 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] Announcement deleted successfully:', annId);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to delete announcement:', err);
       return false;
     }
   }
@@ -218,6 +230,7 @@ class CentralSyncService {
   // 4.5 Vendor Contacts Central Persistence
   public async saveVendor(vendor: VendorContact): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Saving vendor to backend:', vendor.name);
       const res = await fetch('/api/vendor-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -225,16 +238,19 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] Vendor saved successfully:', vendor.name);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save vendor:', err);
       return false;
     }
   }
 
   public async saveAllVendors(vendors: VendorContact[]): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Saving all vendors batch:', vendors.length);
       const res = await fetch('/api/vendor-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,16 +258,19 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] Batch vendors saved successfully');
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save all vendors:', err);
       return false;
     }
   }
 
   public async deleteVendor(vendorId: string): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Deleting vendor from backend:', vendorId);
       const res = await fetch('/api/vendor-contacts/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,26 +278,31 @@ class CentralSyncService {
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] Vendor deleted successfully:', vendorId);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to delete vendor:', err);
       return false;
     }
   }
 
   public async resetVendors(): Promise<boolean> {
     try {
+      console.log('[CentralSyncService] Resetting vendors to default on backend');
       const res = await fetch('/api/vendor-contacts/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
       if (res.ok) {
         await this.syncNow();
+        console.log('[CentralSyncService] Vendors reset successfully');
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to reset vendors:', err);
       return false;
     }
   }

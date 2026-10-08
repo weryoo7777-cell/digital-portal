@@ -160,7 +160,7 @@ class CentralStoreManager {
       apps: this.store.apps,
       announcements: this.store.announcements,
       vendorContacts: this.store.vendorContacts,
-      activityLogs: this.store.activityLogs.slice(0, 20),
+      activityLogs: this.store.activityLogs.slice(0, 50),
       latestAnnouncementId: this.store.latestAnnouncementId,
       latestAnnouncementUpdatedAt: this.store.latestAnnouncementUpdatedAt,
       lastAnnouncementAction: this.store.lastAnnouncementAction || 'init',
@@ -277,6 +277,49 @@ class CentralStoreManager {
 
   public addActivityLog(entry: Partial<ActivityLogItem>): ActivityLogItem {
     const now = Date.now();
+    const clientHost = (entry.workstationHostname || '').trim().toLowerCase();
+    const clientIp = (entry.clientIp || '').trim().toLowerCase();
+
+    // Check if entry for the SAME app on the SAME machine already exists
+    const existingIdx = this.store.activityLogs.findIndex((log) => {
+      const logHost = (log.workstationHostname || '').trim().toLowerCase();
+      const logIp = (log.clientIp || '').trim().toLowerCase();
+      
+      const getNum = (s: string) => {
+        const m = s.match(/(\d+)(?!.*\d)/);
+        return m ? m[1] : '';
+      };
+      const clientNum = getNum(clientHost) || getNum(clientIp);
+      const logNum = getNum(logHost) || getNum(logIp);
+
+      const sameMachine = (clientHost && logHost && clientHost === logHost) ||
+                          (clientIp && logIp && clientIp === logIp) ||
+                          (Boolean(clientNum) && Boolean(logNum) && clientNum === logNum);
+      
+      const sameApp = (entry.appId && log.appId && entry.appId === log.appId) ||
+                      (entry.appUrl && log.appUrl && entry.appUrl === log.appUrl) ||
+                      (entry.appName && log.appName && entry.appName.toLowerCase() === log.appName.toLowerCase());
+
+      return sameMachine && sameApp;
+    });
+
+    if (existingIdx >= 0) {
+      const existing = this.store.activityLogs[existingIdx];
+      const updatedItem: ActivityLogItem = {
+        ...existing,
+        ...entry,
+        id: existing.id,
+        timestamp: now,
+        status: entry.status || 'launched',
+        action: entry.action || existing.action || 'Launched Web Application'
+      };
+      this.store.activityLogs.splice(existingIdx, 1);
+      this.store.activityLogs.unshift(updatedItem);
+      this.store.version += 1;
+      this.persistStore();
+      return updatedItem;
+    }
+
     const logItem: ActivityLogItem = {
       id: `log-${now}-${Math.random().toString(36).substring(2, 7)}`,
       appId: entry.appId,

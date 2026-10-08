@@ -27,7 +27,7 @@ import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { HeroClientInfo } from './components/HeroClientInfo';
-import { AppCard } from './components/AppCard';
+import { AppCard, ICON_MAP } from './components/AppCard';
 import { AppLaunchModal } from './components/AppLaunchModal';
 import { QuickActionsModal } from './components/QuickActionsModal';
 import { SystemStatusDrawer } from './components/SystemStatusDrawer';
@@ -169,8 +169,49 @@ export default function App() {
     return CORPORATE_ANNOUNCEMENTS;
   });
 
-  // Centralized Activity Logs State
+// Helper to extract machine suffix/number from hostname or IP (e.g. '127' from 'QISHENG-127' or '192.168.7.127')
+const extractMachineIdentifier = (val?: string): string => {
+  if (!val) return '';
+  const match = val.match(/(\d+)(?!.*\d)/);
+  return match ? match[1] : '';
+};
+
+// Check if an activity log belongs to THIS specific workstation/machine
+const isCurrentMachineLog = (
+  log: ActivityLogItem,
+  workstationHostname?: string,
+  localIp?: string
+): boolean => {
+  if (!log) return false;
+  const myHost = (workstationHostname || '').trim().toLowerCase();
+  const myIp = (localIp || '').trim().toLowerCase();
+  const logHost = (log.workstationHostname || '').trim().toLowerCase();
+  const logIp = (log.clientIp || '').trim().toLowerCase();
+
+  if (myHost && logHost && (myHost === logHost || myHost.includes(logHost) || logHost.includes(myHost))) return true;
+  if (myIp && logIp && (myIp === logIp || myIp.includes(logIp) || logIp.includes(myIp))) return true;
+
+  const myId = extractMachineIdentifier(myHost) || extractMachineIdentifier(myIp);
+  const logId = extractMachineIdentifier(logHost) || extractMachineIdentifier(logIp);
+  if (myId && logId && myId === logId) return true;
+
+  return false;
+};
+
+  // Centralized Activity Logs State (from server)
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
+
+  // Requirement #1: Per-machine Recent Activity Logs (Isolated to this machine e.g. 127)
+  const [machineActivityLogs, setMachineActivityLogs] = useState<ActivityLogItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('qs_machine_activity_logs_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
 
   // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data)
   const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
@@ -258,6 +299,33 @@ export default function App() {
       }
       if (data.activityLogs && Array.isArray(data.activityLogs)) {
         setActivityLogs(data.activityLogs);
+        // Requirement #1: Filter central logs to ONLY those belonging to this workstation/machine
+        const myLogs = data.activityLogs.filter(log => 
+          isCurrentMachineLog(log, currentUser.workstationHostname, currentUser.localIp)
+        );
+
+        setMachineActivityLogs(prev => {
+          const map = new Map<string, ActivityLogItem>();
+          prev.forEach(item => {
+            const key = item.appId || item.appUrl || item.appName;
+            if (key) map.set(key, item);
+          });
+          myLogs.forEach(item => {
+            const key = item.appId || item.appUrl || item.appName;
+            if (!key) return;
+            const existing = map.get(key);
+            if (!existing || item.timestamp >= existing.timestamp) {
+              map.set(key, item);
+            }
+          });
+          const merged = Array.from(map.values())
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 20);
+          try {
+            localStorage.setItem('qs_machine_activity_logs_v2', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
       if (data.announcements && Array.isArray(data.announcements)) {
         console.log('[Qisheng Portal] Synced announcements received:', data.announcements.length, 'action:', data.lastAnnouncementAction);
@@ -270,6 +338,14 @@ export default function App() {
         if (data.lastAnnouncementAction === 'delete') {
           console.log('[Qisheng Portal] Announcement deleted, keeping modal closed');
           setDailyAnnouncementModalOpen(false);
+          return;
+        }
+
+        // Requirement #3: When a new announcement is created, notify immediately even if dismissed today!
+        if (data.lastAnnouncementAction === 'create') {
+          console.log('[Qisheng Portal] New announcement created action detected -> popping up modal immediately');
+          setDailyAnnouncementModalOpen(true);
+          setIsDismissedToday(false);
           return;
         }
 
@@ -303,8 +379,7 @@ export default function App() {
           });
 
           // Case A: User already closed announcements today -> NEVER POP UP ON REFRESH!
-          // Only pop up if an admin explicitly added a brand new announcement ID that was NOT in closedIds
-          // AND was created after the user dismissed it!
+          // Only pop up if a brand new announcement ID that was NOT in closedIds was added after dismissal
           if (hasDismissedToday) {
             if (!isClosedId && isNewerThanDismissal) {
               console.log('[Qisheng Portal] New announcement added after dismissal today -> opening modal');
@@ -639,8 +714,11 @@ export default function App() {
   // Launch App Handler: Records Central Activity Log immediately upon click
   const handleLaunchApp = (app: EnterpriseApp) => {
     if (!app || !app.id) return;
+    const now = Date.now();
+    const currentHost = currentUser.workstationHostname || 'QISHENG-122';
+    const currentIp = currentUser.localIp || '192.168.7.122';
 
-    // Requirement #2: Send event to Central Server Database immediately
+    // 1. Send event to Central Server Database immediately
     centralSyncService.recordActivityLog({
       appId: app.id,
       appName: app.name,
@@ -652,23 +730,61 @@ export default function App() {
       action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
     });
 
-    // Optimistically prepend to local activity logs so dashboard updates instantly
-    const newLogItem: ActivityLogItem = {
-      id: `log-${Date.now()}`,
-      appId: app.id,
-      appName: app.name,
-      appNameTh: app.nameTh,
-      appUrl: app.url,
-      category: app.category,
-      clientIp: currentUser.localIp || '192.168.7.122',
-      workstationHostname: currentUser.workstationHostname || 'QISHENG-122',
-      userName: currentUser.name || 'General User',
-      userRole: currentUser.role || 'user',
-      timestamp: Date.now(),
-      status: 'launched',
-      action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
-    };
-    setActivityLogs(prev => [newLogItem, ...prev.filter(l => l.id !== newLogItem.id)].slice(0, 20));
+    // 2. Requirement #1: Update per-machine recent activity logs
+    // "ถ้าเข้าลิงเดิมให้อัพเดทเวลาแทนเพิ่มเข้าไป" -> update timestamp instead of adding duplicate entry!
+    setMachineActivityLogs((prev) => {
+      const matchIdx = prev.findIndex(item => 
+        (app.id && item.appId === app.id) ||
+        (app.url && item.appUrl && item.appUrl.trim().toLowerCase() === app.url.trim().toLowerCase()) ||
+        (item.appName && item.appName.trim().toLowerCase() === app.name.trim().toLowerCase())
+      );
+
+      let updatedList: ActivityLogItem[];
+      if (matchIdx >= 0) {
+        // App exists in history -> update timestamp and move to front
+        const existing = prev[matchIdx];
+        const updatedEntry: ActivityLogItem = {
+          ...existing,
+          appId: app.id,
+          appName: app.name,
+          appNameTh: app.nameTh || existing.appNameTh,
+          appUrl: app.url || existing.appUrl,
+          category: app.category || existing.category,
+          timestamp: now,
+          workstationHostname: currentHost,
+          clientIp: currentIp,
+          userName: currentUser.name || 'General User',
+          userRole: currentUser.role || 'user',
+          status: 'launched',
+          action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
+        };
+        const remaining = prev.filter((_, idx) => idx !== matchIdx);
+        updatedList = [updatedEntry, ...remaining].slice(0, 20);
+      } else {
+        // New app -> insert at front
+        const newEntry: ActivityLogItem = {
+          id: `log-${now}-${Math.random().toString(36).substring(2, 6)}`,
+          appId: app.id,
+          appName: app.name,
+          appNameTh: app.nameTh,
+          appUrl: app.url,
+          category: app.category,
+          workstationHostname: currentHost,
+          clientIp: currentIp,
+          userName: currentUser.name || 'General User',
+          userRole: currentUser.role || 'user',
+          timestamp: now,
+          status: 'launched',
+          action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
+        };
+        updatedList = [newEntry, ...prev].slice(0, 20);
+      }
+
+      try {
+        localStorage.setItem('qs_machine_activity_logs_v2', JSON.stringify(updatedList));
+      } catch {}
+      return updatedList;
+    });
 
     // For Remote RDP sessions or apps without a web URL, show launch modal (credentials/mstsc instructions)
     if (app.launchType === 'remote_rdp' || !app.url) {
@@ -855,8 +971,8 @@ export default function App() {
               />
 
 
-              {/* 2) Frequently Used & Favorites Section: HIDE completely when empty, NO empty card */}
-              {frequentAndFavoriteApps.length > 0 && (
+              {/* 2) Favorites Section (Requirement #2: Only favorites, no frequent apps, no count badge): HIDE completely when empty */}
+              {favoriteApps.length > 0 && (
                 <section className="space-y-3.5">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
@@ -864,11 +980,8 @@ export default function App() {
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                       </div>
                       <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                        {language === 'TH' ? 'ระบบที่ใช้บ่อย & รายการโปรด' : 'Frequently Used & Favorites'}
+                        {language === 'TH' ? 'รายการโปรด' : 'Favorites'}
                       </h2>
-                      <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                        ({frequentAndFavoriteApps.length} {language === 'TH' ? 'ระบบ' : 'apps'})
-                      </span>
                     </div>
                     <button
                       type="button"
@@ -880,7 +993,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {frequentAndFavoriteApps.map((app) => (
+                    {favoriteApps.map((app) => (
                       <AppCard
                         key={app.id}
                         app={app}
@@ -940,7 +1053,7 @@ export default function App() {
                 </div>
               </section>
 
-              {/* 4) Recent Activity & Fast Links */}
+              {/* 4) Recent Activity (Requirement #1: Isolated per machine, dedup with updated time, icons linked from all apps) */}
               <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
@@ -950,31 +1063,59 @@ export default function App() {
                         {language === 'TH' ? 'ประวัติการเข้าใช้งานล่าสุด' : 'Recent App Activity'}
                       </h3>
                     </div>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">Live Log</span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                      {currentUser.workstationHostname || currentUser.localIp || 'This Workstation'}
+                    </span>
                   </div>
 
                   <div className="space-y-2">
-                    {activityLogs && activityLogs.length > 0 ? (
-                      activityLogs.slice(0, 5).map((log) => {
-                        const Icon = getAppLogIcon(log.category, log.appName);
+                    {machineActivityLogs && machineActivityLogs.length > 0 ? (
+                      machineActivityLogs.slice(0, 5).map((log) => {
+                        // Requirement #1: Link icon & details from All Apps (enterpriseApps)
+                        const matchedApp = enterpriseApps.find(a => 
+                          (log.appId && a.id === log.appId) ||
+                          (log.appUrl && a.url && a.url.toLowerCase() === log.appUrl.toLowerCase()) ||
+                          (log.appName && a.name.toLowerCase() === log.appName.toLowerCase()) ||
+                          (log.appNameTh && a.nameTh && a.nameTh.toLowerCase() === log.appNameTh.toLowerCase())
+                        );
+
+                        const imgUrl = matchedApp?.customIconUrl || 
+                          (matchedApp?.iconName?.startsWith('http') || matchedApp?.iconName?.startsWith('data:') ? matchedApp.iconName : null);
+                        const AppIcon = (matchedApp && matchedApp.iconName && ICON_MAP[matchedApp.iconName]) || getAppLogIcon(log.category || matchedApp?.category, log.appName);
+
+                        const displayName = language === 'TH' 
+                          ? (matchedApp?.nameTh || log.appNameTh || log.appName) 
+                          : (matchedApp?.name || log.appName);
+
                         return (
                           <div 
                             key={log.id} 
                             onClick={() => {
-                              if (log.appUrl) {
+                              if (matchedApp) {
+                                handleLaunchApp(matchedApp);
+                              } else if (log.appUrl) {
                                 window.open(log.appUrl, '_blank', 'noopener,noreferrer');
                               }
                             }}
                             className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                            title={log.appUrl ? `เปิด ${log.appName}` : log.appName}
+                            title={log.appUrl ? `เปิด ${displayName}` : displayName}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 group-hover:bg-[#1E60D5] group-hover:text-white transition-all shadow-2xs">
-                                <Icon className="w-4 h-4" />
+                              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 group-hover:bg-[#1E60D5] group-hover:text-white transition-all shadow-2xs overflow-hidden">
+                                {imgUrl ? (
+                                  <img 
+                                    src={imgUrl} 
+                                    alt={displayName} 
+                                    className="w-5 h-5 object-contain rounded bg-white/90 p-0.5" 
+                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <AppIcon className="w-4 h-4" />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
-                                  {language === 'TH' ? (log.appNameTh || log.appName) : log.appName}
+                                  {displayName}
                                 </div>
                                 <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 truncate">
                                   <span>{log.userName || 'User'}</span>

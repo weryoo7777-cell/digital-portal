@@ -40,7 +40,7 @@ interface AppCardProps {
   onDeleteApp?: (appId: string) => void;
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
+export const ICON_MAP: Record<string, React.ElementType> = {
   Calculator,
   ScanText,
   ReceiptText,

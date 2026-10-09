@@ -1,8 +1,8 @@
 {
-  "version": 88,
+  "version": 91,
   "adminPin": "1111",
-  "latestAnnouncementId": "ann-1791518309297",
-  "latestAnnouncementUpdatedAt": 1791518309300,
+  "latestAnnouncementId": "ann-1791520378806",
+  "latestAnnouncementUpdatedAt": 1791520378807,
   "lastAnnouncementAction": "create",
   "apps": [
     {
@@ -129,29 +129,6 @@
       "url": "https://script.google.com/macros/s/AKfycbwO2uHhe_A3sqBD9yPCZwv2VBz2v18tuZidyiT9-qbr1eSuk7fFM0edPat_kglftcBz/exec",
       "iconName": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAiACYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKK7L4P/CnWPjZ8Q9K8G6DNY2+qakzLFJqNwIIF2qWO5sHsDwASTWdSpCjB1Kjslqyoxcmox3ZxtFfZ+nfsd6JY6P4MsfEWkanp3iSz1OUeJR9tUx3tpvIT7KQCFyoGG5+9yAQRXyv8T7PQ9O+IniO08MpPHoEF/NFZJcyCSQRKxChmAG48de9bUEsTg44+k06cm4pp72Sd13VmtTz6WMp1a08Ok1KDaaatZp2OYoooqTuCvQ/gx4z8HeCdX1K88W+GrrxCzW23TZLS8a3exuQwKzcEbsAHjIrzyis6lNVYOEtmdGHryw1WNaCTa7q6+5n2f4g/by0bWvDt9DP4d1O91tdPktdOv5blI/JlONkku0HzNvzccZzzXxi7tI7OxLMxySe5pKKMNTjhMJTwNFWpU+blXRczu/xIxE1icVUxkopTqWcrKydlbZaBRRRWhkFFFFABRRRQAUUUUAf/2SQvhNdAzhjTsjhBOH13ZUFr6yDzZHyyDP0nQ7nEF+gE",
       "customIconUrl": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAiACYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKK7L4P/CnWPjZ8Q9K8G6DNY2+qakzLFJqNwIIF2qWO5sHsDwASTWdSpCjB1Kjslqyoxcmox3ZxtFfZ+nfsd6JY6P4MsfEWkanp3iSz1OUeJR9tUx3tpvIT7KQCFyoGG5+9yAQRXyv8T7PQ9O+IniO08MpPHoEF/NFZJcyCSQRKxChmAG48de9bUEsTg44+k06cm4pp72Sd13VmtTz6WMp1a08Ok1KDaaatZp2OYoooqTuCvQ/gx4z8HeCdX1K88W+GrrxCzW23TZLS8a3exuQwKzcEbsAHjIrzyis6lNVYOEtmdGHryw1WNaCTa7q6+5n2f4g/by0bWvDt9DP4d1O91tdPktdOv5blI/JlONkku0HzNvzccZzzXxi7tI7OxLMxySe5pKKMNTjhMJTwNFWpU+blXRczu/xIxE1icVUxkopTqWcrKydlbZaBRRRWhkFFFFABRRRQAUUUUAf/2SQvhNdAzhjTsjhBOH13ZUFr6yDzZHyyDP0nQ7nEF+gE",
-      "launchType": "web",
-      "status": "online",
-      "allowedRoles": [
-        "ADMIN",
-        "ACCOUNTING",
-        "IT",
-        "HR",
-        "SALES_OPERATIONS",
-        "admin",
-        "user"
-      ],
-      "isFrequent": false
-    },
-    {
-      "id": "app-1791452975021",
-      "name": "Youtube",
-      "nameTh": "Youtube",
-      "category": "it",
-      "description": "Youtube enterprise application for corporate workflow.",
-      "descriptionTh": "Youtube ระบบงานดิจิทัลสำหรับพนักงานองค์กร",
-      "url": "https://www.youtube.com/",
-      "iconName": "https://www.google.com/s2/favicons?domain=www.youtube.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=www.youtube.com&sz=128",
       "launchType": "web",
       "status": "online",
       "allowedRoles": [
@@ -516,19 +493,20 @@
     "app-boi-esub",
     "app-mikrotik",
     "app-vpn",
-    "app-protrack"
+    "app-protrack",
+    "app-1791452975021"
   ],
   "announcements": [
     {
-      "id": "ann-1791518309297",
-      "title": "ฝนตก",
-      "titleEn": "ฝนตก",
-      "summary": "12-13 นี้ ให้ระวังฝนตกหนัก",
+      "id": "ann-1791520378806",
+      "title": "ฝนตกหนัก",
+      "titleEn": "ฝนตกหนัก",
+      "summary": "1-2วันที่จะถึงให้เฝ้าระวังฝนตกหนัก",
       "date": "9 ตุลาคม 2569",
       "tag": "General",
-      "priority": "urgent",
+      "priority": "normal",
       "author": "ฝ่ายบริหารและสื่อสารองค์กร (Admin)",
-      "updatedAt": 1791518309300
+      "updatedAt": 1791520378807
     },
     {
       "id": "ann-1791510466003",
@@ -902,5 +880,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791519693472
+  "lastModified": 1791520378807
 }

@@ -1,19 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { 
-  getCentralData, 
-  saveApp, 
-  deleteApp, 
-  addAnnouncement, 
-  deleteAnnouncement, 
-  saveVendor, 
-  deleteVendor, 
-  resetVendors, 
-  recordAccessLog, 
-  verifyAdminPin, 
-  updateAdminPin 
-} from './src/server/centralStorage';
+import { centralStore } from './src/server/centralStore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,24 +22,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// 1. Client Machine Info Endpoint
-app.get('/api/client-info', (req, res) => {
+// Helper to extract client IP
+const getClientIp = (req: express.Request): string => {
   const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
-  const clientIp = (
-    rawForwarded.split(',')[0].trim() || 
-    (req.headers['x-real-ip'] as string) || 
-    (req.headers['cf-connecting-ip'] as string) || 
-    req.socket.remoteAddress || 
+  return (
+    rawForwarded.split(',')[0].trim() ||
+    (req.headers['x-real-ip'] as string) ||
+    (req.headers['cf-connecting-ip'] as string) ||
+    req.socket.remoteAddress ||
     '127.0.0.1'
   ).replace('::ffff:', '');
+};
+
+// 1. Client Machine Info Endpoint
+app.get('/api/client-info', (req, res) => {
+  const clientIp = getClientIp(req);
   const userAgent = (req.headers['user-agent'] as string) || 'Mozilla/5.0';
   const platformHint = (req.headers['sec-ch-ua-platform'] as string) || '';
   const hostHeader = (req.headers.host || '').toLowerCase();
-  
-  const isLocalhost = 
-    hostHeader.includes('localhost') || 
-    hostHeader.includes('127.0.0.1') || 
-    clientIp === '127.0.0.1' || 
+
+  const isLocalhost =
+    hostHeader.includes('localhost') ||
+    hostHeader.includes('127.0.0.1') ||
+    clientIp === '127.0.0.1' ||
     clientIp === '::1';
 
   res.json({
@@ -74,9 +67,9 @@ app.get('/api/system-health', (req, res) => {
       { id: 'erp', name: 'Express & Central ERP Server', status: 'online', latency: 5, uptime: '99.95%' },
       { id: 'ocr', name: 'DataForge OCR Engine Cluster', status: 'online', latency: 18, uptime: '99.89%' },
       { id: 'rd', name: 'RD e-Filing Thai Tax Gateway', status: 'online', latency: 42, uptime: '99.70%' },
-      { id: 'vpn', name: 'HQ WireGuard/IPsec VPN Hub', status: 'online', latency: 6, uptime: '99.99%' }
+      { id: 'vpn', name: 'HQ WireGuard/IPsec VPN Hub', status: 'online', latency: 6, uptime: '99.99%' },
     ],
-    checkedAt: new Date().toISOString()
+    checkedAt: new Date().toISOString(),
   });
 });
 
@@ -86,27 +79,72 @@ app.get('/api/auth/sso', (req, res) => {
     authenticated: true,
     provider: 'Microsoft Entra ID (Azure AD)',
     tenantId: 'qisheng-corp-prod-tenant',
-    ssoSession: 'valid'
+    ssoSession: 'valid',
   });
 });
 
 // 4. Central Portal Data API
-// Get complete centralized state (apps, announcements, vendor contacts, recent logs, PIN, timestamps)
 app.get('/api/portal-data', (req, res) => {
-  res.json({
-    success: true,
-    data: getCentralData()
-  });
+  res.json(centralStore.getPortalData());
 });
 
-// Apps CRUD
+// 5. Admin PIN Verification & Update (Supports both /api/auth/* and /api/portal-data/* routes)
+const handleVerifyPin = (req: express.Request, res: express.Response) => {
+  const pin = req.body?.pin || '';
+  const valid = centralStore.verifyPin(pin);
+  res.json({ valid });
+};
+app.post('/api/auth/verify-pin', handleVerifyPin);
+app.post('/api/portal-data/verify-pin', handleVerifyPin);
+
+const handleUpdatePin = (req: express.Request, res: express.Response) => {
+  const { currentPin, newPin } = req.body || {};
+  const result = centralStore.changePin(currentPin, newPin);
+  res.json(result);
+};
+app.post('/api/auth/change-pin', handleUpdatePin);
+app.post('/api/portal-data/update-pin', handleUpdatePin);
+
+// 6. Apps Management Endpoints
+app.get('/api/apps', (req, res) => {
+  res.json({ apps: centralStore.getApps() });
+});
+
+app.post('/api/apps', (req, res) => {
+  const body = req.body;
+  if (!body || !body.name) {
+    return res.status(400).json({ error: 'App name is required' });
+  }
+  const saved = centralStore.addApp(body);
+  res.json({ success: true, app: saved });
+});
+
+app.put('/api/apps', (req, res) => {
+  const body = req.body;
+  if (!body || !body.id) {
+    return res.status(400).json({ error: 'App ID is required' });
+  }
+  const updated = centralStore.updateApp(body);
+  res.json({ success: true, app: updated });
+});
+
+app.post('/api/apps/delete', (req, res) => {
+  const appId = req.body?.id || req.body?.appId;
+  if (!appId) {
+    return res.status(400).json({ error: 'App ID is required' });
+  }
+  const deleted = centralStore.deleteApp(appId);
+  res.json({ success: deleted, id: appId });
+});
+
+// Legacy portal-data apps endpoints
 app.post('/api/portal-data/apps', (req, res) => {
   const appData = req.body;
-  if (!appData || !appData.id || !appData.name) {
+  if (!appData || !appData.name) {
     return res.status(400).json({ success: false, error: 'App data is required' });
   }
-  const updated = saveApp(appData);
-  res.json({ success: true, apps: updated.apps, lastAppsUpdate: updated.lastAppsUpdate });
+  const saved = centralStore.addApp(appData);
+  res.json({ success: true, app: saved });
 });
 
 app.delete('/api/portal-data/apps/:id', (req, res) => {
@@ -114,22 +152,50 @@ app.delete('/api/portal-data/apps/:id', (req, res) => {
   if (!appId) {
     return res.status(400).json({ success: false, error: 'App ID is required' });
   }
-  const updated = deleteApp(appId);
-  res.json({ success: true, apps: updated.apps, lastAppsUpdate: updated.lastAppsUpdate });
+  const deleted = centralStore.deleteApp(appId);
+  res.json({ success: deleted, id: appId });
 });
 
-// Announcements CRUD
+// 7. Announcements Management Endpoints
+app.get('/api/announcements', (req, res) => {
+  res.json(centralStore.getAnnouncements());
+});
+
+app.post('/api/announcements', (req, res) => {
+  const body = req.body;
+  if (!body || !body.title || !body.summary) {
+    return res.status(400).json({ error: 'Title and summary are required' });
+  }
+  const saved = centralStore.addAnnouncement(body);
+  res.json({ success: true, announcement: saved });
+});
+
+app.put('/api/announcements', (req, res) => {
+  const body = req.body;
+  if (!body || !body.id) {
+    return res.status(400).json({ error: 'Announcement ID is required' });
+  }
+  const updated = centralStore.updateAnnouncement(body);
+  res.json({ success: true, announcement: updated });
+});
+
+app.post('/api/announcements/delete', (req, res) => {
+  const annId = req.body?.id || req.body?.announcementId;
+  if (!annId) {
+    return res.status(400).json({ error: 'Announcement ID is required' });
+  }
+  const deleted = centralStore.deleteAnnouncement(annId);
+  res.json({ success: deleted, id: annId });
+});
+
+// Legacy portal-data announcements endpoints
 app.post('/api/portal-data/announcements', (req, res) => {
   const annData = req.body;
   if (!annData || !annData.title) {
     return res.status(400).json({ success: false, error: 'Title is required' });
   }
-  const updated = addAnnouncement(annData);
-  res.json({ 
-    success: true, 
-    announcements: updated.announcements, 
-    lastAnnouncementUpdate: updated.lastAnnouncementUpdate 
-  });
+  const saved = centralStore.addAnnouncement(annData);
+  res.json({ success: true, announcement: saved });
 });
 
 app.delete('/api/portal-data/announcements/:id', (req, res) => {
@@ -137,22 +203,50 @@ app.delete('/api/portal-data/announcements/:id', (req, res) => {
   if (!annId) {
     return res.status(400).json({ success: false, error: 'Announcement ID is required' });
   }
-  const updated = deleteAnnouncement(annId);
-  res.json({ 
-    success: true, 
-    announcements: updated.announcements, 
-    lastAnnouncementUpdate: updated.lastAnnouncementUpdate 
-  });
+  const deleted = centralStore.deleteAnnouncement(annId);
+  res.json({ success: deleted, id: annId });
 });
 
-// Vendor Contacts CRUD
+// 8. Vendor Contacts Management Endpoints
+app.get('/api/vendor-contacts', (req, res) => {
+  res.json({ vendors: centralStore.getVendorContacts() });
+});
+
+app.post('/api/vendor-contacts', (req, res) => {
+  const body = req.body;
+  if (body && Array.isArray(body.vendors)) {
+    centralStore.setVendorContacts(body.vendors);
+    return res.json({ success: true, vendors: centralStore.getVendorContacts() });
+  }
+  if (!body || !body.name || !body.phone) {
+    return res.status(400).json({ error: 'Vendor name and phone are required' });
+  }
+  const saved = body.id ? centralStore.updateVendor(body) : centralStore.addVendor(body);
+  res.json({ success: true, vendor: saved });
+});
+
+app.post('/api/vendor-contacts/delete', (req, res) => {
+  const vendorId = req.body?.id || req.body?.vendorId;
+  if (!vendorId) {
+    return res.status(400).json({ error: 'Vendor ID is required' });
+  }
+  const deleted = centralStore.deleteVendor(vendorId);
+  res.json({ success: deleted, id: vendorId });
+});
+
+app.post('/api/vendor-contacts/reset', (req, res) => {
+  const reset = centralStore.resetVendors();
+  res.json({ success: true, vendors: reset });
+});
+
+// Legacy portal-data vendors endpoints
 app.post('/api/portal-data/vendors', (req, res) => {
   const vendor = req.body;
   if (!vendor || !vendor.name) {
     return res.status(400).json({ success: false, error: 'Vendor name is required' });
   }
-  const updated = saveVendor(vendor);
-  res.json({ success: true, vendorContacts: updated.vendorContacts, lastVendorsUpdate: updated.lastVendorsUpdate });
+  const saved = vendor.id ? centralStore.updateVendor(vendor) : centralStore.addVendor(vendor);
+  res.json({ success: true, vendor: saved });
 });
 
 app.delete('/api/portal-data/vendors/:id', (req, res) => {
@@ -160,58 +254,43 @@ app.delete('/api/portal-data/vendors/:id', (req, res) => {
   if (!vendorId) {
     return res.status(400).json({ success: false, error: 'Vendor ID is required' });
   }
-  const updated = deleteVendor(vendorId);
-  res.json({ success: true, vendorContacts: updated.vendorContacts, lastVendorsUpdate: updated.lastVendorsUpdate });
+  const deleted = centralStore.deleteVendor(vendorId);
+  res.json({ success: deleted, id: vendorId });
 });
 
 app.post('/api/portal-data/reset-vendors', (req, res) => {
-  const updated = resetVendors();
-  res.json({ success: true, vendorContacts: updated.vendorContacts });
+  const reset = centralStore.resetVendors();
+  res.json({ success: true, vendors: reset });
 });
 
-// Recent Access Log Real-time Recording
-app.post('/api/portal-data/log-access', (req, res) => {
-  const { appId, appName, appTh, category, url, iconName, status, user } = req.body;
-  if (!appName) {
-    return res.status(400).json({ success: false, error: 'App name is required' });
-  }
-  const clientIp = (
-    ((req.headers['x-forwarded-for'] as string) || '').split(',')[0].trim() || 
-    req.socket.remoteAddress || 
-    '127.0.0.1'
-  ).replace('::ffff:', '');
+// 9. Activity Logs Endpoints
+app.get('/api/activity-logs', (req, res) => {
+  const limit = parseInt((req.query.limit as string) || '20', 10);
+  res.json({ logs: centralStore.getActivityLogs(limit) });
+});
 
-  const updated = recordAccessLog({
-    appId,
-    appName,
-    appTh,
-    category,
-    url,
-    iconName,
-    status: status || 'Authorized',
-    user: user || 'User',
-    clientIp
+app.post('/api/activity-logs', (req, res) => {
+  const body = req.body;
+  const detectedIp = getClientIp(req);
+  const logEntry = centralStore.addActivityLog({
+    ...body,
+    clientIp: body.clientIp || detectedIp,
   });
+  res.json({ success: true, log: logEntry });
+});
 
-  res.json({ success: true, recentLogs: updated.recentLogs });
+app.post('/api/portal-data/log-access', (req, res) => {
+  const body = req.body;
+  const detectedIp = getClientIp(req);
+  const logEntry = centralStore.addActivityLog({
+    ...body,
+    clientIp: body.clientIp || detectedIp,
+  });
+  res.json({ success: true, recentLogs: centralStore.getActivityLogs(20), log: logEntry });
 });
 
 app.get('/api/portal-data/recent-logs', (req, res) => {
-  const data = getCentralData();
-  res.json({ success: true, recentLogs: data.recentLogs });
-});
-
-// Admin PIN Verification & Update
-app.post('/api/portal-data/verify-pin', (req, res) => {
-  const { pin } = req.body;
-  const isValid = verifyAdminPin(pin);
-  res.json({ valid: isValid });
-});
-
-app.post('/api/portal-data/update-pin', (req, res) => {
-  const { currentPin, newPin } = req.body;
-  const result = updateAdminPin(currentPin, newPin);
-  res.json(result);
+  res.json({ success: true, recentLogs: centralStore.getActivityLogs(20) });
 });
 
 async function startServer() {
@@ -221,7 +300,7 @@ async function startServer() {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa'
+      appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {

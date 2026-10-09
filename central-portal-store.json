@@ -1,5 +1,5 @@
 {
-  "version": 87,
+  "version": 88,
   "adminPin": "1111",
   "latestAnnouncementId": "ann-1791518309297",
   "latestAnnouncementUpdatedAt": 1791518309300,
@@ -545,6 +545,20 @@
   "vendorContacts": [],
   "activityLogs": [
     {
+      "id": "log-1791519693472-2du0j",
+      "appName": "Test",
+      "appNameTh": "Test",
+      "appUrl": "http://test",
+      "category": "general",
+      "clientIp": "127.0.0.1",
+      "workstationHostname": "Workstation",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791519693472,
+      "status": "online",
+      "action": "Direct Application Launch"
+    },
+    {
       "id": "log-1791516285091-bcjyq",
       "appId": "app-1791453410621",
       "appName": "gemini",
@@ -888,5 +902,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791518309300
+  "lastModified": 1791519693472
 }

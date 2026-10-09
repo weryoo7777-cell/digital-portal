@@ -552,7 +552,14 @@ const isCurrentMachineLog = (
   };
 
   const handleDeleteApp = async (appId: string) => {
-    console.log('[Qisheng Portal] handleDeleteApp for:', appId, 'Keeping current tab:', currentTab);
+    console.log('[Qisheng Portal] handleDeleteApp for:', appId, 'Keeping current tab:', currentTab, 'category:', selectedCategory);
+    // Preserve current category explicitly across deletions
+    try {
+      if (selectedCategory) {
+        sessionStorage.setItem('qs_selected_app_category', selectedCategory);
+      }
+    } catch {}
+
     // 1. Mark as permanently deleted so it NEVER comes back on sync or refresh
     try {
       const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
@@ -721,8 +728,23 @@ const isCurrentMachineLog = (
 
   // Search & Filtering
   const [searchQuery, setSearchQuery] = useState('');
-  // Requirement #3: Default category is 'all' (All Apps)
-  const [selectedCategory, setSelectedCategory] = useState<AppCategory>('all');
+  // Persist selected app category across operations & deletions (e.g. stays on 'accounting' after deletion)
+  const [selectedCategory, setSelectedCategory] = useState<AppCategory>(() => {
+    try {
+      const saved = sessionStorage.getItem('qs_selected_app_category');
+      if (saved && ['all', 'accounting', 'boi', 'it', 'external'].includes(saved)) {
+        return saved as AppCategory;
+      }
+    } catch {}
+    return 'all';
+  });
+
+  const handleSelectCategory = (cat: AppCategory) => {
+    setSelectedCategory(cat);
+    try {
+      sessionStorage.setItem('qs_selected_app_category', cat);
+    } catch {}
+  };
 
   // Favorites (Stored in localStorage with sensible defaults, excluding deleted apps)
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -954,7 +976,7 @@ const isCurrentMachineLog = (
       icon: Calculator,
       badgeStyle: 'bg-blue-50 text-[#1E60D5] border-blue-200 group-hover:bg-[#1E60D5] group-hover:text-white',
       onClick: () => { 
-        setSelectedCategory('accounting'); 
+        handleSelectCategory('accounting'); 
         setSearchQuery(''); 
         handleTabChange('all-apps'); 
       }
@@ -967,7 +989,7 @@ const isCurrentMachineLog = (
       icon: ReceiptText,
       badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white',
       onClick: () => { 
-        setSelectedCategory('boi'); 
+        handleSelectCategory('boi'); 
         setSearchQuery(''); 
         handleTabChange('all-apps'); 
       }
@@ -980,7 +1002,7 @@ const isCurrentMachineLog = (
       icon: Network,
       badgeStyle: 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-600 group-hover:text-white',
       onClick: () => { 
-        setSelectedCategory('it'); 
+        handleSelectCategory('it'); 
         setSearchQuery(''); 
         handleTabChange('all-apps'); 
       }
@@ -993,7 +1015,7 @@ const isCurrentMachineLog = (
       icon: Landmark,
       badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-600 group-hover:text-white',
       onClick: () => { 
-        setSelectedCategory('external'); 
+        handleSelectCategory('external'); 
         setSearchQuery(''); 
         handleTabChange('all-apps'); 
       }
@@ -1298,7 +1320,7 @@ const isCurrentMachineLog = (
                       <button
                         key={tab.id}
                         onClick={() => {
-                          setSelectedCategory(tab.id);
+                          handleSelectCategory(tab.id);
                           setSearchQuery('');
                         }}
                         className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${

@@ -358,20 +358,11 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                       setActiveAnn(ann);
                       onMarkAsRead?.(ann.id);
                     }}
-                    className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all group cursor-pointer ${
-                      isUnread 
-                        ? 'border-blue-200 dark:border-blue-800/80 ring-1 ring-blue-500/20 shadow-xs' 
-                        : 'border-slate-200/90 dark:border-slate-800'
-                    } hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/60`}
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md dark:hover:shadow-slate-950/60 transition-all group cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {isUnread && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500 text-white shadow-2xs animate-pulse">
-                              {language === 'TH' ? 'ยังไม่ได้อ่าน' : 'UNREAD'}
-                            </span>
-                          )}
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
                             ann.priority === 'urgent'
                               ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'

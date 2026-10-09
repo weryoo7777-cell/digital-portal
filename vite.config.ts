@@ -7,20 +7,37 @@ import {defineConfig, Plugin} from 'vite';
 import { centralStore } from './src/server/centralStore';
 
 function parseBody(req: http.IncomingMessage): Promise<any> {
+  if ((req as any).body && typeof (req as any).body === 'object') {
+    return Promise.resolve((req as any).body);
+  }
+  if (req.readableEnded) {
+    return Promise.resolve({});
+  }
   return new Promise((resolve) => {
+    let resolved = false;
+    const done = (val: any) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(val);
+      }
+    };
+    const timer = setTimeout(() => done({}), 1500);
+
     let body = '';
     req.on('data', chunk => {
       body += chunk;
     });
     req.on('end', () => {
+      clearTimeout(timer);
       try {
-        resolve(body ? JSON.parse(body) : {});
+        done(body ? JSON.parse(body) : {});
       } catch {
-        resolve({});
+        done({});
       }
     });
     req.on('error', () => {
-      resolve({});
+      clearTimeout(timer);
+      done({});
     });
   });
 }
@@ -288,7 +305,9 @@ export default defineConfig(() => {
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: ['**/central-portal-store.json', '**/src/data/centralPortalStorage.json'],
+      },
     },
   };
 });

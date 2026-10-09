@@ -309,20 +309,25 @@ class CentralSyncService {
 
   // 5. Admin PIN Verification on Server
   public async verifyAdminPin(pin: string): Promise<boolean> {
+    const cleanPin = (pin || '').trim();
+    if (!cleanPin) return false;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2000);
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
+        body: JSON.stringify({ pin: cleanPin }),
+        signal: controller.signal
       });
+      clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
         return Boolean(data.valid);
       }
-      // Offline fallback
-      return pin.trim() === '1111';
+      return cleanPin === '1111';
     } catch {
-      return pin.trim() === '1111';
+      return cleanPin === '1111';
     }
   }
 

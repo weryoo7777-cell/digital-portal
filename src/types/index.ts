@@ -163,6 +163,7 @@ export interface PortalDataSyncResponse {
   serverTime: number;
   version: number;
   vendorContacts?: VendorContact[];
+  deletedAppIds?: string[];
 }
 
 export interface HelpdeskTicket {

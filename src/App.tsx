@@ -213,31 +213,35 @@ const isCurrentMachineLog = (
     return [];
   });
 
-  // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data, merging updated concise descriptions)
+  // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data, honoring deletions)
   const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
     try {
+      const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
+      const deletedSet = new Set<string>(storedDeleted ? JSON.parse(storedDeleted) : []);
+
       const stored = localStorage.getItem('qs_enterprise_apps_v2');
       if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const defaultAppMap = new Map(ENTERPRISE_APPS.map(a => [a.id, a]));
-          const updatedParsed = parsed.map((a: any) => {
-            const def = defaultAppMap.get(a.id);
-            if (def) {
-              return {
-                ...a,
-                nameTh: def.nameTh || a.nameTh,
-                descriptionTh: def.descriptionTh || a.descriptionTh,
-                description: def.description || a.description
-              };
-            }
-            return a;
-          });
-          const existingIds = new Set(updatedParsed.map((a: any) => a.id));
-          const missingDefaults = ENTERPRISE_APPS.filter(a => !existingIds.has(a.id));
-          return [...updatedParsed, ...missingDefaults];
+          const updatedParsed = parsed
+            .filter((a: any) => !deletedSet.has(a.id))
+            .map((a: any) => {
+              const def = defaultAppMap.get(a.id);
+              if (def) {
+                return {
+                  ...a,
+                  nameTh: def.nameTh || a.nameTh,
+                  descriptionTh: def.descriptionTh || a.descriptionTh,
+                  description: def.description || a.description
+                };
+              }
+              return a;
+            });
+          return updatedParsed;
         }
       }
+      return ENTERPRISE_APPS.filter(a => !deletedSet.has(a.id));
     } catch {}
     return ENTERPRISE_APPS;
   });
@@ -335,12 +339,19 @@ const isCurrentMachineLog = (
   useEffect(() => {
     const unsubscribe = centralSyncService.subscribe((data) => {
       if (data.apps && Array.isArray(data.apps)) {
-        const existingIds = new Set(data.apps.map((a: any) => a.id));
-        const missingDefaults = ENTERPRISE_APPS.filter(a => !existingIds.has(a.id));
-        const combined = [...data.apps, ...missingDefaults];
-        setEnterpriseApps(combined);
+        const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
+        const deletedSet = new Set<string>(storedDeleted ? JSON.parse(storedDeleted) : []);
+        if (Array.isArray(data.deletedAppIds)) {
+          data.deletedAppIds.forEach((id: string) => deletedSet.add(id));
+          try {
+            localStorage.setItem('qs_deleted_app_ids', JSON.stringify(Array.from(deletedSet)));
+          } catch {}
+        }
+
+        const validApps = data.apps.filter((a: any) => !deletedSet.has(a.id));
+        setEnterpriseApps(validApps);
         try {
-          localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(combined));
+          localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(validApps));
         } catch {}
       }
       if (data.vendorContacts && Array.isArray(data.vendorContacts)) {
@@ -517,6 +528,16 @@ const isCurrentMachineLog = (
 
   const handleSaveApp = async (app: EnterpriseApp) => {
     const isEdit = enterpriseApps.some(a => a.id === app.id);
+    // If restoring or creating an app with this id, remove from deleted list
+    try {
+      const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
+      if (storedDeleted) {
+        const deletedList: string[] = JSON.parse(storedDeleted);
+        const filtered = deletedList.filter(id => id !== app.id);
+        localStorage.setItem('qs_deleted_app_ids', JSON.stringify(filtered));
+      }
+    } catch {}
+
     setEnterpriseApps((prev) => {
       const exists = prev.some(a => a.id === app.id);
       const updated = exists ? prev.map(a => a.id === app.id ? app : a) : [app, ...prev];
@@ -532,6 +553,26 @@ const isCurrentMachineLog = (
 
   const handleDeleteApp = async (appId: string) => {
     console.log('[Qisheng Portal] handleDeleteApp for:', appId, 'Keeping current tab:', currentTab);
+    // 1. Mark as permanently deleted so it NEVER comes back on sync or refresh
+    try {
+      const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
+      const deletedList: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
+      if (!deletedList.includes(appId)) {
+        deletedList.push(appId);
+        localStorage.setItem('qs_deleted_app_ids', JSON.stringify(deletedList));
+      }
+    } catch {}
+
+    // 2. Remove from favorites
+    setFavorites((prev) => {
+      const updated = prev.filter(id => id !== appId);
+      try {
+        localStorage.setItem('qs_favorites', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 3. Remove from enterpriseApps
     setEnterpriseApps((prev) => {
       const updated = prev.filter(a => a.id !== appId);
       try {
@@ -539,6 +580,7 @@ const isCurrentMachineLog = (
       } catch {}
       return updated;
     });
+
     setAppToDeleteId(null);
     await centralSyncService.deleteApp(appId);
   };
@@ -661,12 +703,14 @@ const isCurrentMachineLog = (
     return {};
   });
 
-  // Layout & Navigation state - Persisted to localStorage so user stays on current tab during delete/save/refresh
+  // Layout & Navigation state:
+  // Requirement: First time entering web AND closing & reopening web must ALWAYS show 'dashboard' (หน้าหลัก)
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
     try {
-      const saved = localStorage.getItem('qs_active_tab');
+      // Clear legacy localStorage key so old persistent tab never overrides initial load
+      localStorage.removeItem('qs_active_tab');
+      const saved = sessionStorage.getItem('qs_active_tab');
       if (saved && typeof saved === 'string') {
-        console.log('[Qisheng Portal] Restoring active tab from localStorage:', saved);
         return saved as NavTab;
       }
     } catch {}
@@ -680,14 +724,17 @@ const isCurrentMachineLog = (
   // Requirement #3: Default category is 'all' (All Apps)
   const [selectedCategory, setSelectedCategory] = useState<AppCategory>('all');
 
-  // Favorites (Requirement #2.2: Stored in localStorage with sensible defaults)
+  // Favorites (Stored in localStorage with sensible defaults, excluding deleted apps)
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
+      const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
+      const deletedSet = new Set<string>(storedDeleted ? JSON.parse(storedDeleted) : []);
       const stored = localStorage.getItem('qs_favorites');
       if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed.filter((id: string) => !deletedSet.has(id));
       }
+      return ['app-express', 'app-boi-sw'].filter(id => !deletedSet.has(id));
     } catch {}
     return ['app-express', 'app-boi-sw'];
   });
@@ -703,11 +750,11 @@ const isCurrentMachineLog = (
   const [googleSearchInitialQuery, setGoogleSearchInitialQuery] = useState('');
   const [googleTranslateModalOpen, setGoogleTranslateModalOpen] = useState(false);
 
-  // Centralized Navigation with State Reset & LocalStorage Synchronization
+  // Centralized Navigation with State Reset & SessionStorage Synchronization
   const handleTabChange = (newTab: NavTab) => {
     console.log('[Qisheng Portal] Navigating to tab:', newTab);
     try {
-      localStorage.setItem('qs_active_tab', newTab);
+      sessionStorage.setItem('qs_active_tab', newTab);
     } catch {}
     setSelectedAppForLaunch(null);
     setQuickActionModal({ isOpen: false, type: 'helpdesk' });

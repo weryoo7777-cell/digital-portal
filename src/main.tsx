@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
   // Global helper for user testing in DevTools console
   (window as any).qishengPortal = {
     version: '2.5.0',
-    getActiveTab: () => localStorage.getItem('qs_active_tab') || 'dashboard',
+    getActiveTab: () => sessionStorage.getItem('qs_active_tab') || 'dashboard',
     getAnnouncements: () => JSON.parse(localStorage.getItem('qs_announcements_v1') || '[]'),
     getAnnouncementClosedStatus: () => ({
       lastClosedDate: localStorage.getItem('qs_announcement_last_closed_date'),

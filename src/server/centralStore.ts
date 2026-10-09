@@ -16,6 +16,7 @@ export interface CentralStoreSchema {
   latestAnnouncementUpdatedAt: number;
   lastAnnouncementAction?: 'create' | 'update' | 'delete' | 'init';
   apps: EnterpriseApp[];
+  deletedAppIds?: string[];
   announcements: CorporateAnnouncement[];
   vendorContacts: VendorContact[];
   activityLogs: ActivityLogItem[];
@@ -108,6 +109,7 @@ class CentralStoreManager {
       latestAnnouncementId: seededAnnouncements[0]?.id || 'ann-welcome',
       latestAnnouncementUpdatedAt: seededAnnouncements[0]?.updatedAt || now,
       apps: [...ENTERPRISE_APPS],
+      deletedAppIds: [],
       announcements: seededAnnouncements,
       vendorContacts: [...INITIAL_VENDOR_CONTACTS],
       activityLogs: [...INITIAL_ACTIVITY_LOGS],
@@ -121,9 +123,13 @@ class CentralStoreManager {
         const raw = fs.readFileSync(STORAGE_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.apps) && Array.isArray(parsed.announcements)) {
+          const deletedAppIds: string[] = Array.isArray(parsed.deletedAppIds) ? parsed.deletedAppIds : [];
+          const deletedSet = new Set<string>(deletedAppIds);
+
           const existingAppIds = new Set(parsed.apps.map((a: any) => a.id));
-          const missingAppDefaults = ENTERPRISE_APPS.filter(a => !existingAppIds.has(a.id));
-          const allMergedApps = [...parsed.apps, ...missingAppDefaults];
+          // Only add missing defaults if they were never deleted by the user
+          const missingAppDefaults = ENTERPRISE_APPS.filter(a => !existingAppIds.has(a.id) && !deletedSet.has(a.id));
+          const allMergedApps = [...parsed.apps, ...missingAppDefaults].filter(a => !deletedSet.has(a.id));
 
           this.store = {
             version: parsed.version || 1,
@@ -132,6 +138,7 @@ class CentralStoreManager {
             latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || (parsed.announcements[0]?.updatedAt || Date.now()),
             lastAnnouncementAction: parsed.lastAnnouncementAction || 'init',
             apps: allMergedApps,
+            deletedAppIds: Array.from(deletedSet),
             announcements: parsed.announcements,
             vendorContacts: Array.isArray(parsed.vendorContacts) ? parsed.vendorContacts : [...INITIAL_VENDOR_CONTACTS],
             activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : [...INITIAL_ACTIVITY_LOGS],
@@ -162,6 +169,7 @@ class CentralStoreManager {
   public getPortalData(): PortalDataSyncResponse {
     return {
       apps: this.store.apps,
+      deletedAppIds: this.store.deletedAppIds || [],
       announcements: this.store.announcements,
       vendorContacts: this.store.vendorContacts,
       activityLogs: this.store.activityLogs.slice(0, 50),
@@ -178,6 +186,9 @@ class CentralStoreManager {
   }
 
   public addApp(app: EnterpriseApp): EnterpriseApp {
+    if (this.store.deletedAppIds) {
+      this.store.deletedAppIds = this.store.deletedAppIds.filter(id => id !== app.id);
+    }
     const existingIdx = this.store.apps.findIndex(a => a.id === app.id);
     if (existingIdx >= 0) {
       this.store.apps[existingIdx] = app;
@@ -190,6 +201,9 @@ class CentralStoreManager {
   }
 
   public updateApp(app: EnterpriseApp): EnterpriseApp | null {
+    if (this.store.deletedAppIds) {
+      this.store.deletedAppIds = this.store.deletedAppIds.filter(id => id !== app.id);
+    }
     const idx = this.store.apps.findIndex(a => a.id === app.id);
     if (idx === -1) {
       return this.addApp(app);
@@ -201,14 +215,17 @@ class CentralStoreManager {
   }
 
   public deleteApp(appId: string): boolean {
+    if (!this.store.deletedAppIds) {
+      this.store.deletedAppIds = [];
+    }
+    if (!this.store.deletedAppIds.includes(appId)) {
+      this.store.deletedAppIds.push(appId);
+    }
     const initialLen = this.store.apps.length;
     this.store.apps = this.store.apps.filter(a => a.id !== appId);
-    if (this.store.apps.length !== initialLen) {
-      this.store.version += 1;
-      this.persistStore();
-      return true;
-    }
-    return false;
+    this.store.version += 1;
+    this.persistStore();
+    return true;
   }
 
   public getAnnouncements(): { announcements: CorporateAnnouncement[]; latestAnnouncementId: string; latestAnnouncementUpdatedAt: number } {

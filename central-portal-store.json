@@ -1,9 +1,10 @@
 {
-  "version": 64,
+  "version": 74,
   "adminPin": "1111",
-  "latestAnnouncementId": "ann-1791450258276",
-  "latestAnnouncementUpdatedAt": 1791450258278,
-  "lastAnnouncementAction": "init",
+  "latestAnnouncementId": "ann-1791510466003",
+  "latestAnnouncementUpdatedAt": 1791510465754,
+  "lastAnnouncementAction": "create",
+  "deletedAppIds": [],
   "apps": [
     {
       "id": "app-1791453921197",
@@ -187,23 +188,521 @@
         "user"
       ],
       "isFrequent": false
+    },
+    {
+      "id": "app-boi-sw",
+      "name": "Single Window for Visa and Work Permit",
+      "nameTh": "ศูนย์บริการวีซ่าและใบอนุญาตทำงาน (Single Window)",
+      "category": "boi",
+      "description": "Visa & Work Permit applications for promoted experts",
+      "descriptionTh": "บริการขอวีซ่าและใบอนุญาตทำงาน (Work Permit)",
+      "iconName": "ReceiptText",
+      "badge": "BOI Single Window",
+      "url": "https://visasw.boi.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "v3.0 Web",
+      "documentationUrl": "https://visasw.boi.go.th"
+    },
+    {
+      "id": "app-boi-esub",
+      "name": "BOI e-Submission System",
+      "nameTh": "ระบบยื่นคำขอส่งเสริมการลงทุน (e-Submission)",
+      "category": "boi",
+      "description": "Investment promotion applications & progress reporting",
+      "descriptionTh": "ยื่นคำขอรับการส่งเสริมการลงทุน BOI ออนไลน์",
+      "iconName": "Building",
+      "badge": "BOI e-Sub",
+      "url": "https://esubmission.boi.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "v2.0 Web",
+      "documentationUrl": "https://www.boi.go.th"
+    },
+    {
+      "id": "app-mikrotik",
+      "name": "MikroTik CCR2004 Core Router",
+      "nameTh": "เราเตอร์เครือข่ายหลักและไฟร์วอลล์ MikroTik",
+      "category": "it",
+      "description": "Headquarters core router gateway, VLAN & firewall",
+      "descriptionTh": "Router Gateway & Firewall ประจำสำนักงานใหญ่",
+      "iconName": "Network",
+      "badge": "RouterOS v7",
+      "url": "https://192.168.1.1",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "intranet",
+      "isFrequent": true,
+      "version": "RouterOS 7.15",
+      "internalPort": "443",
+      "documentationUrl": "https://wiki.mikrotik.com"
+    },
+    {
+      "id": "app-vpn",
+      "name": "WireGuard Zero-Trust VPN Gateway",
+      "nameTh": "ระบบ VPN เครือข่ายความปลอดภัย (WireGuard)",
+      "category": "it",
+      "description": "High-speed encrypted VPN tunnel for corporate resources",
+      "descriptionTh": "อุโมงค์ VPN เชื่อมต่อเครือข่ายภายในองค์กร",
+      "iconName": "Shield",
+      "badge": "WireGuard",
+      "url": "https://vpn.qisheng.co.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "intranet",
+      "isFrequent": true,
+      "version": "WG 1.0",
+      "internalPort": "51820",
+      "documentationUrl": "https://www.wireguard.com"
+    },
+    {
+      "id": "app-protrack",
+      "name": "ProTrack System",
+      "nameTh": "ระบบบริหารและติดตามงาน ProTrack",
+      "category": "it",
+      "description": "Enterprise project and corporate workflow tracking",
+      "descriptionTh": "ระบบบริหารและติดตามความคืบหน้าโครงการ",
+      "iconName": "Layers",
+      "badge": "ProTrack v2",
+      "url": "https://protrack.qisheng.internal",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "v2.4.1",
+      "internalPort": "8080",
+      "documentationUrl": "https://protrack.qisheng.internal/docs"
+    },
+    {
+      "id": "gov-rd-efiling",
+      "name": "RD New e-Filing Portal",
+      "nameTh": "กรมสรรพากร (RD New e-Filing)",
+      "category": "external",
+      "description": "Official internet tax filing portal for corporate taxes",
+      "descriptionTh": "ยื่นแบบภาษีนิติบุคคล และภาษีมูลค่าเพิ่มออนไลน์",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=efiling.rd.go.th&sz=128",
+      "badge": "สรรพากร (RD)",
+      "url": "https://efiling.rd.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-rd-etax",
+      "name": "e-Tax Invoice & e-Receipt Portal",
+      "nameTh": "ระบบใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax)",
+      "category": "external",
+      "description": "Verify electronic tax invoices & validate digital signatures",
+      "descriptionTh": "ตรวจสอบสถานะใบกำกับภาษีและ Digital Signature",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=etax.rd.go.th&sz=128",
+      "badge": "e-Tax สรรพากร",
+      "url": "https://etax.rd.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-dbd-datawarehouse",
+      "name": "DBD DataWarehouse+",
+      "nameTh": "กรมพัฒนาธุรกิจการค้า (DBD DataWarehouse+)",
+      "category": "external",
+      "description": "Company registry search & corporate financial statements",
+      "descriptionTh": "ค้นหาข้อมูลนิติบุคคลและงบการเงินบริษัท",
+      "iconName": "Building2",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=datawarehouse.dbd.go.th&sz=128",
+      "badge": "DBD คลังข้อมูล",
+      "url": "https://datawarehouse.dbd.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-dbd-ereg",
+      "name": "DBD e-Registration",
+      "nameTh": "จดทะเบียนนิติบุคคลออนไลน์ (DBD e-Reg)",
+      "category": "external",
+      "description": "Online business registration and corporate amendments",
+      "descriptionTh": "จดทะเบียนจัดตั้งและแก้ไขข้อมูลนิติบุคคลออนไลน์",
+      "iconName": "Building2",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=ereg.dbd.go.th&sz=128",
+      "badge": "DBD ทะเบียน",
+      "url": "https://ereg.dbd.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-sso-eservice",
+      "name": "SSO e-Services",
+      "nameTh": "สำนักงานประกันสังคม (SSO e-Services)",
+      "category": "external",
+      "description": "Monthly social security filing and employee management",
+      "descriptionTh": "ยื่นแบบเงินสมทบ สปส. และแจ้งเข้า-ออกพนักงาน",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=sso.go.th&sz=128",
+      "badge": "ประกันสังคม (สปส.)",
+      "url": "https://www.sso.go.th/eservices",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-customs-nsw",
+      "name": "Thai Customs NSW Portal",
+      "nameTh": "กรมศุลกากร (National Single Window - NSW)",
+      "category": "external",
+      "description": "National Single Window for customs import/export clearance",
+      "descriptionTh": "ระบบเชื่อมโยงข้อมูลนำเข้า-ส่งออกสินค้า (NSW)",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=customs.go.th&sz=128",
+      "badge": "ศุลกากร (Customs)",
+      "url": "https://www.customs.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-doe-workpermit",
+      "name": "e-WorkPermit System",
+      "nameTh": "กรมการจัดหางาน (e-WorkPermit)",
+      "category": "external",
+      "description": "Foreign worker work permit management system",
+      "descriptionTh": "ยื่นคำขอและต่ออายุใบอนุญาตทำงานคนต่างด้าว",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=doe.go.th&sz=128",
+      "badge": "กรมการจัดหางาน",
+      "url": "https://e-workpermit.doe.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "gov-dft-eservice",
+      "name": "DFT e-Services (C/O Online)",
+      "nameTh": "กรมการค้าต่างประเทศ (DFT C/O Online)",
+      "category": "external",
+      "description": "Issuance of Certificates of Origin (C/O) under FTA",
+      "descriptionTh": "ขอหนังสือรับรองถิ่นกำเนิดสินค้า (Form C/O)",
+      "iconName": "Landmark",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=dft.go.th&sz=128",
+      "badge": "ค้าต่างประเทศ (DFT)",
+      "url": "https://www.dft.go.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-kbank",
+      "name": "KBANK K-Corporate / K-Cash Connect Plus",
+      "nameTh": "ธนาคารกสิกรไทย (K-Corporate)",
+      "category": "external",
+      "description": "Corporate cash management & payroll processing",
+      "descriptionTh": "บริการธุรกรรมการเงินและโอนเงินนิติบุคคล",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=kasikornbank.com&sz=128",
+      "badge": "KBANK Business",
+      "url": "https://www.kasikornbank.com/th/business/corporate",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-scb",
+      "name": "SCB Business Anywhere",
+      "nameTh": "ธนาคารไทยพาณิชย์ (SCB Business Anywhere)",
+      "category": "external",
+      "description": "Enterprise banking platform for payments & treasury",
+      "descriptionTh": "จัดการสภาพคล่องและธุรกรรมการเงินธุรกิจ",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=scb.co.th&sz=128",
+      "badge": "SCB Business",
+      "url": "https://businessanywhere.scb.co.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-bbl",
+      "name": "Bualuang i-Cash / Corporate iBanking",
+      "nameTh": "ธนาคารกรุงเทพ (Bualuang i-Cash)",
+      "category": "external",
+      "description": "Corporate liquidity management & bulk payroll transfers",
+      "descriptionTh": "โอนเงิน จ่ายเงินเดือน และธุรกรรมธุรกิจองค์กร",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=bangkokbank.com&sz=128",
+      "badge": "BBL i-Cash",
+      "url": "https://www.bangkokbank.com/th-TH/Business-Banking/Corporate-Banking/Cash-Management",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-ktb",
+      "name": "Krungthai Business / Corporate Online",
+      "nameTh": "ธนาคารกรุงไทย (Krungthai Business)",
+      "category": "external",
+      "description": "Corporate banking with direct tax gateway integration",
+      "descriptionTh": "บริหารการเงินองค์กรและชำระภาษีภาครัฐ",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=krungthai.com&sz=128",
+      "badge": "KTB Corporate",
+      "url": "https://krungthai.com/th/corporate-banking",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-ttb",
+      "name": "ttb business one",
+      "nameTh": "ทีเอ็มบีธนชาต (ttb business one)",
+      "category": "external",
+      "description": "Unified corporate digital banking solutions",
+      "descriptionTh": "ธนาคารดิจิทัลเพื่อธุรกิจและโอนเงินองค์กร",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=ttbbank.com&sz=128",
+      "badge": "ttb business one",
+      "url": "https://www.ttbbank.com/th/business-one",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "bank-bay",
+      "name": "Krungsri CashLink",
+      "nameTh": "ธนาคารกรุงศรีอยุธยา (Krungsri CashLink)",
+      "category": "external",
+      "description": "Corporate cash management & funds transfer portal",
+      "descriptionTh": "จัดการกระแสเงินสดและธุรกรรมการเงินธุรกิจ",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=krungsri.com&sz=128",
+      "badge": "BAY CashLink",
+      "url": "https://www.krungsri.com/th/business/cash-management/cashlink",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
+    },
+    {
+      "id": "fin-bot-fx",
+      "name": "Bank of Thailand Foreign Exchange Rates",
+      "nameTh": "ธนาคารแห่งประเทศไทย (BOT FX Rates)",
+      "category": "external",
+      "description": "Official daily reference foreign exchange rates",
+      "descriptionTh": "อัตราแลกเปลี่ยนเงินตราต่างประเทศประจำวัน",
+      "iconName": "CreditCard",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=bot.or.th&sz=128",
+      "badge": "ธปท. (BOT)",
+      "url": "https://www.bot.or.th/th/statistics/exchange-rate.html",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": true,
+      "version": "Official Portal"
+    },
+    {
+      "id": "fin-setlink",
+      "name": "SETLink Corporate Portal",
+      "nameTh": "ตลาดหลักทรัพย์ฯ (SETLink Portal)",
+      "category": "external",
+      "description": "Listed corporations information & capital market filings",
+      "descriptionTh": "ระบบบริการข้อมูลองค์กรและตลาดทุน",
+      "iconName": "Building2",
+      "customIconUrl": "https://www.google.com/s2/favicons?domain=set.or.th&sz=128",
+      "badge": "ตลาดหลักทรัพย์ (SET)",
+      "url": "https://www.setlink.set.or.th",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "status": "online",
+      "launchType": "web",
+      "isFrequent": false,
+      "version": "Official Portal"
     }
   ],
   "announcements": [
     {
-      "id": "ann-1791450258276",
+      "id": "ann-1791510466003",
       "title": "น้ำท่วม",
       "titleEn": "น้ำท่วม",
-      "summary": "ระวังน้ำท่วม",
-      "date": "8 ตุลาคม 2569",
+      "summary": "น้ำท่วม",
+      "date": "9 ตุลาคม 2569",
       "tag": "General",
       "priority": "normal",
       "author": "ฝ่ายบริหารและสื่อสารองค์กร (Admin)",
-      "updatedAt": 1791450258278
+      "updatedAt": 1791510465754
     }
   ],
   "vendorContacts": [],
   "activityLogs": [
+    {
+      "id": "log-1791513890799-npoii",
+      "appId": "app-etax",
+      "appName": "e-Tax Invoice & e-Receipt Portal",
+      "appNameTh": "ระบบใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax)",
+      "appUrl": "https://etax.rd.go.th",
+      "category": "accounting",
+      "clientIp": "183.88.212.238",
+      "workstationHostname": "QISHENG-238",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791513890799,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791513883038-tkj0v",
+      "appId": "app-express",
+      "appName": "Express Accounting",
+      "appNameTh": "ระบบบัญชี Express for Windows",
+      "appUrl": "rdp://192.168.20.10:3389",
+      "category": "accounting",
+      "clientIp": "183.88.212.238",
+      "workstationHostname": "QISHENG-238",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791513887560,
+      "status": "launched",
+      "action": "Launched RDP Session"
+    },
+    {
+      "id": "log-1791513865444-685rp",
+      "appId": "app-protrack",
+      "appName": "ProTrack System",
+      "appNameTh": "ระบบบริหารและติดตามงาน ProTrack",
+      "appUrl": "https://protrack.qisheng.internal",
+      "category": "it",
+      "clientIp": "183.88.212.238",
+      "workstationHostname": "QISHENG-238",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791513865444,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791513349864-eh3z0",
+      "appId": "app-1791453688198",
+      "appName": "DataForge OCR",
+      "appNameTh": "DataForge OCR",
+      "appUrl": "http://192.168.7.126:3003/",
+      "category": "accounting",
+      "clientIp": "183.88.212.238",
+      "workstationHostname": "QISHENG-238",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791513349864,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791513337557-xepdz",
+      "appId": "app-1791453921197",
+      "appName": "การนิคมอุตสาหกรรมแห่งประเทศไทย (กนอ.)",
+      "appNameTh": "การนิคมอุตสาหกรรมแห่งประเทศไทย (กนอ.)",
+      "appUrl": "https://www.ieat.go.th/en",
+      "category": "boi",
+      "clientIp": "183.88.212.238",
+      "workstationHostname": "QISHENG-238",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791513337557,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
     {
       "id": "log-1791453692091-y72vn",
       "appId": "app-1791453688198",
@@ -428,5 +927,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791453921197
+  "lastModified": 1791515102204
 }

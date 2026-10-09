@@ -1,10 +1,9 @@
 {
-  "version": 74,
+  "version": 83,
   "adminPin": "1111",
   "latestAnnouncementId": "ann-1791510466003",
   "latestAnnouncementUpdatedAt": 1791510465754,
   "lastAnnouncementAction": "create",
-  "deletedAppIds": [],
   "apps": [
     {
       "id": "app-1791453921197",
@@ -188,109 +187,6 @@
         "user"
       ],
       "isFrequent": false
-    },
-    {
-      "id": "app-boi-sw",
-      "name": "Single Window for Visa and Work Permit",
-      "nameTh": "ศูนย์บริการวีซ่าและใบอนุญาตทำงาน (Single Window)",
-      "category": "boi",
-      "description": "Visa & Work Permit applications for promoted experts",
-      "descriptionTh": "บริการขอวีซ่าและใบอนุญาตทำงาน (Work Permit)",
-      "iconName": "ReceiptText",
-      "badge": "BOI Single Window",
-      "url": "https://visasw.boi.go.th",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "v3.0 Web",
-      "documentationUrl": "https://visasw.boi.go.th"
-    },
-    {
-      "id": "app-boi-esub",
-      "name": "BOI e-Submission System",
-      "nameTh": "ระบบยื่นคำขอส่งเสริมการลงทุน (e-Submission)",
-      "category": "boi",
-      "description": "Investment promotion applications & progress reporting",
-      "descriptionTh": "ยื่นคำขอรับการส่งเสริมการลงทุน BOI ออนไลน์",
-      "iconName": "Building",
-      "badge": "BOI e-Sub",
-      "url": "https://esubmission.boi.go.th",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": false,
-      "version": "v2.0 Web",
-      "documentationUrl": "https://www.boi.go.th"
-    },
-    {
-      "id": "app-mikrotik",
-      "name": "MikroTik CCR2004 Core Router",
-      "nameTh": "เราเตอร์เครือข่ายหลักและไฟร์วอลล์ MikroTik",
-      "category": "it",
-      "description": "Headquarters core router gateway, VLAN & firewall",
-      "descriptionTh": "Router Gateway & Firewall ประจำสำนักงานใหญ่",
-      "iconName": "Network",
-      "badge": "RouterOS v7",
-      "url": "https://192.168.1.1",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "intranet",
-      "isFrequent": true,
-      "version": "RouterOS 7.15",
-      "internalPort": "443",
-      "documentationUrl": "https://wiki.mikrotik.com"
-    },
-    {
-      "id": "app-vpn",
-      "name": "WireGuard Zero-Trust VPN Gateway",
-      "nameTh": "ระบบ VPN เครือข่ายความปลอดภัย (WireGuard)",
-      "category": "it",
-      "description": "High-speed encrypted VPN tunnel for corporate resources",
-      "descriptionTh": "อุโมงค์ VPN เชื่อมต่อเครือข่ายภายในองค์กร",
-      "iconName": "Shield",
-      "badge": "WireGuard",
-      "url": "https://vpn.qisheng.co.th",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "intranet",
-      "isFrequent": true,
-      "version": "WG 1.0",
-      "internalPort": "51820",
-      "documentationUrl": "https://www.wireguard.com"
-    },
-    {
-      "id": "app-protrack",
-      "name": "ProTrack System",
-      "nameTh": "ระบบบริหารและติดตามงาน ProTrack",
-      "category": "it",
-      "description": "Enterprise project and corporate workflow tracking",
-      "descriptionTh": "ระบบบริหารและติดตามความคืบหน้าโครงการ",
-      "iconName": "Layers",
-      "badge": "ProTrack v2",
-      "url": "https://protrack.qisheng.internal",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "v2.4.1",
-      "internalPort": "8080",
-      "documentationUrl": "https://protrack.qisheng.internal/docs"
     },
     {
       "id": "gov-rd-efiling",
@@ -613,6 +509,15 @@
       "version": "Official Portal"
     }
   ],
+  "deletedAppIds": [
+    "app-express",
+    "app-etax",
+    "app-boi-sw",
+    "app-boi-esub",
+    "app-mikrotik",
+    "app-vpn",
+    "app-protrack"
+  ],
   "announcements": [
     {
       "id": "ann-1791510466003",
@@ -628,6 +533,36 @@
   ],
   "vendorContacts": [],
   "activityLogs": [
+    {
+      "id": "log-1791516285091-bcjyq",
+      "appId": "app-1791453410621",
+      "appName": "gemini",
+      "appNameTh": "gemini",
+      "appUrl": "https://gemini.google.com/",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1791516285091,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791516190449-b1a1v",
+      "appId": "gov-customs-nsw",
+      "appName": "Thai Customs NSW Portal",
+      "appNameTh": "กรมศุลกากร (National Single Window - NSW)",
+      "appUrl": "https://www.customs.go.th",
+      "category": "external",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "System Administrator",
+      "userRole": "admin",
+      "timestamp": 1791516190449,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
     {
       "id": "log-1791513890799-npoii",
       "appId": "app-etax",
@@ -927,5 +862,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791515102204
+  "lastModified": 1791516285091
 }

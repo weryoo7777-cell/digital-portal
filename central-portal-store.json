@@ -1,8 +1,8 @@
 {
-  "version": 83,
+  "version": 87,
   "adminPin": "1111",
-  "latestAnnouncementId": "ann-1791510466003",
-  "latestAnnouncementUpdatedAt": 1791510465754,
+  "latestAnnouncementId": "ann-1791518309297",
+  "latestAnnouncementUpdatedAt": 1791518309300,
   "lastAnnouncementAction": "create",
   "apps": [
     {
@@ -520,6 +520,17 @@
   ],
   "announcements": [
     {
+      "id": "ann-1791518309297",
+      "title": "ฝนตก",
+      "titleEn": "ฝนตก",
+      "summary": "12-13 นี้ ให้ระวังฝนตกหนัก",
+      "date": "9 ตุลาคม 2569",
+      "tag": "General",
+      "priority": "urgent",
+      "author": "ฝ่ายบริหารและสื่อสารองค์กร (Admin)",
+      "updatedAt": 1791518309300
+    },
+    {
       "id": "ann-1791510466003",
       "title": "น้ำท่วม",
       "titleEn": "น้ำท่วม",
@@ -542,9 +553,39 @@
       "category": "it",
       "clientIp": "192.168.7.122",
       "workstationHostname": "QISHENG-122",
-      "userName": "General User",
-      "userRole": "user",
-      "timestamp": 1791516285091,
+      "userName": "System Administrator",
+      "userRole": "admin",
+      "timestamp": 1791518141702,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791453692091-y72vn",
+      "appId": "app-1791453688198",
+      "appName": "DataForge OCR",
+      "appNameTh": "DataForge OCR",
+      "appUrl": "http://192.168.7.126:3003/",
+      "category": "accounting",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "System Administrator",
+      "userRole": "admin",
+      "timestamp": 1791518126361,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
+      "id": "log-1791518120149-o8vh1",
+      "appId": "gov-rd-etax",
+      "appName": "e-Tax Invoice & e-Receipt Portal",
+      "appNameTh": "ระบบใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax)",
+      "appUrl": "https://etax.rd.go.th",
+      "category": "external",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "System Administrator",
+      "userRole": "admin",
+      "timestamp": 1791518120149,
       "status": "launched",
       "action": "Launched Web Application"
     },
@@ -635,21 +676,6 @@
       "userName": "General User",
       "userRole": "user",
       "timestamp": 1791513337557,
-      "status": "launched",
-      "action": "Launched Web Application"
-    },
-    {
-      "id": "log-1791453692091-y72vn",
-      "appId": "app-1791453688198",
-      "appName": "DataForge OCR",
-      "appNameTh": "DataForge OCR",
-      "appUrl": "http://192.168.7.126:3003/",
-      "category": "accounting",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "System Administrator",
-      "userRole": "admin",
-      "timestamp": 1791453692091,
       "status": "launched",
       "action": "Launched Web Application"
     },
@@ -862,5 +888,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1791516285091
+  "lastModified": 1791518309300
 }

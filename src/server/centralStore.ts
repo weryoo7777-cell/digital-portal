@@ -121,13 +121,17 @@ class CentralStoreManager {
         const raw = fs.readFileSync(STORAGE_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.apps) && Array.isArray(parsed.announcements)) {
+          const existingAppIds = new Set(parsed.apps.map((a: any) => a.id));
+          const missingAppDefaults = ENTERPRISE_APPS.filter(a => !existingAppIds.has(a.id));
+          const allMergedApps = [...parsed.apps, ...missingAppDefaults];
+
           this.store = {
             version: parsed.version || 1,
             adminPin: parsed.adminPin || '1111',
             latestAnnouncementId: parsed.latestAnnouncementId !== undefined ? parsed.latestAnnouncementId : (parsed.announcements[0]?.id || ''),
             latestAnnouncementUpdatedAt: parsed.latestAnnouncementUpdatedAt || (parsed.announcements[0]?.updatedAt || Date.now()),
             lastAnnouncementAction: parsed.lastAnnouncementAction || 'init',
-            apps: parsed.apps,
+            apps: allMergedApps,
             announcements: parsed.announcements,
             vendorContacts: Array.isArray(parsed.vendorContacts) ? parsed.vendorContacts : [...INITIAL_VENDOR_CONTACTS],
             activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : [...INITIAL_ACTIVITY_LOGS],

@@ -1,4 +1,5 @@
 import { EnterpriseApp, UserProfile, SystemServiceHealth, CorporateAnnouncement, HelpdeskTicket, RoomBooking } from '../types';
+import { EXTERNAL_PORTALS } from './externalPortalsData';
 
 export const QISHENG_LOGO = '/src/assets/images/qisheng_logo_emblem_1790322484489.jpg';
 export const SOMCHAI_AVATAR = '/src/assets/images/avatar_somchai_user_1790322510012.jpg';
@@ -179,8 +180,8 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
     name: 'Express Accounting',
     nameTh: 'ระบบบัญชี Express for Windows',
     category: 'accounting',
-    description: 'Enterprise accounting software, general ledger, AR/AP, inventory & financial statements',
-    descriptionTh: 'โปรแกรมบัญชีสำเร็จรูป Express ระบบบัญชีแยกประเภท ผังบัญชี ซื้อ-ขาย ลูกหนี้-เจ้าหนี้ สต็อกสินค้า',
+    description: 'Enterprise accounting software, general ledger & inventory',
+    descriptionTh: 'ระบบบัญชีแยกประเภท ผังบัญชี และสต็อกสินค้า',
     iconName: 'Calculator',
     badge: 'Express Win',
     url: 'rdp://192.168.20.10:3389',
@@ -197,8 +198,8 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
     name: 'e-Tax Invoice & e-Receipt Portal',
     nameTh: 'ระบบใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax)',
     category: 'accounting',
-    description: 'Digital signature certificate, XML format converter and electronic tax receipt portal',
-    descriptionTh: 'ระบบจัดทำและส่งมอบใบกำกับภาษีและใบรับอิเล็กทรอนิกส์พร้อมลายมือชื่อดิจิทัลตามมาตรฐานกรมสรรพากร',
+    description: 'Electronic tax invoice, e-receipt & digital signature portal',
+    descriptionTh: 'จัดทำและส่งมอบใบกำกับภาษีและใบรับอิเล็กทรอนิกส์',
     iconName: 'FileText',
     badge: 'e-Tax',
     url: 'https://etax.rd.go.th',
@@ -212,10 +213,10 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
   {
     id: 'app-boi-sw',
     name: 'Single Window for Visa and Work Permit',
-    nameTh: 'ระบบศูนย์บริการวีซ่าและใบอนุญาตทำงาน (Single Window)',
+    nameTh: 'ศูนย์บริการวีซ่าและใบอนุญาตทำงาน (Single Window)',
     category: 'boi',
-    description: 'Integrated Visa and Work Permit application system for promoted foreign experts & investors',
-    descriptionTh: 'ระบบคำขออนุญาตทำงานและตรวจลงตราวีซ่าอิเล็กทรอนิกส์สำหรับผู้เชี่ยวชาญต่างชาติและบริษัทที่ได้รับการส่งเสริม BOI',
+    description: 'Visa & Work Permit applications for promoted experts',
+    descriptionTh: 'บริการขอวีซ่าและใบอนุญาตทำงาน (Work Permit)',
     iconName: 'ReceiptText',
     badge: 'BOI Single Window',
     url: 'https://visasw.boi.go.th',
@@ -229,10 +230,10 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
   {
     id: 'app-boi-esub',
     name: 'BOI e-Submission System',
-    nameTh: 'ระบบยื่นคำขอรับการส่งเสริมการลงทุนออนไลน์ (e-Submission)',
+    nameTh: 'ระบบยื่นคำขอส่งเสริมการลงทุน (e-Submission)',
     category: 'boi',
-    description: 'Investment promotion application submission, tracking, project amendment and reporting',
-    descriptionTh: 'ระบบยื่นแบบคำขอรับการส่งเสริมการลงทุน ติดตามสถานะคำขอ แก้ไขโครงการ และรายงานผลการดำเนินงาน',
+    description: 'Investment promotion applications & progress reporting',
+    descriptionTh: 'ยื่นคำขอรับการส่งเสริมการลงทุน BOI ออนไลน์',
     iconName: 'Building',
     badge: 'BOI e-Sub',
     url: 'https://esubmission.boi.go.th',
@@ -248,8 +249,8 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
     name: 'MikroTik CCR2004 Core Router',
     nameTh: 'เราเตอร์เครือข่ายหลักและไฟร์วอลล์ MikroTik',
     category: 'it',
-    description: 'Headquarters core router gateway, bandwidth monitor, VLAN routing & firewall rules',
-    descriptionTh: 'ระบบบริหารจัดการ Router Gateway ประจำสำนักงานใหญ่ มอนิเตอร์แบนด์วิดท์ จัดการ VLAN และระบบรักษาความปลอดภัย',
+    description: 'Headquarters core router gateway, VLAN & firewall',
+    descriptionTh: 'Router Gateway & Firewall ประจำสำนักงานใหญ่',
     iconName: 'Network',
     badge: 'RouterOS v7',
     url: 'https://192.168.1.1',
@@ -264,10 +265,10 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
   {
     id: 'app-vpn',
     name: 'WireGuard Zero-Trust VPN Gateway',
-    nameTh: 'ระบบ VPN เครือข่ายความปลอดภัยระยะไกล (WireGuard)',
+    nameTh: 'ระบบ VPN เครือข่ายความปลอดภัย (WireGuard)',
     category: 'it',
-    description: 'High-speed encrypted VPN tunnel connecting remote staff to corporate internal resources',
-    descriptionTh: 'อุโมงค์เชื่อมต่อเครือข่ายภายในองค์กรความเร็วสูงและเข้ารหัสลับ สำหรับการทำงานนอกสถานที่และสาขา',
+    description: 'High-speed encrypted VPN tunnel for corporate resources',
+    descriptionTh: 'อุโมงค์ VPN เชื่อมต่อเครือข่ายภายในองค์กร',
     iconName: 'Shield',
     badge: 'WireGuard',
     url: 'https://vpn.qisheng.co.th',
@@ -282,10 +283,10 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
   {
     id: 'app-protrack',
     name: 'ProTrack System',
-    nameTh: 'ระบบบริหารและติดตามความคืบหน้างาน ProTrack',
+    nameTh: 'ระบบบริหารและติดตามงาน ProTrack',
     category: 'it',
-    description: 'Enterprise Project & Task Tracking System for corporate workflows, milestones and assignments.',
-    descriptionTh: 'ระบบบริหาร ติดตามความคืบหน้าโครงการ และมอบหมายภาระงานองค์กร (ProTrack)',
+    description: 'Enterprise project and corporate workflow tracking',
+    descriptionTh: 'ระบบบริหารและติดตามความคืบหน้าโครงการ',
     iconName: 'Layers',
     badge: 'ProTrack v2',
     url: 'https://protrack.qisheng.internal',
@@ -296,7 +297,24 @@ export const ENTERPRISE_APPS: EnterpriseApp[] = [
     version: 'v2.4.1',
     internalPort: '8080',
     documentationUrl: 'https://protrack.qisheng.internal/docs'
-  }
+  },
+  ...EXTERNAL_PORTALS.map((portal) => ({
+    id: portal.id,
+    name: portal.name,
+    nameTh: portal.nameTh,
+    category: 'external' as const,
+    description: portal.descriptionEn,
+    descriptionTh: portal.descriptionTh,
+    iconName: portal.category === 'banking' ? 'CreditCard' : portal.category === 'corporate-dbd' ? 'Building2' : 'Landmark',
+    customIconUrl: portal.logoUrl,
+    badge: portal.badge || 'ราชการ & ธนาคาร',
+    url: portal.url,
+    allowedRoles: ['admin', 'user'] as ('admin' | 'user')[],
+    status: 'online' as const,
+    launchType: 'web' as const,
+    isFrequent: Boolean(portal.isPopular),
+    version: 'Official Portal'
+  }))
 ];
 
 export const SYSTEM_SERVICES: SystemServiceHealth[] = [

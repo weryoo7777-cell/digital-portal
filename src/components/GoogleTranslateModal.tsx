@@ -156,25 +156,25 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-3xl rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-colors duration-200">
         {/* Modal Header with Google Translate Branding */}
-        <div className="p-5 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-600/20 border border-blue-200 dark:border-blue-500/40 flex items-center justify-center text-[#1E60D5] dark:text-blue-400 shadow-2xs shrink-0">
               <Languages className="w-5 h-5" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
                   {language === 'TH' ? 'Google แปลภาษา (Google Translate)' : 'Google Translate Suite'}
                 </h2>
-                <span className="text-[10px] font-mono text-blue-400 bg-blue-950/80 border border-blue-800/60 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-mono text-[#1E60D5] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 rounded-md font-bold">
                   translate.google.com
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {language === 'TH' ? 'ระบบแปลภาษาสำหรับการติดต่อธุรกิจ เอกสาร และคู่ค้าต่างประเทศ' : 'Enterprise translation for business documents & communication'}
               </p>
             </div>
@@ -182,21 +182,21 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Translation Language Selector Bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800/80 bg-slate-900/60 text-xs">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/60 text-xs">
           {/* Source Language */}
           <div className="flex items-center gap-2 flex-1">
-            <span className="text-slate-400 font-medium">{language === 'TH' ? 'จากภาษา:' : 'From:'}</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">{language === 'TH' ? 'จากภาษา:' : 'From:'}</span>
             <select
               value={sourceLang}
               onChange={(e) => setSourceLang(e.target.value)}
-              className="bg-slate-950 border border-slate-750 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 shadow-2xs cursor-pointer"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -209,19 +209,19 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
           {/* Swap Button */}
           <button
             onClick={swapLanguages}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors mx-2"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#1E60D5] dark:hover:text-cyan-400 transition-colors mx-2 border border-slate-200/90 dark:border-slate-700 shadow-2xs cursor-pointer"
             title="สลับภาษา (Swap languages)"
           >
-            <ArrowLeftRight className="w-4 h-4 text-cyan-400" />
+            <ArrowLeftRight className="w-4 h-4 text-[#1E60D5] dark:text-cyan-400" />
           </button>
 
           {/* Target Language */}
           <div className="flex items-center gap-2 flex-1 justify-end">
-            <span className="text-slate-400 font-medium">{language === 'TH' ? 'เป็นภาษา:' : 'To:'}</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">{language === 'TH' ? 'เป็นภาษา:' : 'To:'}</span>
             <select
               value={targetLang}
               onChange={(e) => setTargetLang(e.target.value)}
-              className="bg-slate-950 border border-slate-750 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 shadow-2xs cursor-pointer"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -233,18 +233,18 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
         </div>
 
         {/* Dual Translation Panes */}
-        <div className="p-5 flex-1 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Input Box */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold text-slate-300">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   {language === 'TH' ? 'ข้อความต้นทาง' : 'Source Text'}
                 </span>
                 {inputText && (
                   <button
                     onClick={() => setInputText('')}
-                    className="text-slate-500 hover:text-rose-400 flex items-center gap-1"
+                    className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>{language === 'TH' ? 'ล้างข้อความ' : 'Clear'}</span>
@@ -262,9 +262,9 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
                       ? 'พิมพ์หรือวางข้อความที่ต้องการแปลที่นี่... (เช่น ข้อความอีเมล, ร่างใบเสนอราคา)'
                       : 'Type or paste text to translate here...'
                   }
-                  className="w-full bg-slate-950 border border-slate-750 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none shadow-inner leading-relaxed"
+                  className="w-full bg-slate-50/70 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 focus:ring-1 focus:ring-[#1E60D5] dark:focus:ring-blue-500 resize-none shadow-2xs leading-relaxed transition-colors"
                 />
-                <div className="text-[10px] text-slate-500 text-right pr-2">
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 text-right pr-2">
                   {inputText.length} {language === 'TH' ? 'ตัวอักษร' : 'characters'}
                 </div>
               </div>
@@ -272,19 +272,19 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
 
             {/* Translation Output Box */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold text-slate-300">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   {language === 'TH' ? 'ผลการแปล (Translation)' : 'Translation Result'}
                 </span>
                 {translatedText && (
                   <button
                     onClick={copyToClipboard}
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium"
+                    className="text-[#1E60D5] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 font-medium transition-colors cursor-pointer"
                   >
                     {copied ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">{language === 'TH' ? 'คัดลอกแล้ว' : 'Copied'}</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-600 dark:text-emerald-400">{language === 'TH' ? 'คัดลอกแล้ว' : 'Copied'}</span>
                       </>
                     ) : (
                       <>
@@ -296,16 +296,16 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
                 )}
               </div>
 
-              <div className="relative h-[125px] sm:h-[135px] rounded-xl bg-slate-950/70 border border-slate-800 p-3.5 text-xs sm:text-sm text-slate-200 overflow-y-auto leading-relaxed">
+              <div className="relative h-[125px] sm:h-[135px] rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 p-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-200 overflow-y-auto leading-relaxed shadow-2xs">
                 {isTranslating ? (
-                  <div className="flex items-center gap-2 text-slate-400 text-xs">
-                    <span className="animate-spin w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full"></span>
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
+                    <span className="animate-spin w-3.5 h-3.5 border-2 border-[#1E60D5] dark:border-blue-400 border-t-transparent rounded-full"></span>
                     <span>{language === 'TH' ? 'กำลังประมวลผลคำแปล...' : 'Processing translation...'}</span>
                   </div>
                 ) : translatedText ? (
                   <div className="whitespace-pre-wrap">{translatedText}</div>
                 ) : (
-                  <div className="text-slate-600 text-xs italic">
+                  <div className="text-slate-400 dark:text-slate-600 text-xs italic">
                     {language === 'TH' ? 'ผลลัพธ์คำแปลจะปรากฏที่นี่...' : 'Translation preview will appear here...'}
                   </div>
                 )}
@@ -314,9 +314,9 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
           </div>
 
           {/* Quick Business Phrase Templates */}
-          <div className="space-y-2 pt-3 border-t border-slate-800/80">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+          <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <Sparkles className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
               <span>{language === 'TH' ? 'ข้อความสำเร็จรูปสำหรับการติดต่อธุรกิจ' : 'Corporate Phrase Templates'}</span>
             </div>
 
@@ -325,12 +325,12 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
                 <button
                   key={idx}
                   onClick={() => applyTemplate(phrase)}
-                  className="p-2.5 rounded-lg bg-slate-950/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group"
+                  className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-950/60 hover:bg-blue-50/60 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 text-left transition-all group cursor-pointer shadow-2xs"
                 >
-                  <div className="text-xs text-slate-200 group-hover:text-blue-300 font-medium truncate">
+                  <div className="text-xs text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-300 font-medium truncate">
                     {phrase}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate mt-0.5">
                     {QUICK_BUSINESS_TRANSLATIONS[phrase].en}
                   </div>
                 </button>
@@ -344,44 +344,44 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
               href="https://translate.google.com/?op=docs"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-850 flex items-center justify-between group transition-colors"
+              className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-slate-800/80 flex items-center justify-between group transition-all shadow-2xs cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-blue-400" />
+                <FileText className="w-4 h-4 text-[#1E60D5] dark:text-blue-400" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-200 group-hover:text-blue-300">
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-300">
                     {language === 'TH' ? 'แปลไฟล์เอกสารทั้งฉบับ' : 'Translate Full Documents'}
                   </div>
-                  <div className="text-[10px] text-slate-500">.pdf, .docx, .xlsx, .pptx</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">.pdf, .docx, .xlsx, .pptx</div>
                 </div>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors" />
             </a>
 
             <a
               href="https://translate.google.com/?op=websites"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-850 flex items-center justify-between group transition-colors"
+              className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-slate-800/80 flex items-center justify-between group transition-all shadow-2xs cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <Globe className="w-4 h-4 text-emerald-400" />
+                <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-200 group-hover:text-emerald-300">
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-300">
                     {language === 'TH' ? 'แปลเว็บไซต์ทั้งหน้า' : 'Translate Full Websites'}
                   </div>
-                  <div className="text-[10px] text-slate-500">กรอก URL เพื่อแปลภาษาทั้งหน้าเว็บ</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">กรอก URL เพื่อแปลภาษาทั้งหน้าเว็บ</div>
                 </div>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
             </a>
           </div>
         </div>
 
         {/* Modal Footer with Direct Link button */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <div className="text-slate-400 text-center sm:text-left">
-            <span className="font-mono text-[11px] text-slate-500">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="text-slate-400 dark:text-slate-500 text-center sm:text-left">
+            <span className="font-mono text-[11px]">
               https://translate.google.com/?sl={sourceLang}&tl={targetLang}&op=translate
             </span>
           </div>
@@ -389,14 +389,14 @@ export const GoogleTranslateModal: React.FC<GoogleTranslateModalProps> = ({
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={onClose}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors border border-slate-200/90 dark:border-slate-700 cursor-pointer shadow-2xs"
             >
               {language === 'TH' ? 'ปิด' : 'Close'}
             </button>
 
             <button
               onClick={openGoogleTranslateUrl}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-md transition-all"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white font-bold shadow-xs transition-all cursor-pointer"
             >
               <span>{language === 'TH' ? 'เปิดใน Google Translate' : 'Open in Google Translate'}</span>
               <ExternalLink className="w-4 h-4" />

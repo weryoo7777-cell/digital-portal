@@ -536,12 +536,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div
                   key={cat.id}
                   onClick={() => {
-                    if (cat.id === 'external') {
-                      onNavigateTab('external-portals');
-                    } else {
-                      onSelectCategory(cat.id);
-                      onNavigateTab('all-apps');
-                    }
+                    onSelectCategory(cat.id);
+                    onNavigateTab('all-apps');
                   }}
                   className="rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all p-3.5 flex items-center justify-between cursor-pointer group shadow-xs"
                 >

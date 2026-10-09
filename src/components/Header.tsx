@@ -8,7 +8,9 @@ import {
   Shield,
   ShieldCheck,
   LogOut,
-  KeyRound
+  KeyRound,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { ClientMachineInfo } from '../types';
 import { copyToClipboard } from '../utils/clipboard';
@@ -22,6 +24,8 @@ interface HeaderProps {
   isAdmin?: boolean;
   onOpenAdminPinModal?: () => void;
   onExitAdminMode?: () => void;
+  darkMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -32,7 +36,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentTabName,
   isAdmin = false,
   onOpenAdminPinModal,
-  onExitAdminMode
+  onExitAdminMode,
+  darkMode = false,
+  onToggleTheme
 }) => {
   const [copiedClientInfo, setCopiedClientInfo] = useState(false);
 
@@ -129,6 +135,28 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Globe className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
           <span className="font-mono font-bold">{language === 'TH' ? 'TH' : 'EN'}</span>
+        </button>
+
+        {/* Theme Mode Toggle Button (โหมดสว่าง / โหมดมืด) */}
+        <button
+          onClick={onToggleTheme}
+          className="flex items-center justify-center p-2 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 transition-all shadow-2xs cursor-pointer"
+          title={
+            language === 'TH'
+              ? darkMode
+                ? 'เปลี่ยนเป็นโหมดสว่าง (Light Mode)'
+                : 'เปลี่ยนเป็นโหมดมืด (Dark Mode)'
+              : darkMode
+              ? 'Switch to Light Mode'
+              : 'Switch to Dark Mode'
+          }
+          aria-label="Toggle Theme Mode"
+        >
+          {darkMode ? (
+            <Sun className="w-4 h-4 text-amber-400 hover:text-amber-300 transition-transform hover:rotate-45" />
+          ) : (
+            <Moon className="w-4 h-4 text-[#1E60D5] hover:text-blue-600 transition-transform hover:-rotate-12" />
+          )}
         </button>
       </div>
     </header>

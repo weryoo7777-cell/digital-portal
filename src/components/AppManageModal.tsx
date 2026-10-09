@@ -387,6 +387,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
                 <option value="accounting">บัญชี (Accounting)</option>
                 <option value="boi">BOI</option>
                 <option value="it">IT</option>
+                <option value="external">{language === 'TH' ? 'ระบบราชการ & ธนาคาร (Government & Banking)' : 'Government & Banking'}</option>
               </select>
             </div>
 

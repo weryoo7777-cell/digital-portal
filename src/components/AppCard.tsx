@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Calculator, 
   ScanText, 
   ReceiptText, 
   FileCheck, 
+  FileText,
   Layers, 
   Network, 
   ShieldCheck, 
+  Shield,
   Headphones, 
   Users, 
   Package, 
@@ -17,9 +19,10 @@ import {
   Star, 
   Lock,
   Building2,
-  Landmark,
-  Globe,
-  CreditCard,
+  Building,
+  Landmark, 
+  Globe, 
+  CreditCard, 
   Banknote,
   ExternalLink,
   ArrowUpRight,
@@ -45,9 +48,11 @@ export const ICON_MAP: Record<string, React.ElementType> = {
   ScanText,
   ReceiptText,
   FileCheck,
+  FileText,
   Layers,
   Network,
   ShieldCheck,
+  Shield,
   Headphones,
   Users,
   Package,
@@ -56,6 +61,7 @@ export const ICON_MAP: Record<string, React.ElementType> = {
   CalendarCheck,
   BarChart3,
   Building2,
+  Building,
   Landmark,
   Globe,
   CreditCard,
@@ -73,6 +79,8 @@ export const AppCard: React.FC<AppCardProps> = ({
   onEditApp,
   onDeleteApp
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   if (!app) return null;
 
   const IconComponent = (app && app.iconName && ICON_MAP[app.iconName]) || Layers;
@@ -86,19 +94,44 @@ export const AppCard: React.FC<AppCardProps> = ({
   const getCategoryBadge = (cat?: string) => {
     switch (cat) {
       case 'accounting':
-        return { label: 'บัญชี', style: 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60' };
+        return { 
+          label: 'บัญชี', 
+          dot: 'bg-blue-500 dark:bg-blue-400',
+          style: 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border-blue-200 dark:border-blue-800/60' 
+        };
       case 'boi':
-        return { label: 'BOI', style: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60' };
+        return { 
+          label: 'BOI', 
+          dot: 'bg-amber-500 dark:bg-amber-400',
+          style: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60' 
+        };
       case 'it':
-        return { label: 'IT', style: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60' };
+        return { 
+          label: 'IT', 
+          dot: 'bg-purple-500 dark:bg-purple-400',
+          style: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60' 
+        };
       case 'external':
-        return { label: 'ราชการ & ธนาคาร', style: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' };
+        return { 
+          label: 'ราชการ & ธนาคาร', 
+          dot: 'bg-emerald-500 dark:bg-emerald-400',
+          style: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
+        };
       default:
-        return { label: (cat || '').toUpperCase(), style: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+        return { 
+          label: (cat || '').toUpperCase(), 
+          dot: 'bg-slate-400 dark:bg-slate-500',
+          style: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700' 
+        };
     }
   };
 
   const catBadge = getCategoryBadge(app?.category);
+
+  // Main topic (หัวข้อหลัก) resolution for clean, complete display without abrupt cut-off
+  const displayName = language === 'TH' ? (app.nameTh || app.name) : (app.name || app.nameTh);
+  const rawDescription = language === 'TH' ? (app.descriptionTh || app.description) : (app.description || app.descriptionTh);
+  const displayDesc = rawDescription ? rawDescription.trim() : '';
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,8 +157,19 @@ export const AppCard: React.FC<AppCardProps> = ({
           : 'border-slate-200/60 dark:border-slate-800/60 opacity-60 bg-slate-50/50 dark:bg-slate-950/40'}
       `}
     >
-      {/* Left: App Icon & Details with strict text truncate */}
-      <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+      {/* Top-Right Category Micro-Badge & Color Dot (ชิดขอบขวาบนของกรอบ ไม่แย่งความเด่นของหัวข้อหลัก) */}
+      <div 
+        className="absolute top-2 right-3 flex items-center gap-1.5 pointer-events-none select-none z-10"
+        title={catBadge.label}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${catBadge.dot}`} />
+        <span className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500 tracking-tight">
+          {catBadge.label}
+        </span>
+      </div>
+
+      {/* Left: App Icon & Details showing complete main topic / title */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden pr-1">
         <div className={`
           w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs overflow-hidden
           ${hasAccess 
@@ -134,15 +178,13 @@ export const AppCard: React.FC<AppCardProps> = ({
         `}>
           {(() => {
             const imgUrl = app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null);
-            if (imgUrl) {
+            if (imgUrl && !imgError) {
               return (
                 <img 
                   src={imgUrl} 
                   alt={app.name} 
-                  className="w-7 h-7 object-contain rounded-md bg-white/80 p-0.5"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
+                  className="w-7 h-7 object-contain rounded-md bg-white/80 dark:bg-slate-800/80 p-0.5"
+                  onError={() => setImgError(true)}
                 />
               );
             }
@@ -151,31 +193,30 @@ export const AppCard: React.FC<AppCardProps> = ({
         </div>
 
         <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex items-center gap-1.5 min-w-0 w-full overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
             <h3 
-              className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate min-w-0 flex-1 block"
-              title={app.name}
+              className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors line-clamp-1 min-w-0 flex-1 block leading-snug"
+              title={displayName}
             >
-              {app.name}
+              {displayName}
             </h3>
             {!hasAccess && (
               <Lock className="w-3 h-3 text-amber-500 shrink-0" />
             )}
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${catBadge.style}`}>
-              {catBadge.label}
-            </span>
           </div>
-          <p 
-            className="text-xs text-slate-500 dark:text-slate-400 font-normal truncate block min-w-0 mt-0.5" 
-            title={language === 'TH' ? (app.nameTh || app.descriptionTh || app.description) : (app.description || app.descriptionTh)}
-          >
-            {language === 'TH' ? (app.nameTh || app.descriptionTh || app.description) : (app.description || app.descriptionTh)}
-          </p>
+          {displayDesc && (
+            <p 
+              className="text-xs text-slate-500 dark:text-slate-400 font-normal line-clamp-2 leading-relaxed block min-w-0 mt-0.5" 
+              title={displayDesc}
+            >
+              {displayDesc}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Right: Star Icon for Favorite & Admin Controls & Arrow hint */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 mt-3 sm:mt-2">
         {/* Admin CRUD Actions (Requirement #4: Only visible to Admin) */}
         {isUserAdmin && onEditApp && (
           <button

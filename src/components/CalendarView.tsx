@@ -27,7 +27,6 @@ import {
   ScanLine
 } from 'lucide-react';
 import { RoomBooking } from '../types';
-import { QISHENG_LOGO } from '../data/portalData';
 import { 
   COMPANY_INFO, 
   CALENDAR_STATS, 
@@ -461,39 +460,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-[#1E60D5] to-indigo-600"></div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Company Branding */}
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/60 p-1.5 flex items-center justify-center shrink-0 shadow-xs border border-blue-100 dark:border-blue-900/60 overflow-hidden">
-              <img 
-                src={QISHENG_LOGO} 
-                alt="QI SHENG Logo" 
-                className="w-full h-full object-cover rounded-xl" 
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-              <span className="font-extrabold text-[#1E60D5] dark:text-blue-400 text-xl tracking-wider">QS</span>
+          {/* Company Branding (ปิดการแสดงโลโก้ตามคำขอของผู้ใช้) */}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                {COMPANY_INFO.nameTh}
+              </h1>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 uppercase font-bold">
+                Official
+              </span>
             </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                  {COMPANY_INFO.nameTh}
-                </h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 uppercase font-bold">
-                  Official
-                </span>
-              </div>
-              <div className="text-xs sm:text-sm font-semibold text-[#1E60D5] dark:text-blue-400 tracking-wide mt-0.5">
-                {COMPANY_INFO.nameEn}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {language === 'TH' 
-                  ? 'ปฏิทินวันหยุดและวันทำงานประจำปี 2026 พร้อมระบบปักหมุดวันหยุดองค์กร' 
-                  : 'Official Corporate Calendar 2026 with Company Holidays Pinning'}
-              </p>
+            <div className="text-xs sm:text-sm font-semibold text-[#1E60D5] dark:text-blue-400 tracking-wide mt-0.5">
+              {COMPANY_INFO.nameEn}
             </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {language === 'TH' 
+                ? 'ปฏิทินวันหยุดและวันทำงานประจำปี 2026 พร้อมระบบปักหมุดวันหยุดองค์กร' 
+                : 'Official Corporate Calendar 2026 with Company Holidays Pinning'}
+            </p>
           </div>
 
           {/* Calendar Title & Stats */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   CORPORATE_USERS, 
   DEFAULT_ADMIN_ACCOUNT,
@@ -213,14 +213,29 @@ const isCurrentMachineLog = (
     return [];
   });
 
-  // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data)
+  // 2. Enterprise Apps Collection (Prioritizes Storage over Default Mock Data, merging updated concise descriptions)
   const [enterpriseApps, setEnterpriseApps] = useState<EnterpriseApp[]>(() => {
     try {
       const stored = localStorage.getItem('qs_enterprise_apps_v2');
       if (stored !== null) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const defaultAppMap = new Map(ENTERPRISE_APPS.map(a => [a.id, a]));
+          const updatedParsed = parsed.map((a: any) => {
+            const def = defaultAppMap.get(a.id);
+            if (def) {
+              return {
+                ...a,
+                nameTh: def.nameTh || a.nameTh,
+                descriptionTh: def.descriptionTh || a.descriptionTh,
+                description: def.description || a.description
+              };
+            }
+            return a;
+          });
+          const existingIds = new Set(updatedParsed.map((a: any) => a.id));
+          const missingDefaults = ENTERPRISE_APPS.filter(a => !existingIds.has(a.id));
+          return [...updatedParsed, ...missingDefaults];
         }
       }
     } catch {}
@@ -237,7 +252,11 @@ const isCurrentMachineLog = (
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
-      const lastClosedTimestamp = Number(localStorage.getItem('qs_announcement_last_closed_timestamp') || 0);
+
+      // Rule 1: If user closed announcements today, NEVER show on refresh
+      if (lastClosedDate === todayStr) {
+        return false;
+      }
 
       const rawClosedIds = localStorage.getItem('qs_announcement_closed_ids');
       const closedIds: string[] = rawClosedIds ? JSON.parse(rawClosedIds) : [];
@@ -247,22 +266,9 @@ const isCurrentMachineLog = (
       const latest = anns[0];
       if (!latest || !latest.id) return false;
 
-      // Rule 1: If user closed announcements today, NEVER show on refresh unless a brand new notice was added after dismissal
-      if (lastClosedDate === todayStr) {
-        const isBrandNewNotice = !closedIds.includes(latest.id) && Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
-        console.log('[Qisheng Portal] Initial announcement check (Closed today):', {
-          todayStr,
-          lastClosedDate,
-          isBrandNewNotice,
-          willShow: isBrandNewNotice
-        });
-        return isBrandNewNotice;
-      }
-
-      // Rule 2: If from a previous day, check if this announcement ID was already closed and not updated
+      // Rule 2: If from a previous day and this announcement ID was already closed, do not show
       if (closedIds.includes(latest.id)) {
-        const isUpdated = Boolean(latest.updatedAt && latest.updatedAt > lastClosedTimestamp);
-        return isUpdated;
+        return false;
       }
       return true;
     } catch (err) {
@@ -281,13 +287,60 @@ const isCurrentMachineLog = (
     }
   });
 
+  // 5-second delayed notification timer for new announcements
+  const newAnnouncementTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync tracking to prevent initial fetch or refresh from triggering new announcement alerts
+  const isFirstSyncRef = useRef<boolean>(true);
+  const knownAnnouncementIdsRef = useRef<Set<string>>(new Set());
+
+  // Clean up any pending timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (newAnnouncementTimerRef.current) {
+        clearTimeout(newAnnouncementTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Trigger delayed notification for new announcements (Requirement: Delay 5 seconds, notify only once per day)
+  const triggerNewAnnouncementNotificationWithDelay = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const alreadyNotifiedToday = localStorage.getItem('qs_new_announcement_notified_date') === todayStr;
+
+    // Requirement: แจ้งเตือนแค่ครั้งเดียวของวัน ถึงแม้วันนั้นจะกดปิดไปแล้ว
+    if (alreadyNotifiedToday) {
+      console.log('[Qisheng Portal] New announcement notification has already fired today -> skip repeated notification');
+      return;
+    }
+
+    if (newAnnouncementTimerRef.current) {
+      clearTimeout(newAnnouncementTimerRef.current);
+    }
+
+    console.log('[Qisheng Portal] Scheduling new announcement notification in 5 seconds (only once per day)...');
+    newAnnouncementTimerRef.current = setTimeout(() => {
+      const currentToday = new Date().toISOString().split('T')[0];
+      const checkAgain = localStorage.getItem('qs_new_announcement_notified_date') === currentToday;
+      if (!checkAgain) {
+        localStorage.setItem('qs_new_announcement_notified_date', currentToday);
+        setDailyAnnouncementModalOpen(true);
+        setIsDismissedToday(false);
+        console.log('[Qisheng Portal] 5s delay elapsed -> Triggered new announcement notification (once per day)');
+      }
+    }, 5000);
+  };
+
   // Central Dynamic Sync Subscription (Listens for updates across all LAN machines)
   useEffect(() => {
     const unsubscribe = centralSyncService.subscribe((data) => {
       if (data.apps && Array.isArray(data.apps)) {
-        setEnterpriseApps(data.apps);
+        const existingIds = new Set(data.apps.map((a: any) => a.id));
+        const missingDefaults = ENTERPRISE_APPS.filter(a => !existingIds.has(a.id));
+        const combined = [...data.apps, ...missingDefaults];
+        setEnterpriseApps(combined);
         try {
-          localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(data.apps));
+          localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(combined));
         } catch {}
       }
       if (data.vendorContacts && Array.isArray(data.vendorContacts)) {
@@ -334,85 +387,39 @@ const isCurrentMachineLog = (
           localStorage.setItem('qs_announcements_v1', JSON.stringify(data.announcements));
         } catch {}
 
-        // When an announcement is DELETED, never trigger popup notification
+        // When an announcement is DELETED, NEVER trigger popup notification
         if (data.lastAnnouncementAction === 'delete') {
           console.log('[Qisheng Portal] Announcement deleted, keeping modal closed');
+          if (newAnnouncementTimerRef.current) {
+            clearTimeout(newAnnouncementTimerRef.current);
+          }
           setDailyAnnouncementModalOpen(false);
-          return;
-        }
-
-        // Requirement #3: When a new announcement is created, notify immediately even if dismissed today!
-        if (data.lastAnnouncementAction === 'create') {
-          console.log('[Qisheng Portal] New announcement created action detected -> popping up modal immediately');
-          setDailyAnnouncementModalOpen(true);
-          setIsDismissedToday(false);
-          return;
-        }
-
-        const latestAnn = data.announcements[0];
-        if (latestAnn && latestAnn.id) {
-          const todayStr = new Date().toISOString().split('T')[0];
-          const lastClosedDate = localStorage.getItem('qs_announcement_last_closed_date');
-          const lastClosedTimestamp = Number(localStorage.getItem('qs_announcement_last_closed_timestamp') || 0);
-          
-          let closedIds: string[] = [];
           try {
-            closedIds = JSON.parse(localStorage.getItem('qs_announcement_closed_ids') || '[]');
-          } catch {
-            closedIds = [];
-          }
+            const rawClosedIds = localStorage.getItem('qs_announcement_closed_ids');
+            const closedIds: string[] = rawClosedIds ? JSON.parse(rawClosedIds) : [];
+            const allIds = data.announcements.map(a => a.id).filter(Boolean);
+            const combined = Array.from(new Set([...closedIds, ...allIds]));
+            localStorage.setItem('qs_announcement_closed_ids', JSON.stringify(combined));
+          } catch {}
+          return;
+        }
 
-          const hasDismissedToday = lastClosedDate === todayStr;
-          const isClosedId = closedIds.includes(latestAnn.id);
-          const isNewerThanDismissal = Boolean(latestAnn.updatedAt && latestAnn.updatedAt > lastClosedTimestamp);
+        // On first sync after mount/refresh: DO NOT trigger any popup notification
+        if (isFirstSyncRef.current) {
+          isFirstSyncRef.current = false;
+          knownAnnouncementIdsRef.current = new Set(data.announcements.map(a => a.id));
+          return;
+        }
 
-          console.log('[Qisheng Portal] Sync announcement evaluation:', {
-            todayStr,
-            lastClosedDate,
-            hasDismissedToday,
-            latestAnnId: latestAnn.id,
-            isClosedId,
-            latestUpdatedAt: latestAnn.updatedAt,
-            lastClosedTimestamp,
-            isNewerThanDismissal,
-            lastAnnouncementAction: data.lastAnnouncementAction
-          });
+        // On subsequent syncs: detect if an announcement was newly added remotely
+        const hasBrandNewAnnouncement = data.announcements.some(a => a.id && !knownAnnouncementIdsRef.current.has(a.id));
+        data.announcements.forEach(a => {
+          if (a.id) knownAnnouncementIdsRef.current.add(a.id);
+        });
 
-          // Case A: User already closed announcements today -> NEVER POP UP ON REFRESH!
-          // Only pop up if a brand new announcement ID that was NOT in closedIds was added after dismissal
-          if (hasDismissedToday) {
-            if (!isClosedId && isNewerThanDismissal) {
-              console.log('[Qisheng Portal] New announcement added after dismissal today -> opening modal');
-              setDailyAnnouncementModalOpen(true);
-              setIsDismissedToday(false);
-            } else {
-              console.log('[Qisheng Portal] Already dismissed today -> keeping modal closed');
-              setIsDismissedToday(true);
-              setDailyAnnouncementModalOpen(false);
-            }
-            return;
-          }
-
-          // Case B: Announcement ID was already closed previously
-          if (isClosedId) {
-            if (isNewerThanDismissal) {
-              console.log('[Qisheng Portal] Existing announcement updated -> opening modal');
-              setDailyAnnouncementModalOpen(true);
-              setIsDismissedToday(false);
-            } else {
-              console.log('[Qisheng Portal] Existing announcement unchanged -> keeping modal closed');
-              setIsDismissedToday(true);
-              setDailyAnnouncementModalOpen(false);
-            }
-            return;
-          }
-
-          // Case C: Brand new announcement ID not yet closed
-          console.log('[Qisheng Portal] Unseen announcement detected -> opening modal');
-          setDailyAnnouncementModalOpen(true);
-          setIsDismissedToday(false);
-        } else {
-          setDailyAnnouncementModalOpen(false);
+        if (hasBrandNewAnnouncement && data.lastAnnouncementAction === 'create') {
+          console.log('[Qisheng Portal] Remote new announcement detected -> triggering 5s delayed notification if not notified today');
+          triggerNewAnnouncementNotificationWithDelay();
         }
       }
     });
@@ -426,6 +433,9 @@ const isCurrentMachineLog = (
     const todayStr = new Date().toISOString().split('T')[0];
     const nowTs = Date.now();
     console.log('[Qisheng Portal] handleDismissAnnouncementToday executed at:', todayStr, nowTs);
+    if (newAnnouncementTimerRef.current) {
+      clearTimeout(newAnnouncementTimerRef.current);
+    }
     try {
       localStorage.setItem('qs_announcement_last_closed_date', todayStr);
       localStorage.setItem('qs_announcement_last_closed_timestamp', String(nowTs));
@@ -452,6 +462,10 @@ const isCurrentMachineLog = (
 
   const handleAddAnnouncement = async (newAnn: CorporateAnnouncement) => {
     console.log('[Qisheng Portal] Adding new announcement:', newAnn.title);
+    if (newAnn.id) {
+      knownAnnouncementIdsRef.current.add(newAnn.id);
+    }
+
     // 1. Save to LocalStorage immediately
     setAnnouncements((prev) => {
       const updated = [newAnn, ...prev];
@@ -461,16 +475,20 @@ const isCurrentMachineLog = (
       } catch {}
       return updated;
     });
-    // Requirement #3: Trigger notification modal when new announcement is created
-    setDailyAnnouncementModalOpen(true);
-    setIsDismissedToday(false);
+
+    // Requirement: เวลาเพิ่มข่าวใหม่เข้าไปให้ดีเลย์5วิแล้วแจ้งเตือนแค่ครั้งเดียวของวัน ถึงแม้วันนั้นจะกดปิดไปแล้ว
+    triggerNewAnnouncementNotificationWithDelay();
+
     // 2. Save to Central Server/Backend Database immediately
     await centralSyncService.saveAnnouncement(newAnn);
   };
 
   const handleDeleteAnnouncement = async (annId: string) => {
     console.log('[Qisheng Portal] handleDeleteAnnouncement for:', annId, 'Staying on tab:', currentTab);
-    // Requirement #3: In case of deletion, DO NOT show notification popup
+    // Requirement: In case of deletion, DO NOT show notification popup
+    if (newAnnouncementTimerRef.current) {
+      clearTimeout(newAnnouncementTimerRef.current);
+    }
     setDailyAnnouncementModalOpen(false);
 
     // 1. Update State and LocalStorage immediately (prevents mock data overwrite on refresh)
@@ -479,6 +497,11 @@ const isCurrentMachineLog = (
       try {
         localStorage.setItem('qs_announcements_v1', JSON.stringify(updated));
         localStorage.setItem('qs_announcements_persisted', 'true');
+        const rawClosedIds = localStorage.getItem('qs_announcement_closed_ids');
+        const closedIds: string[] = rawClosedIds ? JSON.parse(rawClosedIds) : [];
+        const remainingIds = updated.map(a => a.id).filter(Boolean);
+        const combined = Array.from(new Set([...closedIds, ...remainingIds, annId]));
+        localStorage.setItem('qs_announcement_closed_ids', JSON.stringify(combined));
         if (updated[0]) {
           localStorage.setItem('qs_announcement_dismissed_id', updated[0].id);
           localStorage.setItem('qs_announcement_dismissed_updated_at', String(updated[0].updatedAt || Date.now()));
@@ -799,8 +822,31 @@ const isCurrentMachineLog = (
     });
   };
 
-  // Theme Mode
-  const [darkMode] = useState<boolean>(false);
+  // Theme Mode (Light / Dark) with persistence & <html> class synchronization
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('qs_theme_mode');
+      if (saved !== null) {
+        return saved === 'dark';
+      }
+    } catch {}
+    return false;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qs_theme_mode', darkMode ? 'dark' : 'light');
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {}
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => !prev);
+  };
 
   // Corporate Calendar Data
   const [roomBookings] = useState<RoomBooking[]>(INITIAL_ROOM_BOOKINGS);
@@ -819,12 +865,14 @@ const isCurrentMachineLog = (
   // Filter apps based on category and search query
   const filteredApps = useMemo(() => {
     return enterpriseApps.filter((app) => {
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch = 
-        !searchQuery.trim() || 
-        app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.nameTh.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.descriptionTh.toLowerCase().includes(searchQuery.toLowerCase());
+        !q || 
+        app.name.toLowerCase().includes(q) ||
+        app.nameTh.toLowerCase().includes(q) ||
+        app.description.toLowerCase().includes(q) ||
+        app.descriptionTh.toLowerCase().includes(q) ||
+        Boolean(app.badge && app.badge.toLowerCase().includes(q));
 
       const matchesCategory = selectedCategory === 'all' || selectedCategory === app.category;
 
@@ -946,7 +994,7 @@ const isCurrentMachineLog = (
 
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-72 flex flex-col min-w-0">
-        {/* 2. Top App Bar (Only [ชื่อเครื่อง | IP] Badge + Copy + Language Toggle + Admin Mode button) */}
+        {/* 2. Top App Bar (Only [ชื่อเครื่อง | IP] Badge + Copy + Language Toggle + Admin Mode button + Theme Toggle) */}
         <Header
           machineInfo={machineInfo}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
@@ -956,6 +1004,8 @@ const isCurrentMachineLog = (
           isAdmin={isAdmin}
           onOpenAdminPinModal={() => setAdminPinModalOpen(true)}
           onExitAdminMode={handleExitAdminMode}
+          darkMode={darkMode}
+          onToggleTheme={toggleDarkMode}
         />
 
         {/* Viewport Content */}
@@ -1219,20 +1269,18 @@ const isCurrentMachineLog = (
 
                 {/* Right: Search Input & Admin "+ Add App" Button */}
                 <div className="flex items-center gap-2">
-                  {selectedCategory !== 'external' && (
-                    <div className="relative min-w-[180px] sm:w-60 shrink-0">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={language === 'TH' ? 'ค้นหาระบบงาน...' : 'Search apps...'}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
-                      />
-                    </div>
-                  )}
+                  <div className="relative min-w-[180px] sm:w-60 shrink-0">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={language === 'TH' ? 'ค้นหาระบบงาน, เว็บไซต์...' : 'Search apps...'}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#1E60D5] dark:focus:border-blue-500 transition-colors shadow-2xs"
+                    />
+                  </div>
 
-                  {isAdmin && selectedCategory !== 'external' && (
+                  {isAdmin && (
                     <button
                       onClick={() => {
                         setEditingApp(null);
@@ -1248,106 +1296,79 @@ const isCurrentMachineLog = (
                 </div>
               </div>
 
-              {/* Sub-view: If External Portals tab, show ExternalPortalsView */}
-              {selectedCategory === 'external' ? (
-                <ExternalPortalsView
-                  language={language}
-                  onOpenGoogleSearchWithQuery={(q) => {
-                    setGoogleSearchInitialQuery(q);
-                    setGoogleSearchModalOpen(true);
-                  }}
-                  onLaunchPortal={(portal) => {
-                    const newLogItem: ActivityLogItem = {
-                      id: `log-${Date.now()}`,
-                      appId: portal.id,
-                      appName: portal.name,
-                      appNameTh: portal.nameTh,
-                      appUrl: portal.url,
-                      category: 'external',
-                      clientIp: currentUser.localIp || '192.168.7.122',
-                      workstationHostname: currentUser.workstationHostname || 'QISHENG-122',
-                      userName: currentUser.name || 'General User',
-                      userRole: currentUser.role || 'user',
-                      timestamp: Date.now(),
-                      status: 'redirected',
-                      action: 'External Portal Redirect'
-                    };
-                    setActivityLogs(prev => [newLogItem, ...prev.filter(l => l.id !== newLogItem.id)].slice(0, 20));
-                  }}
-                />
-              ) : (
-                /* Otherwise show Corporate Apps Grid or Empty State */
-                <div>
-                  {filteredApps.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                      {filteredApps.map((app) => (
-                        <AppCard
-                          key={app.id}
-                          app={app}
-                          currentUserRole={currentUser.role}
-                          isFavorite={favorites.includes(app.id)}
-                          onToggleFavorite={toggleFavorite}
-                          onLaunchApp={handleLaunchApp}
-                          language={language}
-                          isAdmin={isAdmin}
-                          onEditApp={(appToEdit) => {
-                            setEditingApp(appToEdit);
-                            setAppModalOpen(true);
-                          }}
-                          onDeleteApp={(appIdToDelete) => {
-                            setAppToDeleteId(appIdToDelete);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    /* Requirement #4: Clean empty state prepared for real apps with Admin + Add App */
-                    <div className="py-16 px-6 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 max-w-xl mx-auto my-4">
-                      <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
-                        {selectedCategory === 'accounting' ? (
-                          <Calculator className="w-7 h-7" />
-                        ) : selectedCategory === 'boi' ? (
-                          <ReceiptText className="w-7 h-7" />
-                        ) : selectedCategory === 'it' ? (
-                          <Network className="w-7 h-7" />
-                        ) : (
-                          <Grid className="w-7 h-7" />
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                          {language === 'TH' 
-                            ? `ยังไม่มีระบบงาน${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี (Accounting)' : selectedCategory === 'boi' ? 'BOI' : 'IT'}`}`
-                            : `No applications found`}
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                          {language === 'TH'
-                            ? 'เว้นพื้นที่ว่างเตรียมรับลิงก์ระบบงานจริงขององค์กร ผู้ดูแลระบบสามารถกดปุ่ม "+ เพิ่มแอป" เพื่อเพิ่มลิงก์ใช้งาน'
-                            : 'Clean empty space reserved for real corporate application links. Administrators can use "+ Add App" to add links.'}
-                        </p>
-                      </div>
-                      {isAdmin && (
-                        <div className="pt-2">
-                          <button
-                            onClick={() => {
-                              setEditingApp(null);
-                              setAppModalOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>
-                              {language === 'TH' 
-                                ? `+ เพิ่มแอป${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี' : selectedCategory === 'boi' ? 'BOI' : 'IT'}`}` 
-                                : `+ Add App`}
-                            </span>
-                          </button>
-                        </div>
+              {/* Unified Apps Grid using AppCard for all categories including Government & Banking */}
+              <div>
+                {filteredApps.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {filteredApps.map((app) => (
+                      <AppCard
+                        key={app.id}
+                        app={app}
+                        currentUserRole={currentUser.role}
+                        isFavorite={favorites.includes(app.id)}
+                        onToggleFavorite={toggleFavorite}
+                        onLaunchApp={handleLaunchApp}
+                        language={language}
+                        isAdmin={isAdmin}
+                        onEditApp={(appToEdit) => {
+                          setEditingApp(appToEdit);
+                          setAppModalOpen(true);
+                        }}
+                        onDeleteApp={(appIdToDelete) => {
+                          setAppToDeleteId(appIdToDelete);
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  /* Clean empty state prepared for real apps */
+                  <div className="py-16 px-6 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 max-w-xl mx-auto my-4">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-[#1E60D5] dark:text-blue-400">
+                      {selectedCategory === 'accounting' ? (
+                        <Calculator className="w-7 h-7" />
+                      ) : selectedCategory === 'boi' ? (
+                        <ReceiptText className="w-7 h-7" />
+                      ) : selectedCategory === 'it' ? (
+                        <Network className="w-7 h-7" />
+                      ) : selectedCategory === 'external' ? (
+                        <Landmark className="w-7 h-7" />
+                      ) : (
+                        <Grid className="w-7 h-7" />
                       )}
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="space-y-1">
+                      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                        {language === 'TH' 
+                          ? `ยังไม่มีระบบงาน${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี (Accounting)' : selectedCategory === 'boi' ? 'BOI' : selectedCategory === 'it' ? 'IT' : 'ระบบราชการ & ธนาคาร'}`}`
+                          : `No applications found`}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                        {language === 'TH'
+                          ? 'เว้นพื้นที่ว่างเตรียมรับลิงก์ระบบงานจริงขององค์กร ผู้ดูแลระบบสามารถกดปุ่ม "+ เพิ่มแอป" เพื่อเพิ่มลิงก์ใช้งาน'
+                          : 'Clean empty space reserved for real corporate application links. Administrators can use "+ Add App" to add links.'}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <div className="pt-2">
+                        <button
+                          onClick={() => {
+                            setEditingApp(null);
+                            setAppModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E60D5] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>
+                            {language === 'TH' 
+                              ? `+ เพิ่มแอป${selectedCategory === 'all' ? '' : `ในหมวด ${selectedCategory === 'accounting' ? 'บัญชี' : selectedCategory === 'boi' ? 'BOI' : selectedCategory === 'it' ? 'IT' : 'ราชการ & ธนาคาร'}`}` 
+                              : `+ Add App`}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1400,7 +1421,7 @@ const isCurrentMachineLog = (
       <AppManageModal
         isOpen={appModalOpen}
         editingApp={editingApp}
-        defaultCategory={selectedCategory === 'external' ? 'accounting' : selectedCategory}
+        defaultCategory={selectedCategory === 'all' ? 'accounting' : selectedCategory}
         onClose={() => {
           setAppModalOpen(false);
           setEditingApp(null);

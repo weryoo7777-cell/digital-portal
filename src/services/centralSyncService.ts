@@ -15,6 +15,9 @@ class CentralSyncService {
   private lastVersion: number = 0;
   private lastData: PortalDataSyncResponse | null = null;
   private isPolling: boolean = false;
+  private clientHostname: string = '';
+  private clientIp: string = '';
+  private clientDeviceId: string = '';
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -27,6 +30,12 @@ class CentralSyncService {
         }
       });
     }
+  }
+
+  public setClientMachine(hostname?: string, ip?: string, deviceId?: string) {
+    if (hostname) this.clientHostname = hostname;
+    if (ip) this.clientIp = ip;
+    if (deviceId) this.clientDeviceId = deviceId;
   }
 
   // Subscribe to central data changes (cross-machine LAN dynamic sync)
@@ -63,8 +72,13 @@ class CentralSyncService {
 
   public async syncNow(): Promise<PortalDataSyncResponse | null> {
     try {
+      const headers: Record<string, string> = { 'Cache-Control': 'no-cache' };
+      if (this.clientHostname) headers['x-workstation-hostname'] = this.clientHostname;
+      if (this.clientIp) headers['x-client-ip'] = this.clientIp;
+      if (this.clientDeviceId) headers['x-device-id'] = this.clientDeviceId;
+
       const res = await fetch('/api/portal-data', {
-        headers: { 'Cache-Control': 'no-cache' }
+        headers
       });
       if (!res.ok) return null;
       const data: PortalDataSyncResponse = await res.json();
@@ -109,6 +123,7 @@ class CentralSyncService {
     appUrl?: string;
     category?: string;
     currentUser?: UserProfile | null;
+    deviceId?: string;
     status?: 'online' | 'success' | 'redirected' | 'launched';
     action?: string;
   }): Promise<ActivityLogItem | null> {
@@ -119,25 +134,29 @@ class CentralSyncService {
         appNameTh: entry.appNameTh,
         appUrl: entry.appUrl,
         category: entry.category,
-        clientIp: entry.currentUser?.localIp || '192.168.7.122',
-        workstationHostname: entry.currentUser?.workstationHostname || 'QISHENG-122',
+        deviceId: entry.deviceId || this.clientDeviceId,
+        clientIp: entry.currentUser?.localIp || this.clientIp || '192.168.7.122',
+        workstationHostname: entry.currentUser?.workstationHostname || this.clientHostname || 'QISHENG-122',
         userName: entry.currentUser?.name || 'General User',
         userRole: entry.currentUser?.role || 'user',
         status: entry.status || 'launched',
         action: entry.action || 'Direct App Access'
       };
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (payload.workstationHostname) headers['x-workstation-hostname'] = payload.workstationHostname;
+      if (payload.clientIp) headers['x-client-ip'] = payload.clientIp;
+      if (payload.deviceId) headers['x-device-id'] = payload.deviceId;
+
       const res = await fetch('/api/activity-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
         keepalive: true
       });
 
       if (!res.ok) return null;
       const result = await res.json();
-      // Trigger instant sync to refresh live log UI
-      setTimeout(() => this.syncNow(), 200);
       return result.log;
     } catch (err) {
       console.warn('[CentralSyncService] Failed to record activity log to central server:', err);

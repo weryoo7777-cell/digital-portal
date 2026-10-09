@@ -15,7 +15,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-workstation-hostname, x-client-ip, x-device-id');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -24,6 +24,9 @@ app.use((req, res, next) => {
 
 // Helper to extract client IP
 const getClientIp = (req: express.Request): string => {
+  const customIp = (req.headers['x-client-ip'] as string) || '';
+  if (customIp.trim()) return customIp.trim();
+
   const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
   return (
     rawForwarded.split(',')[0].trim() ||
@@ -83,9 +86,39 @@ app.get('/api/auth/sso', (req, res) => {
   });
 });
 
-// 4. Central Portal Data API
+// Helper to filter logs for client isolation (Never broadcast other machines' logs across LAN)
+const filterClientLogs = (logs: any[], clientIp: string, clientHost?: string, deviceId?: string) => {
+  const normDeviceId = (deviceId || '').trim();
+  const normIp = (clientIp || '').trim().toLowerCase();
+  const normHost = (clientHost || '').trim().toLowerCase();
+
+  if (!normDeviceId && !normIp && !normHost) return [];
+
+  return (logs || []).filter((log) => {
+    const logDeviceId = (log.deviceId || '').trim();
+    const logIp = (log.clientIp || '').trim().toLowerCase();
+    const logHost = (log.workstationHostname || '').trim().toLowerCase();
+
+    if (normDeviceId && logDeviceId && normDeviceId === logDeviceId) {
+      return true;
+    }
+    if (normIp && logIp && normIp === logIp) {
+      return true;
+    }
+    if (normHost && logHost && normHost === logHost) {
+      return true;
+    }
+    return false;
+  });
+};
+
+// 4. Central Portal Data API (With Client Machine Activity Isolation)
 app.get('/api/portal-data', (req, res) => {
-  res.json(centralStore.getPortalData());
+  const clientIp = getClientIp(req);
+  const clientHost = ((req.headers['x-workstation-hostname'] as string) || '').trim().toLowerCase();
+  const deviceId = ((req.headers['x-device-id'] as string) || '').trim();
+  const data = centralStore.getPortalData(clientIp, clientHost, deviceId);
+  res.json(data);
 });
 
 // 5. Admin PIN Verification & Update (Supports both /api/auth/* and /api/portal-data/* routes)
@@ -263,34 +296,48 @@ app.post('/api/portal-data/reset-vendors', (req, res) => {
   res.json({ success: true, vendors: reset });
 });
 
-// 9. Activity Logs Endpoints
+// 9. Activity Logs Endpoints (Client-Isolated: Never broadcast across LAN)
 app.get('/api/activity-logs', (req, res) => {
   const limit = parseInt((req.query.limit as string) || '20', 10);
-  res.json({ logs: centralStore.getActivityLogs(limit) });
+  const clientIp = getClientIp(req);
+  const clientHost = ((req.headers['x-workstation-hostname'] as string) || '').trim().toLowerCase();
+  const deviceId = ((req.headers['x-device-id'] as string) || '').trim();
+  const filtered = centralStore.getActivityLogs(limit, clientIp, clientHost, deviceId);
+  res.json({ logs: filtered });
 });
 
 app.post('/api/activity-logs', (req, res) => {
-  const body = req.body;
+  const body = req.body || {};
   const detectedIp = getClientIp(req);
+  const headerDeviceId = (req.headers['x-device-id'] as string) || '';
   const logEntry = centralStore.addActivityLog({
     ...body,
+    deviceId: body.deviceId || headerDeviceId,
     clientIp: body.clientIp || detectedIp,
   });
   res.json({ success: true, log: logEntry });
 });
 
 app.post('/api/portal-data/log-access', (req, res) => {
-  const body = req.body;
+  const body = req.body || {};
   const detectedIp = getClientIp(req);
+  const clientHost = ((req.headers['x-workstation-hostname'] as string) || '').trim().toLowerCase();
+  const headerDeviceId = (req.headers['x-device-id'] as string) || '';
   const logEntry = centralStore.addActivityLog({
     ...body,
+    deviceId: body.deviceId || headerDeviceId,
     clientIp: body.clientIp || detectedIp,
   });
-  res.json({ success: true, recentLogs: centralStore.getActivityLogs(20), log: logEntry });
+  const filtered = centralStore.getActivityLogs(20, detectedIp, clientHost, body.deviceId || headerDeviceId);
+  res.json({ success: true, recentLogs: filtered, log: logEntry });
 });
 
 app.get('/api/portal-data/recent-logs', (req, res) => {
-  res.json({ success: true, recentLogs: centralStore.getActivityLogs(20) });
+  const clientIp = getClientIp(req);
+  const clientHost = ((req.headers['x-workstation-hostname'] as string) || '').trim().toLowerCase();
+  const deviceId = ((req.headers['x-device-id'] as string) || '').trim();
+  const filtered = centralStore.getActivityLogs(20, clientIp, clientHost, deviceId);
+  res.json({ success: true, recentLogs: filtered });
 });
 
 async function startServer() {

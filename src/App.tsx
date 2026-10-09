@@ -20,7 +20,7 @@ import {
   ActivityLogItem
 } from './types';
 import { centralSyncService } from './services/centralSyncService';
-import { detectClientMachineInfo } from './utils/clientMachineDetector';
+import { detectClientMachineInfo, getOrCreateClientDeviceId } from './utils/clientMachineDetector';
 import { ADMIN_PIN } from './config/adminConfig';
 import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
 
@@ -57,7 +57,8 @@ import {
   Layers,
   BookUser,
   Bell,
-  Star
+  Star,
+  ArrowUpRight
 } from 'lucide-react';
 
 export default function App() {
@@ -137,7 +138,7 @@ export default function App() {
     } catch {}
   };
 
-  // Detect Client Machine on startup for badge display only
+  // Detect Client Machine on startup for badge display & strict machine isolation
   useEffect(() => {
     let isMounted = true;
     detectClientMachineInfo(currentUser).then((info) => {
@@ -145,12 +146,24 @@ export default function App() {
       setMachineInfo(info);
       const clientIp = info.localIp || '192.168.7.122';
       const clientHostname = info.deviceName || info.hostname || 'QISHENG-122';
+      const deviceId = getOrCreateClientDeviceId();
+
+      centralSyncService.setClientMachine(clientHostname, clientIp, deviceId);
 
       setCurrentUser((prev) => ({
         ...prev,
         workstationHostname: clientHostname,
         localIp: clientIp,
       }));
+
+      // Filter machineActivityLogs strictly to guarantee no foreign logs remain on this machine
+      setMachineActivityLogs((prev) => {
+        const filtered = prev.filter(log => isStrictCurrentMachineLog(log, clientHostname, clientIp, deviceId));
+        try {
+          localStorage.setItem('qs_local_machine_activity_logs_v4', JSON.stringify(filtered));
+        } catch {}
+        return filtered;
+      });
     });
     return () => { isMounted = false; };
   }, []);
@@ -169,45 +182,46 @@ export default function App() {
     return CORPORATE_ANNOUNCEMENTS;
   });
 
-// Helper to extract machine suffix/number from hostname or IP (e.g. '127' from 'QISHENG-127' or '192.168.7.127')
-const extractMachineIdentifier = (val?: string): string => {
-  if (!val) return '';
-  const match = val.match(/(\d+)(?!.*\d)/);
-  return match ? match[1] : '';
-};
+  // Strict Client Isolation: Check if an activity log strictly belongs to THIS specific workstation/machine
+  const isStrictCurrentMachineLog = (
+    log: ActivityLogItem,
+    workstationHostname?: string,
+    localIp?: string,
+    deviceId?: string
+  ): boolean => {
+    if (!log) return false;
+    const myDeviceId = (deviceId || '').trim();
+    const logDeviceId = (log.deviceId || '').trim();
+    if (myDeviceId && logDeviceId) {
+      return myDeviceId === logDeviceId;
+    }
 
-// Check if an activity log belongs to THIS specific workstation/machine
-const isCurrentMachineLog = (
-  log: ActivityLogItem,
-  workstationHostname?: string,
-  localIp?: string
-): boolean => {
-  if (!log) return false;
-  const myHost = (workstationHostname || '').trim().toLowerCase();
-  const myIp = (localIp || '').trim().toLowerCase();
-  const logHost = (log.workstationHostname || '').trim().toLowerCase();
-  const logIp = (log.clientIp || '').trim().toLowerCase();
+    const myHost = (workstationHostname || '').trim().toLowerCase();
+    const myIp = (localIp || '').trim().toLowerCase();
+    const logHost = (log.workstationHostname || '').trim().toLowerCase();
+    const logIp = (log.clientIp || '').trim().toLowerCase();
 
-  if (myHost && logHost && (myHost === logHost || myHost.includes(logHost) || logHost.includes(myHost))) return true;
-  if (myIp && logIp && (myIp === logIp || myIp.includes(logIp) || logIp.includes(myIp))) return true;
+    // Strict exact matching — NEVER use .includes() or fuzzy matching that would leak across LAN
+    if (myHost && logHost && myHost === logHost) return true;
+    if (myIp && logIp && myIp === logIp) return true;
 
-  const myId = extractMachineIdentifier(myHost) || extractMachineIdentifier(myIp);
-  const logId = extractMachineIdentifier(logHost) || extractMachineIdentifier(logIp);
-  if (myId && logId && myId === logId) return true;
-
-  return false;
-};
+    return false;
+  };
 
   // Centralized Activity Logs State (from server)
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
 
-  // Requirement #1: Per-machine Recent Activity Logs (Isolated to this machine e.g. 127)
+  // Requirement #1: Per-machine Recent Activity Logs (Strictly isolated to this device)
   const [machineActivityLogs, setMachineActivityLogs] = useState<ActivityLogItem[]>(() => {
     try {
-      const stored = localStorage.getItem('qs_machine_activity_logs_v2');
+      const currentDeviceId = getOrCreateClientDeviceId();
+      const stored = localStorage.getItem('qs_local_machine_activity_logs_v4') ||
+                     localStorage.getItem('qs_local_machine_activity_logs_v3');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(item => isStrictCurrentMachineLog(item, 'QISHENG-122', '192.168.7.122', currentDeviceId));
+        }
       }
     } catch {}
     return [];
@@ -363,14 +377,19 @@ const isCurrentMachineLog = (
       }
       if (data.activityLogs && Array.isArray(data.activityLogs)) {
         setActivityLogs(data.activityLogs);
-        // Requirement #1: Filter central logs to ONLY those belonging to this workstation/machine
+        // Requirement #1: Filter central logs to ONLY those strictly belonging to this workstation/machine
+        const currentHost = currentUser.workstationHostname || 'QISHENG-122';
+        const currentIp = currentUser.localIp || '192.168.7.122';
+        const deviceId = getOrCreateClientDeviceId();
+
         const myLogs = data.activityLogs.filter(log => 
-          isCurrentMachineLog(log, currentUser.workstationHostname, currentUser.localIp)
+          isStrictCurrentMachineLog(log, currentHost, currentIp, deviceId)
         );
 
         setMachineActivityLogs(prev => {
           const map = new Map<string, ActivityLogItem>();
-          prev.forEach(item => {
+          // Only preserve entries that strictly match this machine
+          prev.filter(item => isStrictCurrentMachineLog(item, currentHost, currentIp, deviceId)).forEach(item => {
             const key = item.appId || item.appUrl || item.appName;
             if (key) map.set(key, item);
           });
@@ -383,10 +402,11 @@ const isCurrentMachineLog = (
             }
           });
           const merged = Array.from(map.values())
+            .filter(item => isStrictCurrentMachineLog(item, currentHost, currentIp, deviceId))
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, 20);
           try {
-            localStorage.setItem('qs_machine_activity_logs_v2', JSON.stringify(merged));
+            localStorage.setItem('qs_local_machine_activity_logs_v4', JSON.stringify(merged));
           } catch {}
           return merged;
         });
@@ -809,8 +829,9 @@ const isCurrentMachineLog = (
     const now = Date.now();
     const currentHost = currentUser.workstationHostname || 'QISHENG-122';
     const currentIp = currentUser.localIp || '192.168.7.122';
+    const deviceId = getOrCreateClientDeviceId();
 
-    // 1. Send event to Central Server Database immediately
+    // 1. Send event to Central Server Database (isolated per client)
     centralSyncService.recordActivityLog({
       appId: app.id,
       appName: app.name,
@@ -818,11 +839,12 @@ const isCurrentMachineLog = (
       appUrl: app.url,
       category: app.category,
       currentUser,
+      deviceId,
       status: 'launched',
       action: app.launchType === 'remote_rdp' ? 'Launched RDP Session' : 'Launched Web Application'
     });
 
-    // 2. Requirement #1: Update per-machine recent activity logs
+    // 2. Requirement #1: Update per-machine recent activity logs (Strict local machine isolation)
     // "ถ้าเข้าลิงเดิมให้อัพเดทเวลาแทนเพิ่มเข้าไป" -> update timestamp instead of adding duplicate entry!
     setMachineActivityLogs((prev) => {
       const matchIdx = prev.findIndex(item => 
@@ -843,6 +865,7 @@ const isCurrentMachineLog = (
           appUrl: app.url || existing.appUrl,
           category: app.category || existing.category,
           timestamp: now,
+          deviceId,
           workstationHostname: currentHost,
           clientIp: currentIp,
           userName: currentUser.name || 'General User',
@@ -861,6 +884,7 @@ const isCurrentMachineLog = (
           appNameTh: app.nameTh,
           appUrl: app.url,
           category: app.category,
+          deviceId,
           workstationHostname: currentHost,
           clientIp: currentIp,
           userName: currentUser.name || 'General User',
@@ -873,7 +897,7 @@ const isCurrentMachineLog = (
       }
 
       try {
-        localStorage.setItem('qs_machine_activity_logs_v2', JSON.stringify(updatedList));
+        localStorage.setItem('qs_local_machine_activity_logs_v4', JSON.stringify(updatedList));
       } catch {}
       return updatedList;
     });
@@ -1206,21 +1230,58 @@ const isCurrentMachineLog = (
                           ? (matchedApp?.nameTh || log.appNameTh || log.appName) 
                           : (matchedApp?.name || log.appName);
 
+                        const appUrl = matchedApp?.url || log.appUrl || '';
+                        const isRdp = matchedApp?.launchType === 'remote_rdp' || appUrl.startsWith('rdp://');
+
+                        const targetAppToLaunch: EnterpriseApp = matchedApp || {
+                          id: log.appId || `app-${log.id}`,
+                          name: log.appName,
+                          nameTh: log.appNameTh || log.appName,
+                          category: ((log.category && log.category !== 'all' ? log.category : 'accounting') as Exclude<AppCategory, 'all'>),
+                          description: log.action || 'Application',
+                          descriptionTh: log.action || 'แอปพลิเคชัน',
+                          url: appUrl,
+                          iconName: 'Activity',
+                          launchType: isRdp ? 'remote_rdp' : 'web',
+                          status: 'online',
+                          allowedRoles: ['admin', 'user']
+                        };
+
+                        // Event Handler: Prevents event bubbling or form resets that could redirect back to home page
+                        const handleOpenAppItem = (e: React.MouseEvent) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (isRdp || targetAppToLaunch.launchType === 'remote_rdp' || !appUrl) {
+                            setSelectedAppForLaunch(targetAppToLaunch);
+                            handleLaunchApp(targetAppToLaunch);
+                            return;
+                          }
+
+                          // Open application URL in a new tab immediately
+                          try {
+                            const newWin = window.open(appUrl, '_blank', 'noopener,noreferrer');
+                            if (newWin) newWin.focus();
+                          } catch (err) {
+                            console.error('Failed to open app URL:', err);
+                          }
+                          handleLaunchApp(targetAppToLaunch);
+                        };
+
                         return (
                           <div 
                             key={log.id} 
-                            onClick={() => {
-                              if (matchedApp) {
-                                handleLaunchApp(matchedApp);
-                              } else if (log.appUrl) {
-                                window.open(log.appUrl, '_blank', 'noopener,noreferrer');
-                              }
-                            }}
+                            onClick={handleOpenAppItem}
                             className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                            title={log.appUrl ? `เปิด ${displayName}` : displayName}
+                            title={appUrl ? `เปิด ${displayName}` : displayName}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 group-hover:bg-[#1E60D5] group-hover:text-white transition-all shadow-2xs overflow-hidden">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              {/* Clickable App Icon */}
+                              <button
+                                type="button"
+                                onClick={handleOpenAppItem}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 group-hover:bg-[#1E60D5] group-hover:text-white transition-all shadow-2xs overflow-hidden cursor-pointer"
+                                title={displayName}
+                              >
                                 {imgUrl ? (
                                   <img 
                                     src={imgUrl} 
@@ -1231,25 +1292,83 @@ const isCurrentMachineLog = (
                                 ) : (
                                   <AppIcon className="w-4 h-4" />
                                 )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
-                                  {displayName}
-                                </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 truncate">
+                              </button>
+
+                              {/* Title and Clickable App / URL Links */}
+                              <div className="min-w-0 flex-1">
+                                {appUrl && !isRdp ? (
+                                  <a
+                                    href={appUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleLaunchApp(targetAppToLaunch);
+                                    }}
+                                    className="text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-[#1E60D5] dark:hover:text-blue-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate block cursor-pointer"
+                                    title={appUrl ? `เปิด ${displayName} (${appUrl})` : displayName}
+                                  >
+                                    {displayName}
+                                  </a>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={handleOpenAppItem}
+                                    className="text-xs font-bold text-left text-slate-800 dark:text-slate-200 hover:text-[#1E60D5] dark:hover:text-blue-400 group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate block cursor-pointer"
+                                  >
+                                    {displayName}
+                                  </button>
+                                )}
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 truncate mt-0.5">
                                   <span>{log.userName || 'User'}</span>
                                   <span>•</span>
                                   <span className="font-mono text-slate-500 dark:text-slate-400">{log.workstationHostname || log.clientIp}</span>
+                                  {appUrl && !isRdp && (
+                                    <>
+                                      <span>•</span>
+                                      <a
+                                        href={appUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleLaunchApp(targetAppToLaunch);
+                                        }}
+                                        className="text-[#1E60D5] dark:text-blue-400 hover:underline font-mono truncate max-w-[130px] sm:max-w-[200px] inline-flex items-center gap-0.5 cursor-pointer"
+                                        title={`เปิด URL: ${appUrl}`}
+                                      >
+                                        <span>{appUrl.replace(/^https?:\/\//, '')}</span>
+                                        <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
+                                      </a>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            <div className="text-right shrink-0 ml-2">
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
-                                {centralSyncService.formatRelativeTime(log.timestamp, language)}
-                              </span>
-                              <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-                                {log.status || 'Active'}
-                              </span>
+                            <div className="text-right shrink-0 ml-2 flex items-center gap-2">
+                              <div>
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
+                                  {centralSyncService.formatRelativeTime(log.timestamp, language)}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                                  {log.status || 'Active'}
+                                </span>
+                              </div>
+                              {appUrl && !isRdp && (
+                                <a
+                                  href={appUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLaunchApp(targetAppToLaunch);
+                                  }}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-[#1E60D5] dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+                                  title={language === 'TH' ? `เปิดลิงก์: ${appUrl}` : `Open link: ${appUrl}`}
+                                >
+                                  <ArrowUpRight className="w-3.5 h-3.5" />
+                                </a>
+                              )}
                             </div>
                           </div>
                         );
@@ -1258,7 +1377,7 @@ const isCurrentMachineLog = (
                       <div className="text-center py-5 text-xs text-slate-400 dark:text-slate-500 space-y-1">
                         <Activity className="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600" />
                         <p>{language === 'TH' ? 'ยังไม่มีประวัติการเข้าใช้งานล่าสุด' : 'No recent activity recorded yet'}</p>
-                        <p className="text-[11px] text-slate-400">{language === 'TH' ? 'คลิกเปิดแอปพลิเคชันเพื่อบันทึกประวัติเข้าสู่ระบบกลาง' : 'Click any app to log your session to central server'}</p>
+                        <p className="text-[11px] text-slate-400">{language === 'TH' ? 'คลิกเปิดแอปพลิเคชันเพื่อบันทึกประวัติเข้าสู่ระบบเครื่องนี้' : 'Click any app to record activity on this machine'}</p>
                       </div>
                     )}
                   </div>

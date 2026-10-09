@@ -159,6 +159,7 @@ export interface ActivityLogItem {
   appNameTh?: string;
   appUrl?: string;
   category?: string;
+  deviceId?: string;
   clientIp?: string;
   workstationHostname?: string;
   userName?: string;

@@ -166,13 +166,27 @@ class CentralStoreManager {
     }
   }
 
-  public getPortalData(): PortalDataSyncResponse {
+  public getPortalData(clientIp?: string, clientHost?: string, deviceId?: string): PortalDataSyncResponse {
+    let clientLogs: ActivityLogItem[] = [];
+    if (deviceId || clientIp || clientHost) {
+      const normDeviceId = (deviceId || '').trim();
+      const normIp = (clientIp || '').trim().toLowerCase();
+      const normHost = (clientHost || '').trim().toLowerCase();
+
+      clientLogs = this.store.activityLogs.filter((log) => {
+        if (normDeviceId && log.deviceId && log.deviceId === normDeviceId) return true;
+        if (normIp && log.clientIp && log.clientIp.trim().toLowerCase() === normIp) return true;
+        if (normHost && log.workstationHostname && log.workstationHostname.trim().toLowerCase() === normHost) return true;
+        return false;
+      }).slice(0, 20);
+    }
+
     return {
       apps: this.store.apps,
       deletedAppIds: this.store.deletedAppIds || [],
       announcements: this.store.announcements,
       vendorContacts: this.store.vendorContacts,
-      activityLogs: this.store.activityLogs.slice(0, 50),
+      activityLogs: clientLogs,
       latestAnnouncementId: this.store.latestAnnouncementId,
       latestAnnouncementUpdatedAt: this.store.latestAnnouncementUpdatedAt,
       lastAnnouncementAction: this.store.lastAnnouncementAction || 'init',
@@ -292,30 +306,38 @@ class CentralStoreManager {
     return false;
   }
 
-  public getActivityLogs(limit: number = 20): ActivityLogItem[] {
-    return this.store.activityLogs.slice(0, limit);
+  public getActivityLogs(limit: number = 20, clientIp?: string, clientHost?: string, deviceId?: string): ActivityLogItem[] {
+    if (!deviceId && !clientIp && !clientHost) {
+      return [];
+    }
+    const normDeviceId = (deviceId || '').trim();
+    const normIp = (clientIp || '').trim().toLowerCase();
+    const normHost = (clientHost || '').trim().toLowerCase();
+
+    return this.store.activityLogs.filter((log) => {
+      if (normDeviceId && log.deviceId && log.deviceId === normDeviceId) return true;
+      if (normIp && log.clientIp && log.clientIp.trim().toLowerCase() === normIp) return true;
+      if (normHost && log.workstationHostname && log.workstationHostname.trim().toLowerCase() === normHost) return true;
+      return false;
+    }).slice(0, limit);
   }
 
   public addActivityLog(entry: Partial<ActivityLogItem>): ActivityLogItem {
     const now = Date.now();
     const clientHost = (entry.workstationHostname || '').trim().toLowerCase();
     const clientIp = (entry.clientIp || '').trim().toLowerCase();
+    const deviceId = (entry.deviceId || '').trim();
 
     // Check if entry for the SAME app on the SAME machine already exists
     const existingIdx = this.store.activityLogs.findIndex((log) => {
       const logHost = (log.workstationHostname || '').trim().toLowerCase();
       const logIp = (log.clientIp || '').trim().toLowerCase();
+      const logDeviceId = (log.deviceId || '').trim();
       
-      const getNum = (s: string) => {
-        const m = s.match(/(\d+)(?!.*\d)/);
-        return m ? m[1] : '';
-      };
-      const clientNum = getNum(clientHost) || getNum(clientIp);
-      const logNum = getNum(logHost) || getNum(logIp);
-
-      const sameMachine = (clientHost && logHost && clientHost === logHost) ||
-                          (clientIp && logIp && clientIp === logIp) ||
-                          (Boolean(clientNum) && Boolean(logNum) && clientNum === logNum);
+      const sameMachine = 
+        (Boolean(deviceId) && Boolean(logDeviceId) && deviceId === logDeviceId) ||
+        (Boolean(clientHost) && Boolean(logHost) && clientHost === logHost) ||
+        (Boolean(clientIp) && Boolean(logIp) && clientIp === logIp);
       
       const sameApp = (entry.appId && log.appId && entry.appId === log.appId) ||
                       (entry.appUrl && log.appUrl && entry.appUrl === log.appUrl) ||
@@ -330,13 +352,14 @@ class CentralStoreManager {
         ...existing,
         ...entry,
         id: existing.id,
+        deviceId: deviceId || existing.deviceId,
         timestamp: now,
         status: entry.status || 'launched',
         action: entry.action || existing.action || 'Launched Web Application'
       };
       this.store.activityLogs.splice(existingIdx, 1);
       this.store.activityLogs.unshift(updatedItem);
-      this.store.version += 1;
+      // Notice: Do NOT increment store.version - activity log is local audit and must not broadcast to LAN!
       this.persistStore();
       return updatedItem;
     }
@@ -348,12 +371,13 @@ class CentralStoreManager {
       appNameTh: entry.appNameTh || entry.appName || 'แอปพลิเคชัน',
       appUrl: entry.appUrl,
       category: entry.category || 'general',
+      deviceId: entry.deviceId,
       clientIp: entry.clientIp || '127.0.0.1',
       workstationHostname: entry.workstationHostname || 'Workstation',
       userName: entry.userName || 'General User',
       userRole: entry.userRole || 'user',
       timestamp: now,
-      status: entry.status || 'online',
+      status: entry.status || 'launched',
       action: entry.action || 'Direct Application Launch'
     };
 
@@ -362,7 +386,7 @@ class CentralStoreManager {
     if (this.store.activityLogs.length > 100) {
       this.store.activityLogs = this.store.activityLogs.slice(0, 100);
     }
-    this.store.version += 1;
+    // Notice: Do NOT increment store.version - prevents LAN broadcast!
     this.persistStore();
     return logItem;
   }

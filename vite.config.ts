@@ -42,6 +42,24 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
+const filterClientLogs = (logs: any[], clientIp: string, clientHost?: string) => {
+  const normIp = (clientIp || '').trim().toLowerCase();
+  const normHost = (clientHost || '').trim().toLowerCase();
+
+  return (logs || []).filter((log) => {
+    const logIp = (log.clientIp || '').trim().toLowerCase();
+    const logHost = (log.workstationHostname || '').trim().toLowerCase();
+
+    if (normIp && logIp && (normIp === logIp || normIp.includes(logIp) || logIp.includes(normIp))) {
+      return true;
+    }
+    if (normHost && logHost && (normHost === logHost || normHost.includes(logHost) || logHost.includes(normHost))) {
+      return true;
+    }
+    return false;
+  });
+};
+
 function corporateApiPlugin(): Plugin {
   return {
     name: 'corporate-api-plugin',
@@ -54,10 +72,23 @@ function corporateApiPlugin(): Plugin {
         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
         res.setHeader('Content-Type', 'application/json');
 
-        // 1. Central Portal Sync Endpoint (GET /api/portal-data)
+        const customClientIp = ((req.headers['x-client-ip'] as string) || '').trim();
+        const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
+        const clientIp = (
+          customClientIp ||
+          rawForwarded.split(',')[0].trim() || 
+          (req.headers['x-real-ip'] as string) || 
+          req.socket.remoteAddress || 
+          '127.0.0.1'
+        ).replace('::ffff:', '');
+        const clientHost = ((req.headers['x-workstation-hostname'] as string) || '').trim().toLowerCase();
+        const deviceId = ((req.headers['x-device-id'] as string) || '').trim();
+
+        // 1. Central Portal Sync Endpoint (GET /api/portal-data) (Client-Isolated: never broadcast other machines' logs)
         if (url.pathname === '/api/portal-data' && req.method === 'GET') {
           res.statusCode = 200;
-          return res.end(JSON.stringify(centralStore.getPortalData()));
+          const data = centralStore.getPortalData(clientIp, clientHost, deviceId);
+          return res.end(JSON.stringify(data));
         }
 
         // 2. Apps Management Endpoints
@@ -185,23 +216,16 @@ function corporateApiPlugin(): Plugin {
         if (url.pathname === '/api/activity-logs') {
           if (req.method === 'GET') {
             const limit = parseInt(url.searchParams.get('limit') || '20', 10);
+            const filtered = centralStore.getActivityLogs(limit, clientIp, clientHost, deviceId);
             res.statusCode = 200;
-            return res.end(JSON.stringify({ logs: centralStore.getActivityLogs(limit) }));
+            return res.end(JSON.stringify({ logs: filtered }));
           }
           if (req.method === 'POST') {
             const body = await parseBody(req);
-            // Enrich with client IP if missing
-            const rawForwarded = (req.headers['x-forwarded-for'] as string) || '';
-            const detectedIp = (
-              rawForwarded.split(',')[0].trim() || 
-              (req.headers['x-real-ip'] as string) || 
-              req.socket.remoteAddress || 
-              '127.0.0.1'
-            ).replace('::ffff:', '');
-            
             const logEntry = centralStore.addActivityLog({
               ...body,
-              clientIp: body.clientIp || detectedIp
+              deviceId: body.deviceId || deviceId,
+              clientIp: body.clientIp || clientIp
             });
             res.statusCode = 200;
             return res.end(JSON.stringify({ success: true, log: logEntry }));

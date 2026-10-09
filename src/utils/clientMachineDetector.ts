@@ -286,3 +286,19 @@ export async function detectClientMachineInfo(currentUser: UserProfile): Promise
     showFqdn: false
   };
 }
+
+/**
+ * Returns a persistent unique device ID for this browser/machine instance
+ */
+export function getOrCreateClientDeviceId(): string {
+  try {
+    let id = localStorage.getItem('qs_client_device_id');
+    if (!id || id.trim() === '') {
+      id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem('qs_client_device_id', id);
+    }
+    return id;
+  } catch {
+    return 'dev-local-session';
+  }
+}

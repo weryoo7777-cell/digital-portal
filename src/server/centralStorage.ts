@@ -123,7 +123,7 @@ export function loadCentralStorage(): CentralPortalStorageData {
   }
 
   // Initialize with standard corporate portal data
-  inMemoryData = {
+  const defaultData: CentralPortalStorageData = {
     adminPin: ADMIN_PIN || '1111',
     apps: ENTERPRISE_APPS,
     announcements: CORPORATE_ANNOUNCEMENTS.map(a => ({
@@ -138,8 +138,9 @@ export function loadCentralStorage(): CentralPortalStorageData {
     lastPinUpdate: new Date().toISOString(),
   };
 
-  saveCentralStorage(inMemoryData);
-  return inMemoryData;
+  inMemoryData = defaultData;
+  saveCentralStorage(defaultData);
+  return defaultData;
 }
 
 export function saveCentralStorage(data: CentralPortalStorageData): void {
@@ -242,11 +243,11 @@ export function recordAccessLog(entry: Omit<AccessLogEntry, 'id' | 'timestamp'>)
   const data = loadCentralStorage();
   const now = new Date();
   const newLog: AccessLogEntry = {
+    ...entry,
     id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     timestamp: now.toISOString(),
     formattedTime: 'เมื่อสักครู่ (Just now)',
     status: entry.status || 'Authorized',
-    ...entry,
   };
 
   // Keep top 60 logs

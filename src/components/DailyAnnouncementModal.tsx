@@ -18,7 +18,7 @@ import { CorporateAnnouncement } from '../types';
 interface DailyAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDismissToday: (latestId?: string, latestTimestamp?: string) => void;
+  onDismissToday: (latestId?: string, latestTimestamp?: string | number) => void;
   announcements: CorporateAnnouncement[];
   language: 'TH' | 'EN';
 }

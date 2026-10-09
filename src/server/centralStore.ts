@@ -279,8 +279,8 @@ class CentralStoreManager {
       this.store.lastAnnouncementAction = 'delete';
       if (this.store.announcements.length > 0) {
         this.store.latestAnnouncementId = this.store.announcements[0].id;
-        // Keep the existing announcement's timestamp without bumping to Date.now()
-        this.store.latestAnnouncementUpdatedAt = this.store.announcements[0].updatedAt || 0;
+        const rawTs = this.store.announcements[0].updatedAt;
+        this.store.latestAnnouncementUpdatedAt = typeof rawTs === 'number' ? rawTs : (Date.parse(String(rawTs)) || 0);
       } else {
         this.store.latestAnnouncementId = '';
         this.store.latestAnnouncementUpdatedAt = 0;

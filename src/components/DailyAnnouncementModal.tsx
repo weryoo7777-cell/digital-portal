@@ -18,7 +18,7 @@ import { CorporateAnnouncement } from '../types';
 interface DailyAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDismissToday: () => void;
+  onDismissToday: (latestId?: string, latestTimestamp?: string | number) => void;
   announcements: CorporateAnnouncement[];
   language: 'TH' | 'EN';
 }
@@ -36,6 +36,7 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
   if (!isOpen || announcements.length === 0) return null;
 
   const currentAnnouncement = announcements[selectedAnnouncementIndex] || announcements[0];
+  const newestAnnouncement = announcements[0];
 
   const handleDismiss = (e?: React.MouseEvent) => {
     if (e) {
@@ -43,7 +44,7 @@ export const DailyAnnouncementModal: React.FC<DailyAnnouncementModalProps> = ({
       e.stopPropagation();
     }
     if (dontShowAgainToday) {
-      onDismissToday();
+      onDismissToday(newestAnnouncement?.id, newestAnnouncement?.updatedAt || newestAnnouncement?.date);
     } else {
       onClose();
     }

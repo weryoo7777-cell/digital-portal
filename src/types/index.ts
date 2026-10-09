@@ -133,7 +133,23 @@ export interface CorporateAnnouncement {
   priority: 'normal' | 'high' | 'urgent';
   author: string;
   read?: boolean;
-  updatedAt?: number;
+  updatedAt?: number | string;
+  createdAt?: string;
+}
+
+export interface AccessLogEntry {
+  id: string;
+  appId?: string;
+  appName: string;
+  appTh?: string;
+  category?: string;
+  timestamp: string | number;
+  formattedTime?: string;
+  user?: string;
+  status: string;
+  url?: string;
+  iconName?: string;
+  clientIp?: string;
 }
 
 export interface ActivityLogItem {

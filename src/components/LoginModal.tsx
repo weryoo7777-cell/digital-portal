@@ -64,7 +64,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors"
             >
               <Globe2 className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
-              <span>{language === 'TH' ? 'TH' : 'EN'}</span>
+              <span>{language === 'TH' ? 'EN' : 'TH'}</span>
             </button>
           </div>
         )}

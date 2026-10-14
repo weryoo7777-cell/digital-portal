@@ -759,6 +759,9 @@ export default function App() {
     return 'all';
   });
 
+  // Category shown directly on the Dashboard (Home) - Defaults to 'accounting' on initial open
+  const [dashboardCategory, setDashboardCategory] = useState<'accounting' | 'boi' | 'it' | 'external'>('accounting');
+
   const handleSelectCategory = (cat: AppCategory) => {
     setSelectedCategory(cat);
     try {
@@ -798,6 +801,13 @@ export default function App() {
     try {
       sessionStorage.setItem('qs_active_tab', newTab);
     } catch {}
+    // When switching to 'all-apps' tab, always default to 'all' (ทั้งหมด)
+    if (newTab === 'all-apps') {
+      setSelectedCategory('all');
+      try {
+        sessionStorage.setItem('qs_selected_app_category', 'all');
+      } catch {}
+    }
     setSelectedAppForLaunch(null);
     setQuickActionModal({ isOpen: false, type: 'helpdesk' });
     setSystemStatusOpen(false);
@@ -990,7 +1000,12 @@ export default function App() {
     return enterpriseApps.filter((app) => favorites.includes(app.id));
   }, [enterpriseApps, favorites]);
 
-  // Dashboard Category Matrix
+  // Apps for the selected category on the Dashboard
+  const dashboardCategoryApps = useMemo(() => {
+    return enterpriseApps.filter((app) => app.category === dashboardCategory);
+  }, [enterpriseApps, dashboardCategory]);
+
+  // Dashboard Category Matrix (4 enterprise application categories)
   const categoryGridItems = [
     {
       id: 'accounting' as const,
@@ -999,10 +1014,9 @@ export default function App() {
       descTh: 'ระบบบัญชี การเงิน งบทดลอง ผังบัญชี',
       icon: Calculator,
       badgeStyle: 'bg-blue-50 text-[#1E60D5] border-blue-200 group-hover:bg-[#1E60D5] group-hover:text-white',
+      badgeActiveStyle: 'bg-[#1E60D5] text-white border-[#1E60D5]',
       onClick: () => { 
-        handleSelectCategory('accounting'); 
-        setSearchQuery(''); 
-        handleTabChange('all-apps'); 
+        setDashboardCategory('accounting');
       }
     },
     {
@@ -1012,10 +1026,9 @@ export default function App() {
       descTh: 'ระบบสิทธิประโยชน์ BOI งานนำเข้าส่งออก',
       icon: ReceiptText,
       badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white',
+      badgeActiveStyle: 'bg-emerald-600 text-white border-emerald-600',
       onClick: () => { 
-        handleSelectCategory('boi'); 
-        setSearchQuery(''); 
-        handleTabChange('all-apps'); 
+        setDashboardCategory('boi');
       }
     },
     {
@@ -1025,10 +1038,9 @@ export default function App() {
       descTh: 'ระบบเครือข่าย เราเตอร์ และไอทีองค์กร',
       icon: Network,
       badgeStyle: 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-600 group-hover:text-white',
+      badgeActiveStyle: 'bg-purple-600 text-white border-purple-600',
       onClick: () => { 
-        handleSelectCategory('it'); 
-        setSearchQuery(''); 
-        handleTabChange('all-apps'); 
+        setDashboardCategory('it');
       }
     },
     {
@@ -1038,21 +1050,9 @@ export default function App() {
       descTh: 'สรรพากร ประกันสังคม DBD ธนาคารพาณิชย์',
       icon: Landmark,
       badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-600 group-hover:text-white',
+      badgeActiveStyle: 'bg-amber-600 text-white border-amber-600',
       onClick: () => { 
-        handleSelectCategory('external'); 
-        setSearchQuery(''); 
-        handleTabChange('all-apps'); 
-      }
-    },
-    {
-      id: 'vendor' as const,
-      nameTh: 'จัดการผู้ให้บริการ (Vendor)',
-      nameEn: 'Vendor Contacts',
-      descTh: 'รายชื่อคู่ค้า ซัพพอร์ตโปรแกรม บัญชี และไอที',
-      icon: BookUser,
-      badgeStyle: 'bg-teal-50 text-teal-700 border-teal-200 group-hover:bg-teal-600 group-hover:text-white',
-      onClick: () => { 
-        handleTabChange('vendor-contact'); 
+        setDashboardCategory('external');
       }
     }
   ];
@@ -1151,54 +1151,9 @@ export default function App() {
                 </section>
               )}
 
-              {/* 3) System Categories Matrix */}
+              {/* 3) Recent Activity (Isolated per machine, dedup with updated time, icons linked from all apps) */}
               <section className="space-y-3.5">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                      <Grid className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                        {language === 'TH' ? 'หมวดหมู่ระบบงานองค์กร' : 'System Categories'}
-                      </h2>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5 Category Cards (Navigates directly to category) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {categoryGridItems.map((cat) => {
-                    const Icon = cat.icon;
-                    return (
-                      <div
-                        key={cat.id}
-                        onClick={cat.onClick}
-                        className="group p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between"
-                      >
-                        <div className="flex items-center mb-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${cat.badgeStyle}`}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400 transition-colors truncate">
-                            {language === 'TH' ? cat.nameTh : cat.nameEn}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
-                            {cat.descTh}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* 4) Recent Activity (Requirement #1: Isolated per machine, dedup with updated time, icons linked from all apps) */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                     <div className="flex items-center gap-2">
                       <Activity className="w-4 h-4 text-[#1E60D5] dark:text-blue-400" />
@@ -1214,7 +1169,7 @@ export default function App() {
                   <div className="space-y-2">
                     {machineActivityLogs && machineActivityLogs.length > 0 ? (
                       machineActivityLogs.slice(0, 5).map((log) => {
-                        // Requirement #1: Link icon & details from All Apps (enterpriseApps)
+                        // Link icon & details from All Apps (enterpriseApps)
                         const matchedApp = enterpriseApps.find(a => 
                           (log.appId && a.id === log.appId) ||
                           (log.appUrl && a.url && a.url.toLowerCase() === log.appUrl.toLowerCase()) ||
@@ -1382,38 +1337,127 @@ export default function App() {
                     )}
                   </div>
                 </div>
+              </section>
 
-                {/* Machine Network & Workstation Status */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <Network className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                        {language === 'TH' ? 'สถานะเครื่องลูกข่าย (Client Machine)' : 'Workstation Status'}
-                      </h3>
+              {/* 4) System Categories Matrix */}
+              <section className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                      <Grid className="w-3.5 h-3.5" />
                     </div>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Online
-                    </span>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        {language === 'TH' ? 'หมวดหมู่ระบบงานองค์กร' : 'System Categories'}
+                      </h2>
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'ชื่อเครื่อง Workstation' : 'Hostname'}:</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-white">{currentUser.workstationHostname || 'QISHENG-122'}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'ที่อยู่ IP เครือข่าย' : 'Client IP Address'}:</span>
-                      <span className="font-mono font-bold text-[#1E60D5] dark:text-blue-400">{currentUser.localIp || '192.168.7.122'}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400">{language === 'TH' ? 'สิทธิ์การใช้งานระบบ' : 'Access Role'}:</span>
-                      <span className={`font-bold px-2 py-0.5 rounded-lg text-[11px] ${isAdmin ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-blue-100 text-[#1E60D5]'}`}>
-                        {isAdmin ? 'Admin (ผู้ดูแลระบบ)' : 'User (พนักงานทั่วไป)'}
+                {/* 4 Category Cards (Selects category directly in Dashboard) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {categoryGridItems.map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = cat.id === dashboardCategory;
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={cat.onClick}
+                        className={`group p-4 rounded-2xl cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-blue-50/40 dark:bg-blue-950/30 border-2 border-[#1E60D5] dark:border-blue-500 shadow-sm ring-2 ring-blue-500/10'
+                            : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${
+                            isSelected ? cat.badgeActiveStyle : cat.badgeStyle
+                          }`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full bg-[#1E60D5] dark:bg-blue-400 shadow-xs animate-pulse"></span>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className={`text-sm font-bold transition-colors truncate ${
+                            isSelected
+                              ? 'text-[#1E60D5] dark:text-blue-400'
+                              : 'text-slate-900 dark:text-white group-hover:text-[#1E60D5] dark:group-hover:text-blue-400'
+                          }`}>
+                            {language === 'TH' ? cat.nameTh : cat.nameEn}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+                            {cat.descTh}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Applications list for currently selected category */}
+                <div className="mt-4 pt-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {language === 'TH' ? 'รายการแอปในหมวดหมู่' : 'Applications in category'}:{' '}
+                        <span className="text-[#1E60D5] dark:text-blue-400">
+                          {dashboardCategory === 'accounting'
+                            ? (language === 'TH' ? 'บัญชี (Accounting)' : 'Accounting')
+                            : dashboardCategory === 'boi'
+                            ? 'BOI'
+                            : dashboardCategory === 'it'
+                            ? 'IT'
+                            : (language === 'TH' ? 'ระบบราชการ & ธนาคาร' : 'Government & Banking')}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-[#1E60D5] dark:text-blue-300">
+                        {dashboardCategoryApps.length} {language === 'TH' ? 'ระบบ' : 'apps'}
                       </span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleTabChange('all-apps');
+                      }}
+                      className="text-xs text-[#1E60D5] dark:text-blue-400 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <span>{language === 'TH' ? 'ดูในหน้าแอปทั้งหมด →' : 'View in All Apps →'}</span>
+                    </button>
                   </div>
+
+                  {dashboardCategoryApps.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {dashboardCategoryApps.map((app) => (
+                        <AppCard
+                          key={app.id}
+                          app={app}
+                          currentUserRole={currentUser.role}
+                          isFavorite={favorites.includes(app.id)}
+                          onToggleFavorite={toggleFavorite}
+                          onLaunchApp={handleLaunchApp}
+                          language={language}
+                          isAdmin={isAdmin}
+                          onEditApp={(appToEdit) => {
+                            setEditingApp(appToEdit);
+                            setAppModalOpen(true);
+                          }}
+                          onDeleteApp={(appIdToDelete) => {
+                            setAppToDeleteId(appIdToDelete);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 px-4 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        {language === 'TH' ? 'ไม่มีแอปพลิเคชันในหมวดหมู่นี้' : 'No applications in this category'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

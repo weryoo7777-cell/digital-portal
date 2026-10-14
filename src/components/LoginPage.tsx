@@ -137,7 +137,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-200 text-xs font-semibold backdrop-blur-md transition-all shadow-sm"
           >
             <Globe2 className="w-3.5 h-3.5 text-blue-400" />
-            <span>{language === 'TH' ? 'TH (ไทย)' : 'EN (English)'}</span>
+            <span>{language === 'TH' ? 'EN (English)' : 'TH (ไทย)'}</span>
           </button>
         </div>
       )}

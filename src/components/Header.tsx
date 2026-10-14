@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
           title={language === 'TH' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
         >
           <Globe className="w-3.5 h-3.5 text-[#1E60D5] dark:text-blue-400" />
-          <span className="font-mono font-bold">{language === 'TH' ? 'TH' : 'EN'}</span>
+          <span className="font-mono font-bold">{language === 'TH' ? 'EN' : 'TH'}</span>
         </button>
 
         {/* Theme Mode Toggle Button (โหมดสว่าง / โหมดมืด) */}

@@ -4,15 +4,16 @@ import { fileURLToPath } from 'url';
 import { EnterpriseApp, CorporateAnnouncement, ActivityLogItem, PortalDataSyncResponse, VendorContact } from '../types';
 import { ENTERPRISE_APPS, CORPORATE_ANNOUNCEMENTS } from '../data/portalData';
 import { INITIAL_VENDOR_CONTACTS } from '../data/vendorData';
+import { resolveAppIcon } from '../utils/iconResolver';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const getStoragePath = () => {
-  const relPath = path.resolve(__dirname, '../../central-portal-store.json');
-  if (fs.existsSync(relPath)) return relPath;
   const cwdPath = path.resolve(process.cwd(), 'central-portal-store.json');
   if (fs.existsSync(cwdPath)) return cwdPath;
-  return relPath;
+  const relPath = path.resolve(__dirname, '../../central-portal-store.json');
+  if (fs.existsSync(relPath)) return relPath;
+  return cwdPath;
 };
 const STORAGE_FILE = getStoragePath();
 
@@ -136,7 +137,21 @@ class CentralStoreManager {
           const existingAppIds = new Set(parsed.apps.map((a: any) => a.id));
           // Only add missing defaults if they were never deleted by the user
           const missingAppDefaults = ENTERPRISE_APPS.filter(a => !existingAppIds.has(a.id) && !deletedSet.has(a.id));
-          const allMergedApps = [...parsed.apps, ...missingAppDefaults].filter(a => !deletedSet.has(a.id));
+          const allMergedApps = [...parsed.apps, ...missingAppDefaults]
+            .filter(a => !deletedSet.has(a.id))
+            .map(a => {
+              const resolved = resolveAppIcon(a);
+              const clean = {
+                ...a,
+                iconName: resolved.iconName,
+                customIconUrl: resolved.customIconUrl,
+                icon: resolved.icon
+              };
+              if (!resolved.isCustom) {
+                delete (clean as any).customIconUrl;
+              }
+              return clean;
+            });
 
           this.store = {
             version: parsed.version || 1,
@@ -210,19 +225,14 @@ class CentralStoreManager {
     if (this.store.deletedAppIds) {
       this.store.deletedAppIds = this.store.deletedAppIds.filter(id => id !== app.id);
     }
-    const isPresetIcon = Boolean(
-      app.iconName && 
-      !app.iconName.startsWith('http') && 
-      !app.iconName.startsWith('data:')
-    );
+    const resolved = resolveAppIcon(app);
     const cleanApp: EnterpriseApp = {
       ...app,
-      iconName: app.iconName || 'Layers',
-      customIconUrl: isPresetIcon 
-        ? undefined 
-        : (app.customIconUrl ? app.customIconUrl : (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : undefined))
+      iconName: resolved.iconName,
+      customIconUrl: resolved.customIconUrl,
+      icon: resolved.icon
     };
-    if (isPresetIcon || !cleanApp.customIconUrl) {
+    if (!resolved.isCustom) {
       delete (cleanApp as any).customIconUrl;
     }
     const existingIdx = this.store.apps.findIndex(a => a.id === app.id);
@@ -245,22 +255,17 @@ class CentralStoreManager {
       return this.addApp(app);
     }
     const existing = this.store.apps[idx];
-    const isPresetIcon = Boolean(
-      app.iconName && 
-      !app.iconName.startsWith('http') && 
-      !app.iconName.startsWith('data:')
-    );
+    const resolved = resolveAppIcon(app);
 
     const updatedApp: EnterpriseApp = {
       ...existing,
       ...app,
-      iconName: app.iconName || existing.iconName || 'Layers',
-      customIconUrl: isPresetIcon 
-        ? undefined 
-        : (app.customIconUrl ? app.customIconUrl : (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : undefined))
+      iconName: resolved.iconName,
+      customIconUrl: resolved.customIconUrl,
+      icon: resolved.icon
     };
 
-    if (isPresetIcon || !updatedApp.customIconUrl) {
+    if (!resolved.isCustom) {
       delete (updatedApp as any).customIconUrl;
     }
 

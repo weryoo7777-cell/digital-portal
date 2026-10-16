@@ -30,6 +30,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { EnterpriseApp, UserRole } from '../types';
+import { resolveAppIcon } from '../utils/iconResolver';
 
 interface AppCardProps {
   app: EnterpriseApp;
@@ -80,20 +81,17 @@ export const AppCard: React.FC<AppCardProps> = ({
   onDeleteApp
 }) => {
   const [imgError, setImgError] = useState(false);
+  const resolved = resolveAppIcon(app);
 
   useEffect(() => {
     setImgError(false);
-  }, [app?.id, app?.iconName, app?.customIconUrl]);
+  }, [app?.id, resolved.icon, resolved.iconName, resolved.customIconUrl, (app as any)?.icon]);
 
   if (!app) return null;
 
-  const isPreset = Boolean(
-    app && app.iconName && 
-    !app.iconName.startsWith('http') && 
-    !app.iconName.startsWith('data:') && 
-    ICON_MAP[app.iconName]
-  );
-  const IconComponent = (app && app.iconName && ICON_MAP[app.iconName]) || Layers;
+  const IconComponent = (resolved.iconName && ICON_MAP[resolved.iconName]) || 
+    (app.iconName && ICON_MAP[app.iconName]) || 
+    Layers;
   const isUserAdmin = isAdmin || (currentUserRole || '').toLowerCase() === 'admin';
   const rolesList = (app && app.allowedRoles) || [];
   const hasAccess = isUserAdmin || 
@@ -187,11 +185,11 @@ export const AppCard: React.FC<AppCardProps> = ({
             : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}
         `}>
           {(() => {
-            const imgUrl = !isPreset && (app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null));
-            if (imgUrl && !imgError) {
+            if (resolved.isCustom && resolved.customIconUrl && !imgError) {
               return (
                 <img 
-                  src={imgUrl} 
+                  key={`${app.id}-${resolved.customIconUrl.slice(0, 60)}`}
+                  src={resolved.customIconUrl} 
                   alt={app.name} 
                   className="w-7 h-7 object-contain rounded-md bg-white/80 dark:bg-slate-800/80 p-0.5"
                   onError={() => setImgError(true)}

@@ -27,6 +27,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { EnterpriseApp, AppCategory, AppLaunchType, AppStatus, UserRole } from '../types';
+import { resolveAppIcon } from '../utils/iconResolver';
 
 interface AppManageModalProps {
   isOpen: boolean;
@@ -204,37 +205,23 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       setBadge(editingApp.badge || '');
       setAccessLevel(editingApp.allowedRoles.length === 1 && editingApp.allowedRoles[0].toLowerCase() === 'admin' ? 'admin' : 'all');
 
-      const custom = editingApp.customIconUrl || '';
-      const isPreset = Boolean(
-        editingApp.iconName && 
-        !editingApp.iconName.startsWith('http') && 
-        !editingApp.iconName.startsWith('data:') &&
-        AVAILABLE_APP_ICONS.some(i => i.name === editingApp.iconName)
-      );
+      const rawCustom = (editingApp.customIconUrl && typeof editingApp.customIconUrl === 'string' ? editingApp.customIconUrl.trim() : '') ||
+        (editingApp.icon && (editingApp.icon.startsWith('http') || editingApp.icon.startsWith('data:') || editingApp.icon.startsWith('/')) ? editingApp.icon.trim() : '') ||
+        (editingApp.iconName && (editingApp.iconName.startsWith('http') || editingApp.iconName.startsWith('data:') || editingApp.iconName.startsWith('/')) ? editingApp.iconName.trim() : '');
 
-      if (isPreset && (!custom || custom === '')) {
-        setIconMode('preset');
-        setIconName(editingApp.iconName || 'Layers');
-        setUploadedIconData('');
-        setUploadedFileName('');
-      } else if (custom.startsWith('data:') || editingApp.iconName?.startsWith('data:')) {
+      if (rawCustom.startsWith('data:')) {
         setIconMode('upload');
-        setUploadedIconData(custom || editingApp.iconName);
+        setUploadedIconData(rawCustom);
         setUploadedFileName('Custom Uploaded Icon');
         setIconName('Layers');
-      } else if (custom.includes('google.com/s2/favicons') || (editingApp.iconName?.startsWith('http') && editingApp.iconName.includes('favicon'))) {
-        setIconMode('auto');
-        setUploadedIconData('');
-        setUploadedFileName('');
-        setIconName('Globe');
-      } else if (custom.startsWith('http') || editingApp.iconName?.startsWith('http')) {
+      } else if (rawCustom.startsWith('http') || rawCustom.startsWith('/')) {
         setIconMode('auto');
         setUploadedIconData('');
         setUploadedFileName('');
         setIconName('Globe');
       } else {
         setIconMode('preset');
-        setIconName(editingApp.iconName || 'Layers');
+        setIconName(editingApp.iconName || editingApp.icon || 'Layers');
         setUploadedIconData('');
         setUploadedFileName('');
       }
@@ -314,16 +301,28 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       if (autoFavicon) {
         finalCustomIconUrl = autoFavicon;
         finalIconName = autoFavicon;
+      } else {
+        finalCustomIconUrl = undefined;
+        finalIconName = iconName && !iconName.startsWith('http') && !iconName.startsWith('data:') ? iconName : 'Globe';
       }
     } else if (iconMode === 'upload') {
       if (uploadedIconData) {
         finalCustomIconUrl = uploadedIconData;
         finalIconName = uploadedIconData;
+      } else {
+        finalCustomIconUrl = undefined;
+        finalIconName = iconName && !iconName.startsWith('http') && !iconName.startsWith('data:') ? iconName : 'Image';
       }
     } else {
       finalCustomIconUrl = undefined;
-      finalIconName = iconName || 'Layers';
+      finalIconName = iconName && !iconName.startsWith('http') && !iconName.startsWith('data:') ? iconName : 'Layers';
     }
+
+    const resolved = resolveAppIcon({
+      iconName: finalIconName,
+      customIconUrl: isPreset ? undefined : finalCustomIconUrl,
+      icon: isPreset ? finalIconName : (finalCustomIconUrl || finalIconName)
+    });
 
     const targetApp: EnterpriseApp = {
       id: editingApp ? editingApp.id : `app-${Date.now()}`,
@@ -333,8 +332,9 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       description: description.trim() || `${cleanName} enterprise application for corporate workflow.`,
       descriptionTh: descriptionTh.trim() || `${nameTh.trim() || cleanName} ระบบงานดิจิทัลสำหรับพนักงานองค์กร`,
       url: cleanUrl,
-      iconName: finalIconName,
-      customIconUrl: isPreset ? undefined : finalCustomIconUrl,
+      iconName: resolved.iconName,
+      customIconUrl: resolved.customIconUrl,
+      icon: resolved.icon,
       launchType,
       status,
       badge: badge.trim() || undefined,
@@ -342,7 +342,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       isFrequent: editingApp ? editingApp.isFrequent : false
     };
 
-    if (isPreset || !targetApp.customIconUrl) {
+    if (!resolved.isCustom) {
       delete (targetApp as any).customIconUrl;
     }
 

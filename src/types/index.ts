@@ -51,6 +51,7 @@ export interface EnterpriseApp {
   descriptionTh: string;
   iconName: string;
   customIconUrl?: string;
+  icon?: string;
   badge?: string;
   url: string;
   allowedRoles: UserRole[];

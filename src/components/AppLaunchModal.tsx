@@ -10,11 +10,34 @@ import {
   Terminal, 
   CheckCircle2,
   Lock,
-  Server
+  Server,
+  Layers,
+  Calculator,
+  ScanText,
+  ReceiptText,
+  FileCheck,
+  Building2,
+  Landmark,
+  Globe,
+  CreditCard
 } from 'lucide-react';
 import { EnterpriseApp, UserProfile } from '../types';
 import { centralSyncService } from '../services/centralSyncService';
 import { copyToClipboard } from '../utils/clipboard';
+import { resolveAppIcon } from '../utils/iconResolver';
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Calculator,
+  ScanText,
+  ReceiptText,
+  FileCheck,
+  Building2,
+  Landmark,
+  Globe,
+  CreditCard,
+  Layers,
+  Server
+};
 
 interface AppLaunchModalProps {
   app: EnterpriseApp | null;
@@ -89,12 +112,12 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
         <div className="flex items-start gap-3.5 pr-8 mb-5">
           <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 text-[#1E60D5] dark:text-blue-400 flex items-center justify-center shrink-0 overflow-hidden">
             {(() => {
-              const isPreset = Boolean(app.iconName && !app.iconName.startsWith('http') && !app.iconName.startsWith('data:'));
-              const imgUrl = !isPreset && (app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null));
-              if (imgUrl) {
+              const resolved = resolveAppIcon(app);
+              if (resolved.isCustom && resolved.customIconUrl) {
                 return (
                   <img 
-                    src={imgUrl} 
+                    key={`${app.id}-${resolved.customIconUrl.slice(0, 60)}`}
+                    src={resolved.customIconUrl} 
                     alt={app.name} 
                     className="w-7 h-7 object-contain rounded-md"
                     onError={(e) => {
@@ -103,7 +126,8 @@ export const AppLaunchModal: React.FC<AppLaunchModalProps> = ({
                   />
                 );
               }
-              return <Server className="w-6 h-6" />;
+              const IconComp = (resolved.iconName && ICON_MAP[resolved.iconName]) || (app.iconName && ICON_MAP[app.iconName]) || Layers;
+              return <IconComp className="w-6 h-6 shrink-0" />;
             })()}
           </div>
           <div>

@@ -23,6 +23,7 @@ import { centralSyncService } from './services/centralSyncService';
 import { detectClientMachineInfo, getOrCreateClientDeviceId } from './utils/clientMachineDetector';
 import { ADMIN_PIN } from './config/adminConfig';
 import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
+import { resolveAppIcon } from './utils/iconResolver';
 
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -241,13 +242,14 @@ export default function App() {
           const updatedParsed = parsed
             .filter((a: any) => !deletedSet.has(a.id))
             .map((a: any) => {
-              const isPreset = Boolean(
-                a.iconName && 
-                !a.iconName.startsWith('http') && 
-                !a.iconName.startsWith('data:')
-              );
-              const cleanA = { ...a };
-              if (isPreset && cleanA.customIconUrl) {
+              const resolved = resolveAppIcon(a);
+              const cleanA = {
+                ...a,
+                iconName: resolved.iconName,
+                customIconUrl: resolved.customIconUrl,
+                icon: resolved.icon
+              };
+              if (!resolved.isCustom) {
                 delete cleanA.customIconUrl;
               }
               const def = defaultAppMap.get(a.id);
@@ -372,17 +374,17 @@ export default function App() {
         }
 
         const validApps = data.apps.filter((a: any) => !deletedSet.has(a.id)).map((a: any) => {
-          const isPreset = Boolean(
-            a.iconName && 
-            !a.iconName.startsWith('http') && 
-            !a.iconName.startsWith('data:')
-          );
-          if (isPreset && a.customIconUrl) {
-            const clean = { ...a };
-            delete clean.customIconUrl;
-            return clean;
+          const resolved = resolveAppIcon(a);
+          const clean = {
+            ...a,
+            iconName: resolved.iconName,
+            customIconUrl: resolved.customIconUrl,
+            icon: resolved.icon
+          };
+          if (!resolved.isCustom) {
+            delete (clean as any).customIconUrl;
           }
-          return a;
+          return clean;
         });
         setEnterpriseApps(validApps);
         try {
@@ -568,17 +570,14 @@ export default function App() {
   };
 
   const handleSaveApp = async (app: EnterpriseApp) => {
-    const isPreset = Boolean(
-      app.iconName && 
-      !app.iconName.startsWith('http') && 
-      !app.iconName.startsWith('data:')
-    );
+    const resolved = resolveAppIcon(app);
     const cleanApp: EnterpriseApp = {
       ...app,
-      iconName: app.iconName || 'Layers',
-      customIconUrl: isPreset ? undefined : (app.customIconUrl || undefined)
+      iconName: resolved.iconName,
+      customIconUrl: resolved.customIconUrl,
+      icon: resolved.icon
     };
-    if (isPreset || !cleanApp.customIconUrl) {
+    if (!resolved.isCustom) {
       delete (cleanApp as any).customIconUrl;
     }
 

@@ -7,7 +7,14 @@ import { INITIAL_VENDOR_CONTACTS } from '../data/vendorData';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const STORAGE_FILE = path.resolve(__dirname, '../../central-portal-store.json');
+const getStoragePath = () => {
+  const relPath = path.resolve(__dirname, '../../central-portal-store.json');
+  if (fs.existsSync(relPath)) return relPath;
+  const cwdPath = path.resolve(process.cwd(), 'central-portal-store.json');
+  if (fs.existsSync(cwdPath)) return cwdPath;
+  return relPath;
+};
+const STORAGE_FILE = getStoragePath();
 
 export interface CentralStoreSchema {
   version: number;

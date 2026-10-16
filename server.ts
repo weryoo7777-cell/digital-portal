@@ -20,6 +20,12 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
+  // Prevent browser caching on dynamic API routes and root HTML
+  if (req.url === '/' || req.url.startsWith('/api/') || req.url.includes('.html')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
   next();
 });
 

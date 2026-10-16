@@ -203,15 +203,30 @@ class CentralStoreManager {
     if (this.store.deletedAppIds) {
       this.store.deletedAppIds = this.store.deletedAppIds.filter(id => id !== app.id);
     }
+    const isPresetIcon = Boolean(
+      app.iconName && 
+      !app.iconName.startsWith('http') && 
+      !app.iconName.startsWith('data:')
+    );
+    const cleanApp: EnterpriseApp = {
+      ...app,
+      iconName: app.iconName || 'Layers',
+      customIconUrl: isPresetIcon 
+        ? undefined 
+        : (app.customIconUrl ? app.customIconUrl : (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : undefined))
+    };
+    if (isPresetIcon || !cleanApp.customIconUrl) {
+      delete (cleanApp as any).customIconUrl;
+    }
     const existingIdx = this.store.apps.findIndex(a => a.id === app.id);
     if (existingIdx >= 0) {
-      this.store.apps[existingIdx] = app;
+      this.store.apps[existingIdx] = cleanApp;
     } else {
-      this.store.apps.unshift(app);
+      this.store.apps.unshift(cleanApp);
     }
     this.store.version += 1;
     this.persistStore();
-    return app;
+    return cleanApp;
   }
 
   public updateApp(app: EnterpriseApp): EnterpriseApp | null {
@@ -222,7 +237,27 @@ class CentralStoreManager {
     if (idx === -1) {
       return this.addApp(app);
     }
-    this.store.apps[idx] = { ...this.store.apps[idx], ...app };
+    const existing = this.store.apps[idx];
+    const isPresetIcon = Boolean(
+      app.iconName && 
+      !app.iconName.startsWith('http') && 
+      !app.iconName.startsWith('data:')
+    );
+
+    const updatedApp: EnterpriseApp = {
+      ...existing,
+      ...app,
+      iconName: app.iconName || existing.iconName || 'Layers',
+      customIconUrl: isPresetIcon 
+        ? undefined 
+        : (app.customIconUrl ? app.customIconUrl : (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : undefined))
+    };
+
+    if (isPresetIcon || !updatedApp.customIconUrl) {
+      delete (updatedApp as any).customIconUrl;
+    }
+
+    this.store.apps[idx] = updatedApp;
     this.store.version += 1;
     this.persistStore();
     return this.store.apps[idx];

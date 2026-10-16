@@ -92,6 +92,74 @@ export const cleanUrlInput = (raw: string): string => {
   return cleaned;
 };
 
+// Helper to resize uploaded icon to lightweight crisp square canvas (max 160x160)
+// Prevents localStorage QuotaExceededError and ensures instantaneous persistence
+export const resizeImageToIconDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'image/svg+xml') {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        URL.revokeObjectURL(objUrl);
+        const canvas = document.createElement('canvas');
+        const maxDim = 160;
+        let width = img.width || maxDim;
+        let height = img.height || maxDim;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        resolve(dataUrl);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objUrl);
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    };
+    img.src = objUrl;
+  });
+};
+
 export const AppManageModal: React.FC<AppManageModalProps> = ({
   isOpen,
   editingApp,
@@ -137,7 +205,19 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       setAccessLevel(editingApp.allowedRoles.length === 1 && editingApp.allowedRoles[0].toLowerCase() === 'admin' ? 'admin' : 'all');
 
       const custom = editingApp.customIconUrl || '';
-      if (custom.startsWith('data:') || editingApp.iconName?.startsWith('data:')) {
+      const isPreset = Boolean(
+        editingApp.iconName && 
+        !editingApp.iconName.startsWith('http') && 
+        !editingApp.iconName.startsWith('data:') &&
+        AVAILABLE_APP_ICONS.some(i => i.name === editingApp.iconName)
+      );
+
+      if (isPreset && (!custom || custom === '')) {
+        setIconMode('preset');
+        setIconName(editingApp.iconName || 'Layers');
+        setUploadedIconData('');
+        setUploadedFileName('');
+      } else if (custom.startsWith('data:') || editingApp.iconName?.startsWith('data:')) {
         setIconMode('upload');
         setUploadedIconData(custom || editingApp.iconName);
         setUploadedFileName('Custom Uploaded Icon');
@@ -179,7 +259,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -188,23 +268,20 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError(language === 'TH' ? 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB' : 'Image size must not exceed 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      setError(language === 'TH' ? 'ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB' : 'Image size must not exceed 5MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setUploadedIconData(result);
+    try {
+      const resizedData = await resizeImageToIconDataUrl(file);
+      setUploadedIconData(resizedData);
       setUploadedFileName(file.name);
       setIconMode('upload');
       setError(null);
-    };
-    reader.onerror = () => {
-      setError(language === 'TH' ? 'เกิดข้อผิดพลาดในการอ่านไฟล์รูปภาพ' : 'Failed to read image file');
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setError(language === 'TH' ? 'เกิดข้อผิดพลาดในการประมวลผลไฟล์รูปภาพ' : 'Failed to process image file');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -228,6 +305,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       ? ['ADMIN', 'admin'] 
       : ['ADMIN', 'ACCOUNTING', 'IT', 'HR', 'SALES_OPERATIONS', 'admin', 'user'];
 
+    const isPreset = iconMode === 'preset';
     let finalIconName = iconName;
     let finalCustomIconUrl: string | undefined = undefined;
 
@@ -244,7 +322,7 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       }
     } else {
       finalCustomIconUrl = undefined;
-      finalIconName = iconName;
+      finalIconName = iconName || 'Layers';
     }
 
     const targetApp: EnterpriseApp = {
@@ -256,13 +334,17 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
       descriptionTh: descriptionTh.trim() || `${nameTh.trim() || cleanName} ระบบงานดิจิทัลสำหรับพนักงานองค์กร`,
       url: cleanUrl,
       iconName: finalIconName,
-      customIconUrl: finalCustomIconUrl,
+      customIconUrl: isPreset ? undefined : finalCustomIconUrl,
       launchType,
       status,
       badge: badge.trim() || undefined,
       allowedRoles,
       isFrequent: editingApp ? editingApp.isFrequent : false
     };
+
+    if (isPreset || !targetApp.customIconUrl) {
+      delete (targetApp as any).customIconUrl;
+    }
 
     onSaveApp(targetApp);
     onClose();
@@ -540,6 +622,9 @@ export const AppManageModal: React.FC<AppManageModalProps> = ({
                   e.preventDefault();
                   e.stopPropagation();
                   setIconMode('preset');
+                  if (!iconName || iconName.startsWith('http') || iconName.startsWith('data:') || !AVAILABLE_APP_ICONS.some(i => i.name === iconName)) {
+                    setIconName('Layers');
+                  }
                 }}
                 className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   iconMode === 'preset'

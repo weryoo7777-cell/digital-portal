@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 const PORT = parseInt(process.env.PORT || '3002', 10);
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // Enable CORS for LAN devices
 app.use((req, res, next) => {

@@ -241,16 +241,25 @@ export default function App() {
           const updatedParsed = parsed
             .filter((a: any) => !deletedSet.has(a.id))
             .map((a: any) => {
+              const isPreset = Boolean(
+                a.iconName && 
+                !a.iconName.startsWith('http') && 
+                !a.iconName.startsWith('data:')
+              );
+              const cleanA = { ...a };
+              if (isPreset && cleanA.customIconUrl) {
+                delete cleanA.customIconUrl;
+              }
               const def = defaultAppMap.get(a.id);
               if (def) {
                 return {
-                  ...a,
-                  nameTh: def.nameTh || a.nameTh,
-                  descriptionTh: def.descriptionTh || a.descriptionTh,
-                  description: def.description || a.description
+                  ...cleanA,
+                  nameTh: cleanA.nameTh || def.nameTh,
+                  descriptionTh: cleanA.descriptionTh || def.descriptionTh,
+                  description: cleanA.description || def.description
                 };
               }
-              return a;
+              return cleanA;
             });
           return updatedParsed;
         }
@@ -362,7 +371,19 @@ export default function App() {
           } catch {}
         }
 
-        const validApps = data.apps.filter((a: any) => !deletedSet.has(a.id));
+        const validApps = data.apps.filter((a: any) => !deletedSet.has(a.id)).map((a: any) => {
+          const isPreset = Boolean(
+            a.iconName && 
+            !a.iconName.startsWith('http') && 
+            !a.iconName.startsWith('data:')
+          );
+          if (isPreset && a.customIconUrl) {
+            const clean = { ...a };
+            delete clean.customIconUrl;
+            return clean;
+          }
+          return a;
+        });
         setEnterpriseApps(validApps);
         try {
           localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(validApps));
@@ -547,26 +568,42 @@ export default function App() {
   };
 
   const handleSaveApp = async (app: EnterpriseApp) => {
-    const isEdit = enterpriseApps.some(a => a.id === app.id);
+    const isPreset = Boolean(
+      app.iconName && 
+      !app.iconName.startsWith('http') && 
+      !app.iconName.startsWith('data:')
+    );
+    const cleanApp: EnterpriseApp = {
+      ...app,
+      iconName: app.iconName || 'Layers',
+      customIconUrl: isPreset ? undefined : (app.customIconUrl || undefined)
+    };
+    if (isPreset || !cleanApp.customIconUrl) {
+      delete (cleanApp as any).customIconUrl;
+    }
+
+    const isEdit = enterpriseApps.some(a => a.id === cleanApp.id);
     // If restoring or creating an app with this id, remove from deleted list
     try {
       const storedDeleted = localStorage.getItem('qs_deleted_app_ids');
       if (storedDeleted) {
         const deletedList: string[] = JSON.parse(storedDeleted);
-        const filtered = deletedList.filter(id => id !== app.id);
+        const filtered = deletedList.filter(id => id !== cleanApp.id);
         localStorage.setItem('qs_deleted_app_ids', JSON.stringify(filtered));
       }
     } catch {}
 
     setEnterpriseApps((prev) => {
-      const exists = prev.some(a => a.id === app.id);
-      const updated = exists ? prev.map(a => a.id === app.id ? app : a) : [app, ...prev];
+      const exists = prev.some(a => a.id === cleanApp.id);
+      const updated = exists ? prev.map(a => a.id === cleanApp.id ? cleanApp : a) : [cleanApp, ...prev];
       try {
         localStorage.setItem('qs_enterprise_apps_v2', JSON.stringify(updated));
-      } catch {}
+      } catch (err) {
+        console.warn('[Qisheng Portal] LocalStorage save warning:', err);
+      }
       return updated;
     });
-    await centralSyncService.saveApp(app, isEdit);
+    await centralSyncService.saveApp(cleanApp, isEdit);
     setAppModalOpen(false);
     setEditingApp(null);
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calculator, 
   ScanText, 
@@ -81,8 +81,18 @@ export const AppCard: React.FC<AppCardProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
 
+  useEffect(() => {
+    setImgError(false);
+  }, [app?.id, app?.iconName, app?.customIconUrl]);
+
   if (!app) return null;
 
+  const isPreset = Boolean(
+    app && app.iconName && 
+    !app.iconName.startsWith('http') && 
+    !app.iconName.startsWith('data:') && 
+    ICON_MAP[app.iconName]
+  );
   const IconComponent = (app && app.iconName && ICON_MAP[app.iconName]) || Layers;
   const isUserAdmin = isAdmin || (currentUserRole || '').toLowerCase() === 'admin';
   const rolesList = (app && app.allowedRoles) || [];
@@ -177,7 +187,7 @@ export const AppCard: React.FC<AppCardProps> = ({
             : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}
         `}>
           {(() => {
-            const imgUrl = app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null);
+            const imgUrl = !isPreset && (app.customIconUrl || (app.iconName?.startsWith('http') || app.iconName?.startsWith('data:') ? app.iconName : null));
             if (imgUrl && !imgError) {
               return (
                 <img 

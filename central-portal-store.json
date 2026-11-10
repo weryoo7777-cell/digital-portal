@@ -1,5 +1,5 @@
 {
-  "version": 117,
+  "version": 119,
   "adminPin": "1111",
   "latestAnnouncementId": "",
   "latestAnnouncementUpdatedAt": 1792116948851,
@@ -522,18 +522,6 @@
   "announcements": [],
   "vendorContacts": [
     {
-      "id": "ven-1791962088041",
-      "name": "บริษัท คิวเอส บีโอไอ จำกัด",
-      "nameEn": "QS BOI CO., LTD.",
-      "category": "boi",
-      "serviceDescription": "BOI",
-      "phone": "0973494498",
-      "operatingHours": "วันจันทร์ - ศุกร์ 08:00 - 17:00 น.",
-      "contractNumber": "0215567013173",
-      "isHotline24h": false,
-      "updatedAt": "2026-10-14"
-    },
-    {
       "id": "ven-1791961890129",
       "name": "บริษัท บางมด เอ็นเตอร์ ไพร์ส จำกัด (สำนักงานใหญ่ )",
       "category": "it",
@@ -547,17 +535,6 @@
       "phoneSecondary": "062 230 5525",
       "email": "cloudsales@bangmod.co.th",
       "lineId": "@bangmod.cloud"
-    },
-    {
-      "id": "ven-1791961544201",
-      "name": "บริษัท ฉี่ เชิง คอนซัลติ้ง จำกัด",
-      "category": "accounting",
-      "serviceDescription": "บัญชี",
-      "phone": "0973494498",
-      "operatingHours": "วันจันทร์ - ศุกร์ 08:00 - 17:00 น.",
-      "contractNumber": "0215560005884",
-      "isHotline24h": false,
-      "updatedAt": "2026-10-14"
     }
   ],
   "activityLogs": [
@@ -1050,5 +1027,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1794277312929
+  "lastModified": 1794292965677
 }

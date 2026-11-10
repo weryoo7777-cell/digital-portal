@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, 
-  Grid, 
+  Building2, 
   Calendar, 
   Languages, 
   Bell, 
@@ -41,10 +41,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: LayoutDashboard,
     },
     {
-      id: 'all-apps' as NavTab,
-      labelTh: 'แอปพลิเคชันทั้งหมด',
-      labelEn: 'All Applications',
-      icon: Grid,
+      id: 'affiliates' as NavTab,
+      labelTh: 'บริษัทในเครือ qisheng',
+      labelEn: 'Qisheng Group Affiliates',
+      icon: Building2,
     },
     {
       id: 'vendor-contact' as NavTab,

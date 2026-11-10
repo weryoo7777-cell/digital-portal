@@ -234,9 +234,28 @@ export interface VendorContact {
   updatedAt?: string;
 }
 
+export interface AffiliateCompany {
+  id: string;
+  nameTh: string;
+  nameEn: string;
+  shortCode?: string;
+  businessTypeTh: string;
+  businessTypeEn: string;
+  taxId: string;
+  phone: string;
+  email?: string;
+  website?: string;
+  addressTh: string;
+  addressEn?: string;
+  operatingHours?: string;
+  isHeadquarters?: boolean;
+  notes?: string;
+  updatedAt?: string;
+}
+
 export type NavTab = 
   | 'dashboard' 
-  | 'all-apps' 
+  | 'affiliates' 
   | 'vendor-contact'
   | 'calendar' 
   | 'announcements';

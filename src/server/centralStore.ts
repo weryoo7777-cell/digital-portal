@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { EnterpriseApp, CorporateAnnouncement, ActivityLogItem, PortalDataSyncResponse, VendorContact } from '../types';
+import { EnterpriseApp, CorporateAnnouncement, ActivityLogItem, PortalDataSyncResponse, VendorContact, AffiliateCompany } from '../types';
 import { ENTERPRISE_APPS, CORPORATE_ANNOUNCEMENTS } from '../data/portalData';
 import { INITIAL_VENDOR_CONTACTS } from '../data/vendorData';
+import { INITIAL_AFFILIATES } from '../data/affiliatesData';
 import { resolveAppIcon } from '../utils/iconResolver';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,6 +17,15 @@ const getStoragePath = () => {
   return cwdPath;
 };
 const STORAGE_FILE = getStoragePath();
+
+const getAffiliatesStoragePath = () => {
+  const cwdDir = path.resolve(process.cwd(), 'data');
+  if (!fs.existsSync(cwdDir)) {
+    try { fs.mkdirSync(cwdDir, { recursive: true }); } catch {}
+  }
+  return path.resolve(cwdDir, 'affiliates.json');
+};
+const AFFILIATES_FILE = getAffiliatesStoragePath();
 
 export interface CentralStoreSchema {
   version: number;
@@ -97,6 +107,7 @@ const INITIAL_ACTIVITY_LOGS: ActivityLogItem[] = [
 
 class CentralStoreManager {
   private store: CentralStoreSchema;
+  private affiliates: AffiliateCompany[] = [];
   private isLoaded: boolean = false;
 
   constructor() {
@@ -166,17 +177,46 @@ class CentralStoreManager {
             activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : [...INITIAL_ACTIVITY_LOGS],
             lastModified: parsed.lastModified || Date.now()
           };
+          this.affiliates = this.loadAffiliates();
           this.isLoaded = true;
           return;
         }
       }
     } catch (err) {
-      console.warn('[CentralStore] Failed to load existing store, falling back to defaults:', err);
+      console.warn('[CentralStore] Failed to load central store from disk, falling back to defaults:', err);
     }
-
+    this.affiliates = this.loadAffiliates();
     this.store = this.getDefaultStore();
     this.persistStore();
     this.isLoaded = true;
+  }
+
+  private loadAffiliates(): AffiliateCompany[] {
+    try {
+      if (fs.existsSync(AFFILIATES_FILE)) {
+        const raw = fs.readFileSync(AFFILIATES_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('[CentralStore] Failed to read affiliates file, falling back to defaults:', err);
+    }
+    this.persistAffiliates(INITIAL_AFFILIATES);
+    return [...INITIAL_AFFILIATES];
+  }
+
+  private persistAffiliates(affiliates: AffiliateCompany[]): void {
+    try {
+      const dir = path.dirname(AFFILIATES_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(AFFILIATES_FILE, JSON.stringify(affiliates, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[CentralStore] Failed to persist affiliates to file:', err);
+    }
   }
 
   private persistStore() {
@@ -211,6 +251,7 @@ class CentralStoreManager {
       deletedAppIds: this.store.deletedAppIds || [],
       announcements: this.store.announcements,
       vendorContacts: this.store.vendorContacts,
+      affiliates: this.getAffiliates(),
       activityLogs: clientLogs,
       latestAnnouncementId: this.store.latestAnnouncementId,
       latestAnnouncementUpdatedAt: this.store.latestAnnouncementUpdatedAt,
@@ -511,6 +552,69 @@ class CentralStoreManager {
     this.store.version += 1;
     this.persistStore();
     return { success: true };
+  }
+
+  // -------------------------------------------------------------
+  // Qisheng Group Affiliates (Persisted in data/affiliates.json)
+  // -------------------------------------------------------------
+  public getAffiliates(): AffiliateCompany[] {
+    if (!this.affiliates || this.affiliates.length === 0) {
+      this.affiliates = this.loadAffiliates();
+    }
+    return this.affiliates;
+  }
+
+  public setAffiliates(affiliates: AffiliateCompany[]): AffiliateCompany[] {
+    this.affiliates = [...affiliates];
+    this.persistAffiliates(this.affiliates);
+    this.store.version += 1;
+    this.persistStore();
+    return this.affiliates;
+  }
+
+  public addAffiliate(company: AffiliateCompany): AffiliateCompany {
+    const existingIdx = this.affiliates.findIndex(c => c.id === company.id);
+    if (existingIdx >= 0) {
+      this.affiliates[existingIdx] = company;
+    } else {
+      this.affiliates.unshift(company);
+    }
+    this.persistAffiliates(this.affiliates);
+    this.store.version += 1;
+    this.persistStore();
+    return company;
+  }
+
+  public updateAffiliate(company: AffiliateCompany): AffiliateCompany | null {
+    const idx = this.affiliates.findIndex(c => c.id === company.id);
+    if (idx === -1) {
+      return this.addAffiliate(company);
+    }
+    this.affiliates[idx] = { ...this.affiliates[idx], ...company };
+    this.persistAffiliates(this.affiliates);
+    this.store.version += 1;
+    this.persistStore();
+    return this.affiliates[idx];
+  }
+
+  public deleteAffiliate(id: string): boolean {
+    const initialLen = this.affiliates.length;
+    this.affiliates = this.affiliates.filter(c => c.id !== id);
+    if (this.affiliates.length !== initialLen) {
+      this.persistAffiliates(this.affiliates);
+      this.store.version += 1;
+      this.persistStore();
+      return true;
+    }
+    return false;
+  }
+
+  public resetAffiliates(): AffiliateCompany[] {
+    this.affiliates = [...INITIAL_AFFILIATES];
+    this.persistAffiliates(this.affiliates);
+    this.store.version += 1;
+    this.persistStore();
+    return this.affiliates;
   }
 }
 

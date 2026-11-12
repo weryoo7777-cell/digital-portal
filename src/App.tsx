@@ -17,13 +17,15 @@ import {
   VendorContact,
   CorporateAnnouncement,
   NavTab,
-  ActivityLogItem
+  ActivityLogItem,
+  AffiliateCompany
 } from './types';
 import { centralSyncService } from './services/centralSyncService';
 import { detectClientMachineInfo, getOrCreateClientDeviceId } from './utils/clientMachineDetector';
 import { ADMIN_PIN } from './config/adminConfig';
 import { APP_CATEGORY_TABS, VALID_NAV_TABS, getNavTabTitle } from './config/navigationConfig';
 import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
+import { INITIAL_AFFILIATES } from './data/affiliatesData';
 import { resolveAppIcon } from './utils/iconResolver';
 
 import { Sidebar } from './components/Sidebar';
@@ -405,6 +407,9 @@ export default function App() {
           localStorage.setItem('qs_vendor_contacts_persisted', 'true');
         } catch {}
       }
+      if (data.affiliates && Array.isArray(data.affiliates)) {
+        setAffiliates(data.affiliates);
+      }
       if (data.activityLogs && Array.isArray(data.activityLogs)) {
         setActivityLogs(data.activityLogs);
         // Requirement #1: Filter central logs to ONLY those strictly belonging to this workstation/machine
@@ -757,6 +762,58 @@ export default function App() {
       localStorage.setItem('qs_vendor_contacts_persisted', 'true');
     } catch {}
     await centralSyncService.resetVendors();
+  };
+
+  // Qisheng Group Affiliates with backend server persistence (data/affiliates.json) and central sync
+  const [affiliates, setAffiliates] = useState<AffiliateCompany[]>(INITIAL_AFFILIATES);
+
+  // Initial load of affiliates from backend server
+  useEffect(() => {
+    centralSyncService.fetchAffiliates().then(items => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        setAffiliates(items);
+      }
+    }).catch(err => {
+      console.warn('[Qisheng Portal] Error loading initial affiliates:', err);
+    });
+  }, []);
+
+  const handleAddAffiliate = async (newAffiliate: AffiliateCompany) => {
+    console.log('[Qisheng Portal] Adding affiliate:', newAffiliate.nameTh);
+    setAffiliates(prev => [newAffiliate, ...prev.filter(a => a.id !== newAffiliate.id)]);
+    await centralSyncService.saveAffiliate(newAffiliate);
+  };
+
+  const handleUpdateAffiliate = async (updatedAffiliate: AffiliateCompany) => {
+    console.log('[Qisheng Portal] Updating affiliate:', updatedAffiliate.nameTh);
+    setAffiliates(prev => prev.map(a => a.id === updatedAffiliate.id ? updatedAffiliate : a));
+    await centralSyncService.saveAffiliate(updatedAffiliate);
+  };
+
+  const handleDeleteAffiliate = async (affiliateId: string) => {
+    console.log('[Qisheng Portal] handleDeleteAffiliate for:', affiliateId);
+    let remainingLength = 0;
+    setAffiliates(prev => {
+      const updated = prev.filter(a => a.id !== affiliateId);
+      remainingLength = updated.length;
+      return updated;
+    });
+
+    if (remainingLength === 0) {
+      await centralSyncService.saveAllAffiliates([]);
+    } else {
+      await centralSyncService.deleteAffiliate(affiliateId);
+    }
+  };
+
+  const handleResetAffiliates = async () => {
+    console.log('[Qisheng Portal] Resetting affiliates to default');
+    const resetList = await centralSyncService.resetAffiliates();
+    if (resetList && resetList.length > 0) {
+      setAffiliates(resetList);
+    } else {
+      setAffiliates(INITIAL_AFFILIATES);
+    }
   };
 
   // Launch History tracking
@@ -1449,6 +1506,11 @@ export default function App() {
           {/* 4. QISHENG GROUP AFFILIATES VIEW */}
           {currentTab === 'affiliates' && (
             <AffiliatesView
+              affiliates={affiliates}
+              onAddAffiliate={handleAddAffiliate}
+              onUpdateAffiliate={handleUpdateAffiliate}
+              onDeleteAffiliate={handleDeleteAffiliate}
+              onResetAffiliates={handleResetAffiliates}
               language={language}
               isAdmin={isAdmin}
               onOpenAdminPinModal={() => setAdminPinModalOpen(true)}

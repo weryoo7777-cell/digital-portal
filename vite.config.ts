@@ -315,7 +315,7 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {
-        ignored: ['**/central-portal-store.json', '**/src/data/centralPortalStorage.json'],
+        ignored: ['**/central-portal-store.json', '**/src/data/centralPortalStorage.json', '**/data/affiliates.json'],
       },
     },
   };

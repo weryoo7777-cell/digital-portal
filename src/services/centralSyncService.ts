@@ -4,7 +4,8 @@ import {
   ActivityLogItem, 
   PortalDataSyncResponse,
   UserProfile,
-  VendorContact 
+  VendorContact,
+  AffiliateCompany 
 } from '../types';
 
 type SyncListener = (data: PortalDataSyncResponse) => void;
@@ -323,6 +324,105 @@ class CentralSyncService {
     } catch (err) {
       console.error('[CentralSyncService] Failed to reset vendors:', err);
       return false;
+    }
+  }
+
+  // 4.6 Qisheng Group Affiliates Central Persistence
+  public async fetchAffiliates(): Promise<AffiliateCompany[]> {
+    try {
+      const res = await fetch('/api/affiliates', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data.affiliates || []);
+      }
+      return [];
+    } catch (err) {
+      console.warn('[CentralSyncService] Failed to fetch affiliates:', err);
+      return [];
+    }
+  }
+
+  public async saveAffiliate(company: AffiliateCompany): Promise<boolean> {
+    try {
+      console.log('[CentralSyncService] Saving affiliate company:', company.nameTh);
+      const res = await fetch('/api/affiliates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(company)
+      });
+      if (res.ok) {
+        await this.syncNow();
+        console.log('[CentralSyncService] Affiliate saved successfully:', company.nameTh);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save affiliate:', err);
+      return false;
+    }
+  }
+
+  public async saveAllAffiliates(affiliates: AffiliateCompany[]): Promise<boolean> {
+    try {
+      console.log('[CentralSyncService] Saving all affiliates batch:', affiliates.length);
+      const res = await fetch('/api/affiliates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ affiliates })
+      });
+      if (res.ok) {
+        await this.syncNow();
+        console.log('[CentralSyncService] Batch affiliates saved successfully');
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to save all affiliates:', err);
+      return false;
+    }
+  }
+
+  public async deleteAffiliate(affiliateId: string): Promise<boolean> {
+    try {
+      console.log('[CentralSyncService] Deleting affiliate from backend:', affiliateId);
+      const res = await fetch('/api/affiliates/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: affiliateId })
+      });
+      if (res.ok) {
+        await this.syncNow();
+        console.log('[CentralSyncService] Affiliate deleted successfully:', affiliateId);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to delete affiliate:', err);
+      return false;
+    }
+  }
+
+  public async resetAffiliates(): Promise<AffiliateCompany[]> {
+    try {
+      console.log('[CentralSyncService] Resetting affiliates to default on backend');
+      const res = await fetch('/api/affiliates/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        await this.syncNow();
+        console.log('[CentralSyncService] Affiliates reset successfully');
+        if (json && Array.isArray(json.affiliates)) {
+          return json.affiliates;
+        }
+      }
+      return [];
+    } catch (err) {
+      console.error('[CentralSyncService] Failed to reset affiliates:', err);
+      return [];
     }
   }
 

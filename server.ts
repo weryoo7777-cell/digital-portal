@@ -291,6 +291,48 @@ app.post('/api/portal-data/reset-vendors', (req, res) => {
   res.json({ success: true, vendors: reset });
 });
 
+// 8.5. Qisheng Group Affiliates Endpoints (Persisted in data/affiliates.json)
+app.get('/api/affiliates', (req, res) => {
+  const affiliates = centralStore.getAffiliates();
+  res.json({ success: true, affiliates });
+});
+
+app.post('/api/affiliates', (req, res) => {
+  const body = req.body;
+  if (body && Array.isArray(body.affiliates)) {
+    const updated = centralStore.setAffiliates(body.affiliates);
+    return res.json({ success: true, affiliates: updated });
+  }
+  if (!body || !body.nameTh || !body.taxId || !body.phone) {
+    return res.status(400).json({ error: 'Company Thai name, Tax ID, and Phone are required' });
+  }
+  const saved = body.id ? centralStore.updateAffiliate(body) : centralStore.addAffiliate(body);
+  res.json({ success: true, affiliate: saved, affiliates: centralStore.getAffiliates() });
+});
+
+app.post('/api/affiliates/delete', (req, res) => {
+  const affiliateId = req.body?.id || req.body?.affiliateId;
+  if (!affiliateId) {
+    return res.status(400).json({ error: 'Affiliate ID is required' });
+  }
+  const deleted = centralStore.deleteAffiliate(affiliateId);
+  res.json({ success: deleted, id: affiliateId, affiliates: centralStore.getAffiliates() });
+});
+
+app.delete('/api/affiliates/:id', (req, res) => {
+  const affiliateId = req.params.id;
+  if (!affiliateId) {
+    return res.status(400).json({ error: 'Affiliate ID is required' });
+  }
+  const deleted = centralStore.deleteAffiliate(affiliateId);
+  res.json({ success: deleted, id: affiliateId, affiliates: centralStore.getAffiliates() });
+});
+
+app.post('/api/affiliates/reset', (req, res) => {
+  const reset = centralStore.resetAffiliates();
+  res.json({ success: true, affiliates: reset });
+});
+
 // 9. Activity Logs Endpoints (Client-Isolated: Never broadcast across LAN)
 app.get('/api/activity-logs', (req, res) => {
   const limit = parseInt((req.query.limit as string) || '20', 10);

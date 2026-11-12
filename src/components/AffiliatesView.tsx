@@ -21,33 +21,61 @@ import {
 import { AffiliateCompany } from '../types';
 import { copyToClipboard } from '../utils/clipboard';
 import { INITIAL_AFFILIATES } from '../data/affiliatesData';
+import { centralSyncService } from '../services/centralSyncService';
 
 interface AffiliatesViewProps {
   language: 'TH' | 'EN';
   isAdmin?: boolean;
   onOpenAdminPinModal?: () => void;
+  affiliates?: AffiliateCompany[];
+  onAddAffiliate?: (company: AffiliateCompany) => Promise<void> | void;
+  onUpdateAffiliate?: (company: AffiliateCompany) => Promise<void> | void;
+  onDeleteAffiliate?: (id: string) => Promise<void> | void;
+  onResetAffiliates?: () => Promise<void> | void;
 }
-
-const STORAGE_KEY = 'qs_affiliate_companies_v1';
-const PERSISTED_FLAG_KEY = 'qs_affiliate_companies_persisted';
 
 export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
   language,
   isAdmin = false,
-  onOpenAdminPinModal
+  onOpenAdminPinModal,
+  affiliates: affiliatesProp,
+  onAddAffiliate,
+  onUpdateAffiliate,
+  onDeleteAffiliate,
+  onResetAffiliates
 }) => {
   const [affiliates, setAffiliates] = useState<AffiliateCompany[]>(() => {
-    try {
-      if (localStorage.getItem(PERSISTED_FLAG_KEY) === 'true') {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
-      }
-    } catch {}
+    if (affiliatesProp && Array.isArray(affiliatesProp) && affiliatesProp.length > 0) {
+      return affiliatesProp;
+    }
     return INITIAL_AFFILIATES;
   });
+
+  // Sync state whenever prop changes from App.tsx or central sync
+  React.useEffect(() => {
+    if (affiliatesProp && Array.isArray(affiliatesProp)) {
+      setAffiliates(affiliatesProp);
+    }
+  }, [affiliatesProp]);
+
+  // Initial fetch from backend API on mount
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchFromServer = async () => {
+      try {
+        const data = await centralSyncService.fetchAffiliates();
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setAffiliates(data);
+        }
+      } catch (err) {
+        console.warn('[AffiliatesView] Failed to load affiliates from server:', err);
+      }
+    };
+    fetchFromServer();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -73,14 +101,6 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
   const [formIsHq, setFormIsHq] = useState(false);
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
-
-  const persistAffiliates = (next: AffiliateCompany[]) => {
-    setAffiliates(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      localStorage.setItem(PERSISTED_FLAG_KEY, 'true');
-    } catch {}
-  };
 
   const handleCopy = async (text: string, key: string) => {
     const ok = await copyToClipboard(text);
@@ -130,7 +150,7 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!formNameTh.trim() || !formTaxId.trim() || !formPhone.trim()) {
@@ -161,28 +181,68 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
       updatedAt: new Date().toISOString().split('T')[0]
     };
 
-    if (editingCompany) {
-      persistAffiliates(affiliates.map(item => (item.id === editingCompany.id ? payload : item)));
-    } else {
-      persistAffiliates([payload, ...affiliates]);
+    try {
+      if (editingCompany) {
+        setAffiliates(prev => prev.map(item => (item.id === editingCompany.id ? payload : item)));
+        if (onUpdateAffiliate) {
+          await onUpdateAffiliate(payload);
+        } else {
+          await centralSyncService.saveAffiliate(payload);
+        }
+      } else {
+        setAffiliates(prev => [payload, ...prev]);
+        if (onAddAffiliate) {
+          await onAddAffiliate(payload);
+        } else {
+          await centralSyncService.saveAffiliate(payload);
+        }
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('[AffiliatesView] Error saving affiliate:', err);
+      setFormError(
+        language === 'TH'
+          ? 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง'
+          : 'Failed to save affiliate company. Please try again.'
+      );
     }
-    setIsModalOpen(false);
   };
 
-  const handleConfirmDelete = (e: React.MouseEvent) => {
+  const handleConfirmDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!companyToDelete) return;
-    persistAffiliates(affiliates.filter(item => item.id !== companyToDelete.id));
-    setCompanyToDelete(null);
+    const targetId = companyToDelete.id;
+    try {
+      setAffiliates(prev => prev.filter(item => item.id !== targetId));
+      if (onDeleteAffiliate) {
+        await onDeleteAffiliate(targetId);
+      } else {
+        await centralSyncService.deleteAffiliate(targetId);
+      }
+    } catch (err) {
+      console.error('[AffiliatesView] Error deleting affiliate:', err);
+    } finally {
+      setCompanyToDelete(null);
+    }
   };
 
-  const handleResetDefaults = () => {
-    setAffiliates(INITIAL_AFFILIATES);
+  const handleResetDefaults = async () => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(PERSISTED_FLAG_KEY);
-    } catch {}
+      if (onResetAffiliates) {
+        await onResetAffiliates();
+      } else {
+        const resetData = await centralSyncService.resetAffiliates();
+        if (resetData && resetData.length > 0) {
+          setAffiliates(resetData);
+        } else {
+          setAffiliates(INITIAL_AFFILIATES);
+        }
+      }
+    } catch (err) {
+      console.error('[AffiliatesView] Error resetting affiliates:', err);
+      setAffiliates(INITIAL_AFFILIATES);
+    }
   };
 
   const filteredAffiliates = useMemo(() => {

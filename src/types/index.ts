@@ -181,6 +181,7 @@ export interface PortalDataSyncResponse {
   serverTime: number;
   version: number;
   vendorContacts?: VendorContact[];
+  affiliates?: AffiliateCompany[];
   deletedAppIds?: string[];
 }
 

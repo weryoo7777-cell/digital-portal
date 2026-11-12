@@ -22,6 +22,7 @@ import {
 import { centralSyncService } from './services/centralSyncService';
 import { detectClientMachineInfo, getOrCreateClientDeviceId } from './utils/clientMachineDetector';
 import { ADMIN_PIN } from './config/adminConfig';
+import { APP_CATEGORY_TABS, VALID_NAV_TABS, getNavTabTitle } from './config/navigationConfig';
 import { INITIAL_VENDOR_CONTACTS } from './data/vendorData';
 import { resolveAppIcon } from './utils/iconResolver';
 
@@ -616,12 +617,6 @@ export default function App() {
 
   const handleDeleteApp = async (appId: string) => {
     console.log('[Qisheng Portal] handleDeleteApp for:', appId, 'Keeping current tab:', currentTab, 'category:', selectedCategory);
-    // Preserve current category explicitly across deletions
-    try {
-      if (selectedCategory) {
-        sessionStorage.setItem('qs_selected_app_category', selectedCategory);
-      }
-    } catch {}
 
     // 1. Mark as permanently deleted so it NEVER comes back on sync or refresh
     try {
@@ -780,7 +775,7 @@ export default function App() {
       // Clear legacy localStorage key so old persistent tab never overrides initial load
       localStorage.removeItem('qs_active_tab');
       const saved = sessionStorage.getItem('qs_active_tab');
-      if (saved && ['dashboard', 'affiliates', 'vendor-contact', 'calendar', 'announcements'].includes(saved)) {
+      if (saved && VALID_NAV_TABS.includes(saved as NavTab)) {
         return saved as NavTab;
       }
     } catch {}
@@ -789,24 +784,12 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<'TH' | 'EN'>('TH');
 
-  // Search & Filtering
+  // Search & Filtering — always default to 'all' so all applications display directly on main dashboard
   const [searchQuery, setSearchQuery] = useState('');
-  // Persist selected app category across operations & deletions (e.g. stays on 'accounting' after deletion)
-  const [selectedCategory, setSelectedCategory] = useState<AppCategory>(() => {
-    try {
-      const saved = sessionStorage.getItem('qs_selected_app_category');
-      if (saved && ['all', 'accounting', 'boi', 'it', 'external'].includes(saved)) {
-        return saved as AppCategory;
-      }
-    } catch {}
-    return 'all';
-  });
+  const [selectedCategory, setSelectedCategory] = useState<AppCategory>('all');
 
   const handleSelectCategory = (cat: AppCategory) => {
     setSelectedCategory(cat);
-    try {
-      sessionStorage.setItem('qs_selected_app_category', cat);
-    } catch {}
   };
 
   // Favorites (Stored in localStorage with sensible defaults, excluding deleted apps)
@@ -1033,16 +1016,7 @@ export default function App() {
     return enterpriseApps.filter((app) => favorites.includes(app.id));
   }, [enterpriseApps, favorites]);
 
-  const getTabTitle = () => {
-    switch (currentTab) {
-      case 'dashboard': return language === 'TH' ? 'หน้าหลัก' : 'Home';
-      case 'affiliates': return language === 'TH' ? 'บริษัทในเครือ qisheng' : 'Qisheng Group Affiliates';
-      case 'vendor-contact': return language === 'TH' ? 'จัดการผู้ให้บริการ (Vendor Contact)' : 'Vendor Contacts';
-      case 'calendar': return language === 'TH' ? 'ปฏิทินองค์กร' : 'Organization Calendar';
-      case 'announcements': return language === 'TH' ? 'จัดการประกาศข่าวสาร (Announcements)' : 'Manage Announcements';
-      default: return 'QISHENG';
-    }
-  };
+  const getTabTitle = () => getNavTabTitle(currentTab, language);
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-[#0B0F19] text-slate-100' : 'bg-[#F4F6F9] text-slate-900'} flex font-sans antialiased transition-colors duration-200`}>
@@ -1340,13 +1314,7 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   {/* 5 Tabs: 1) ทั้งหมด (All) 2) บัญชี (Accounting) 3) BOI 4) IT 5) ระบบราชการ & ธนาคาร */}
                   <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-x-auto">
-                    {[
-                      { id: 'all' as const, labelTh: 'ทั้งหมด (All)', labelEn: 'All Apps', icon: Grid },
-                      { id: 'accounting' as const, labelTh: 'บัญชี (Accounting)', labelEn: 'Accounting', icon: Calculator },
-                      { id: 'boi' as const, labelTh: 'BOI', labelEn: 'BOI', icon: ReceiptText },
-                      { id: 'it' as const, labelTh: 'IT', labelEn: 'IT', icon: Network },
-                      { id: 'external' as const, labelTh: 'ระบบราชการ & ธนาคาร', labelEn: 'Gov & Banking', icon: Landmark }
-                    ].map((tab) => {
+                    {APP_CATEGORY_TABS.map((tab) => {
                       const Icon = tab.icon;
                       const isActive = selectedCategory === tab.id;
                       return (

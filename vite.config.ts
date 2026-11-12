@@ -42,28 +42,13 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
-const filterClientLogs = (logs: any[], clientIp: string, clientHost?: string) => {
-  const normIp = (clientIp || '').trim().toLowerCase();
-  const normHost = (clientHost || '').trim().toLowerCase();
-
-  return (logs || []).filter((log) => {
-    const logIp = (log.clientIp || '').trim().toLowerCase();
-    const logHost = (log.workstationHostname || '').trim().toLowerCase();
-
-    if (normIp && logIp && (normIp === logIp || normIp.includes(logIp) || logIp.includes(normIp))) {
-      return true;
-    }
-    if (normHost && logHost && (normHost === logHost || normHost.includes(logHost) || logHost.includes(normHost))) {
-      return true;
-    }
-    return false;
-  });
-};
-
 function corporateApiPlugin(): Plugin {
   return {
     name: 'corporate-api-plugin',
     configureServer(server) {
+      if (server.config.server.middlewareMode) {
+        return;
+      }
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) {
           return next();
@@ -323,7 +308,7 @@ export default defineConfig(() => {
     },
     server: {
       host: '0.0.0.0',
-      port: 3002,
+      port: parseInt(process.env.PORT || '3000', 10),
       allowedHosts: true as const,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.

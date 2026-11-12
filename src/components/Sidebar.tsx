@@ -1,13 +1,11 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Calendar, 
-  Languages, 
-  Bell, 
-  BookUser 
-} from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { NavTab } from '../types';
+import {
+  PRIMARY_NAV_ITEMS,
+  CALENDAR_NAV_ITEM,
+  ADMIN_NAV_ITEMS
+} from '../config/navigationConfig';
 
 export type { NavTab };
 
@@ -32,35 +30,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   isAdmin = false
 }) => {
-  // Primary Navigation
-  const primaryNavItems = [
-    {
-      id: 'dashboard' as NavTab,
-      labelTh: 'หน้าหลัก',
-      labelEn: 'Home',
-      icon: LayoutDashboard,
-    },
-    {
-      id: 'affiliates' as NavTab,
-      labelTh: 'บริษัทในเครือ qisheng',
-      labelEn: 'Qisheng Group Affiliates',
-      icon: Building2,
-    },
-    {
-      id: 'vendor-contact' as NavTab,
-      labelTh: 'จัดการผู้ให้บริการ (Vendor Contact)',
-      labelEn: 'Vendor Contacts',
-      icon: BookUser,
-    },
-  ];
-
-  // Calendar Navigation
-  const calendarNavItem = {
-    id: 'calendar' as NavTab,
-    labelTh: 'ปฏิทินองค์กร',
-    labelEn: 'Organization Calendar',
-    icon: Calendar,
-  };
+  // Primary & Calendar Navigation come directly from global hardcoded config
+  const primaryNavItems = PRIMARY_NAV_ITEMS;
+  const calendarNavItem = CALENDAR_NAV_ITEM;
 
   return (
     <>
@@ -152,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })()}
 
-          {/* Admin Section: Manage Announcements (Requirement #4: Removed User Management, replaced with Manage Announcements) */}
+          {/* Admin Section: Manage Announcements */}
           {isAdmin && (
             <>
               <div className="pt-4 pb-1 px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-between">
@@ -161,31 +133,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {language === 'TH' ? 'เปิดใช้งานแล้ว' : 'Active'}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onSelectTab('announcements');
-                  onCloseMobile();
-                }}
-                className={`
-                  w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all text-left cursor-pointer
-                  ${currentTab === 'announcements'
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 font-bold border-l-4 border-[#1E60D5] dark:border-blue-400 shadow-xs' 
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium'}
-                `}
-              >
-                <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 ${currentTab === 'announcements' ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                  <span className="truncate">
-                    {language === 'TH' ? 'จัดการประกาศข่าวสาร' : 'Manage Announcements'}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-mono">
-                  Admin
-                </span>
-              </button>
+              {ADMIN_NAV_ITEMS.map((adminItem) => {
+                const Icon = adminItem.icon;
+                const isActive = currentTab === adminItem.id;
+                return (
+                  <button
+                    key={adminItem.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSelectTab(adminItem.id);
+                      onCloseMobile();
+                    }}
+                    className={`
+                      w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all text-left cursor-pointer
+                      ${isActive
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E60D5] dark:text-blue-300 font-bold border-l-4 border-[#1E60D5] dark:border-blue-400 shadow-xs' 
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium'}
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-[#1E60D5] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                      <span className="truncate">
+                        {language === 'TH' ? adminItem.labelTh : adminItem.labelEn}
+                      </span>
+                    </div>
+                    {adminItem.badgeText && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-mono">
+                        {adminItem.badgeText}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </>
           )}
         </div>

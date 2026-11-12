@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Building2,
   Search,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AffiliateCompany } from '../types';
 import { copyToClipboard } from '../utils/clipboard';
+import { INITIAL_AFFILIATES } from '../data/affiliatesData';
 
 interface AffiliatesViewProps {
   language: 'TH' | 'EN';
@@ -28,43 +29,7 @@ interface AffiliatesViewProps {
 }
 
 const STORAGE_KEY = 'qs_affiliate_companies_v1';
-
-const INITIAL_AFFILIATES: AffiliateCompany[] = [
-  {
-    id: 'aff-qisheng-consulting',
-    nameTh: 'บริษัท ฉี เซิง คอนซัลติ้ง จำกัด',
-    nameEn: 'QI SHENG CONSULTING CO., LTD.',
-    shortCode: 'QSC',
-    businessTypeTh: 'ที่ปรึกษาธุรกิจ บัญชี ภาษี และบริหารจัดการองค์กร',
-    businessTypeEn: 'Business, Accounting, Tax & Corporate Consulting',
-    taxId: '0215560005884',
-    phone: '083-830-0888 / 097-349-4498',
-    email: 'qishengkeji@hotmail.com',
-    addressTh: '888/11 หมู่ 4 ต.มาบยางพร อ.ปลวกแดง จ.ระยอง 21140',
-    addressEn: '888/11 Moo 4, Mabyangporn, Pluakdaeng, Rayong 21140',
-    operatingHours: 'วันจันทร์ - ศุกร์ 08:00 - 17:00 น.',
-    isHeadquarters: true,
-    notes: 'สำนักงานใหญ่กลุ่มบริษัท ฉี เซิง ให้บริการด้านบัญชี ภาษีอากร และที่ปรึกษาองค์กรครบวงจร',
-    updatedAt: '2026-10-14'
-  },
-  {
-    id: 'aff-qs-boi',
-    nameTh: 'บริษัท คิวเอส บีโอไอ จำกัด',
-    nameEn: 'QS BOI CO., LTD.',
-    shortCode: 'QS BOI',
-    businessTypeTh: 'ที่ปรึกษาสิทธิประโยชน์ส่งเสริมการลงทุน (BOI) และพิธีการนำเข้า-ส่งออก',
-    businessTypeEn: 'BOI Investment Promotion & Import-Export Advisory',
-    taxId: '0215567013173',
-    phone: '097-349-4498',
-    email: 'qishengkeji@hotmail.com',
-    addressTh: '888/11 หมู่ 4 ต.มาบยางพร อ.ปลวกแดง จ.ระยอง 21140',
-    addressEn: '888/11 Moo 4, Mabyangporn, Pluakdaeng, Rayong 21140',
-    operatingHours: 'วันจันทร์ - ศุกร์ 08:00 - 17:00 น.',
-    isHeadquarters: false,
-    notes: 'ดูแลงานยื่นขอรับการส่งเสริมการลงทุน BOI, สิทธิประโยชน์เครื่องจักร/วัตถุดิบ และระบบ e-MT / Single Window',
-    updatedAt: '2026-10-14'
-  }
-];
+const PERSISTED_FLAG_KEY = 'qs_affiliate_companies_persisted';
 
 export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
   language,
@@ -73,10 +38,12 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
 }) => {
   const [affiliates, setAffiliates] = useState<AffiliateCompany[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+      if (localStorage.getItem(PERSISTED_FLAG_KEY) === 'true') {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
       }
     } catch {}
     return INITIAL_AFFILIATES;
@@ -107,11 +74,13 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
 
-  useEffect(() => {
+  const persistAffiliates = (next: AffiliateCompany[]) => {
+    setAffiliates(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(affiliates));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(PERSISTED_FLAG_KEY, 'true');
     } catch {}
-  }, [affiliates]);
+  };
 
   const handleCopy = async (text: string, key: string) => {
     const ok = await copyToClipboard(text);
@@ -193,9 +162,9 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
     };
 
     if (editingCompany) {
-      setAffiliates(prev => prev.map(item => (item.id === editingCompany.id ? payload : item)));
+      persistAffiliates(affiliates.map(item => (item.id === editingCompany.id ? payload : item)));
     } else {
-      setAffiliates(prev => [payload, ...prev]);
+      persistAffiliates([payload, ...affiliates]);
     }
     setIsModalOpen(false);
   };
@@ -204,12 +173,16 @@ export const AffiliatesView: React.FC<AffiliatesViewProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (!companyToDelete) return;
-    setAffiliates(prev => prev.filter(item => item.id !== companyToDelete.id));
+    persistAffiliates(affiliates.filter(item => item.id !== companyToDelete.id));
     setCompanyToDelete(null);
   };
 
   const handleResetDefaults = () => {
     setAffiliates(INITIAL_AFFILIATES);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PERSISTED_FLAG_KEY);
+    } catch {}
   };
 
   const filteredAffiliates = useMemo(() => {

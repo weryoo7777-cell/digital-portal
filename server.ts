@@ -6,7 +6,21 @@ import { centralStore } from './src/server/centralStore';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = parseInt(process.env.PORT || '3002', 10);
+const getPort = (): number => {
+  const portArgIndex = process.argv.findIndex(arg => arg === '--port' || arg === '-p');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const p = parseInt(process.argv[portArgIndex + 1], 10);
+    if (!isNaN(p)) return p;
+  }
+  const portArg = process.argv.find(arg => arg.startsWith('--port='));
+  if (portArg) {
+    const p = parseInt(portArg.split('=')[1], 10);
+    if (!isNaN(p)) return p;
+  }
+  return parseInt(process.env.PORT || '3000', 10);
+};
+
+const PORT = getPort();
 const app = express();
 
 app.use(express.json({ limit: '25mb' }));
@@ -92,32 +106,6 @@ app.get('/api/auth/sso', (req, res) => {
     ssoSession: 'valid',
   });
 });
-
-// Helper to filter logs for client isolation (Never broadcast other machines' logs across LAN)
-const filterClientLogs = (logs: any[], clientIp: string, clientHost?: string, deviceId?: string) => {
-  const normDeviceId = (deviceId || '').trim();
-  const normIp = (clientIp || '').trim().toLowerCase();
-  const normHost = (clientHost || '').trim().toLowerCase();
-
-  if (!normDeviceId && !normIp && !normHost) return [];
-
-  return (logs || []).filter((log) => {
-    const logDeviceId = (log.deviceId || '').trim();
-    const logIp = (log.clientIp || '').trim().toLowerCase();
-    const logHost = (log.workstationHostname || '').trim().toLowerCase();
-
-    if (normDeviceId && logDeviceId && normDeviceId === logDeviceId) {
-      return true;
-    }
-    if (normIp && logIp && normIp === logIp) {
-      return true;
-    }
-    if (normHost && logHost && normHost === logHost) {
-      return true;
-    }
-    return false;
-  });
-};
 
 // 4. Central Portal Data API (With Client Machine Activity Isolation)
 app.get('/api/portal-data', (req, res) => {

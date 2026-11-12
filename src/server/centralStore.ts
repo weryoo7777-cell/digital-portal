@@ -196,7 +196,10 @@ class CentralStoreManager {
       const normHost = (clientHost || '').trim().toLowerCase();
 
       clientLogs = this.store.activityLogs.filter((log) => {
-        if (normDeviceId && log.deviceId && log.deviceId === normDeviceId) return true;
+        const logDeviceId = (log.deviceId || '').trim();
+        if (normDeviceId && logDeviceId) {
+          return logDeviceId === normDeviceId;
+        }
         if (normIp && log.clientIp && log.clientIp.trim().toLowerCase() === normIp) return true;
         if (normHost && log.workstationHostname && log.workstationHostname.trim().toLowerCase() === normHost) return true;
         return false;
@@ -362,7 +365,10 @@ class CentralStoreManager {
     const normHost = (clientHost || '').trim().toLowerCase();
 
     return this.store.activityLogs.filter((log) => {
-      if (normDeviceId && log.deviceId && log.deviceId === normDeviceId) return true;
+      const logDeviceId = (log.deviceId || '').trim();
+      if (normDeviceId && logDeviceId) {
+        return logDeviceId === normDeviceId;
+      }
       if (normIp && log.clientIp && log.clientIp.trim().toLowerCase() === normIp) return true;
       if (normHost && log.workstationHostname && log.workstationHostname.trim().toLowerCase() === normHost) return true;
       return false;

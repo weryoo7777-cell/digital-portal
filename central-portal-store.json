@@ -1,5 +1,5 @@
 {
-  "version": 119,
+  "version": 129,
   "adminPin": "1111",
   "latestAnnouncementId": "",
   "latestAnnouncementUpdatedAt": 1792116948851,
@@ -51,54 +51,6 @@
       ],
       "isFrequent": false,
       "icon": "Layers"
-    },
-    {
-      "id": "app-1791453410621",
-      "name": "gemini",
-      "nameTh": "gemini",
-      "category": "it",
-      "description": "gemini",
-      "descriptionTh": "gemini ระบบงานดิจิทัลสำหรับพนักงานองค์กร",
-      "url": "https://gemini.google.com/",
-      "iconName": "https://www.google.com/s2/favicons?domain=gemini.google.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=gemini.google.com&sz=128",
-      "launchType": "web",
-      "status": "online",
-      "allowedRoles": [
-        "ADMIN",
-        "ACCOUNTING",
-        "IT",
-        "HR",
-        "SALES_OPERATIONS",
-        "admin",
-        "user"
-      ],
-      "isFrequent": false,
-      "icon": "https://www.google.com/s2/favicons?domain=gemini.google.com&sz=128"
-    },
-    {
-      "id": "app-1791453362909",
-      "name": "chatgpt",
-      "nameTh": "chatgpt",
-      "category": "it",
-      "description": "AI",
-      "descriptionTh": "chatgpt ระบบงานดิจิทัลสำหรับพนักงานองค์กร",
-      "url": "https://chatgpt.com/",
-      "iconName": "https://www.google.com/s2/favicons?domain=chatgpt.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=chatgpt.com&sz=128",
-      "launchType": "web",
-      "status": "online",
-      "allowedRoles": [
-        "ADMIN",
-        "ACCOUNTING",
-        "IT",
-        "HR",
-        "SALES_OPERATIONS",
-        "admin",
-        "user"
-      ],
-      "isFrequent": false,
-      "icon": "https://www.google.com/s2/favicons?domain=chatgpt.com&sz=128"
     },
     {
       "id": "app-1791453288133",
@@ -339,174 +291,6 @@
       "isFrequent": false,
       "version": "Official Portal",
       "icon": "https://www.google.com/s2/favicons?domain=dft.go.th&sz=128"
-    },
-    {
-      "id": "bank-kbank",
-      "name": "KBANK K-Corporate / K-Cash Connect Plus",
-      "nameTh": "ธนาคารกสิกรไทย (K-Corporate)",
-      "category": "external",
-      "description": "Corporate cash management & payroll processing",
-      "descriptionTh": "บริการธุรกรรมการเงินและโอนเงินนิติบุคคล",
-      "iconName": "https://www.google.com/s2/favicons?domain=kasikornbank.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=kasikornbank.com&sz=128",
-      "badge": "KBANK Business",
-      "url": "https://www.kasikornbank.com/th/business/corporate",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=kasikornbank.com&sz=128"
-    },
-    {
-      "id": "bank-scb",
-      "name": "SCB Business Anywhere",
-      "nameTh": "ธนาคารไทยพาณิชย์ (SCB Business Anywhere)",
-      "category": "external",
-      "description": "Enterprise banking platform for payments & treasury",
-      "descriptionTh": "จัดการสภาพคล่องและธุรกรรมการเงินธุรกิจ",
-      "iconName": "https://www.google.com/s2/favicons?domain=scb.co.th&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=scb.co.th&sz=128",
-      "badge": "SCB Business",
-      "url": "https://businessanywhere.scb.co.th",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=scb.co.th&sz=128"
-    },
-    {
-      "id": "bank-bbl",
-      "name": "Bualuang i-Cash / Corporate iBanking",
-      "nameTh": "ธนาคารกรุงเทพ (Bualuang i-Cash)",
-      "category": "external",
-      "description": "Corporate liquidity management & bulk payroll transfers",
-      "descriptionTh": "โอนเงิน จ่ายเงินเดือน และธุรกรรมธุรกิจองค์กร",
-      "iconName": "https://www.google.com/s2/favicons?domain=bangkokbank.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=bangkokbank.com&sz=128",
-      "badge": "BBL i-Cash",
-      "url": "https://www.bangkokbank.com/th-TH/Business-Banking/Corporate-Banking/Cash-Management",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=bangkokbank.com&sz=128"
-    },
-    {
-      "id": "bank-ktb",
-      "name": "Krungthai Business / Corporate Online",
-      "nameTh": "ธนาคารกรุงไทย (Krungthai Business)",
-      "category": "external",
-      "description": "Corporate banking with direct tax gateway integration",
-      "descriptionTh": "บริหารการเงินองค์กรและชำระภาษีภาครัฐ",
-      "iconName": "https://www.google.com/s2/favicons?domain=krungthai.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=krungthai.com&sz=128",
-      "badge": "KTB Corporate",
-      "url": "https://krungthai.com/th/corporate-banking",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": false,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=krungthai.com&sz=128"
-    },
-    {
-      "id": "bank-ttb",
-      "name": "ttb business one",
-      "nameTh": "ทีเอ็มบีธนชาต (ttb business one)",
-      "category": "external",
-      "description": "Unified corporate digital banking solutions",
-      "descriptionTh": "ธนาคารดิจิทัลเพื่อธุรกิจและโอนเงินองค์กร",
-      "iconName": "https://www.google.com/s2/favicons?domain=ttbbank.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=ttbbank.com&sz=128",
-      "badge": "ttb business one",
-      "url": "https://www.ttbbank.com/th/business-one",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": false,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=ttbbank.com&sz=128"
-    },
-    {
-      "id": "bank-bay",
-      "name": "Krungsri CashLink",
-      "nameTh": "ธนาคารกรุงศรีอยุธยา (Krungsri CashLink)",
-      "category": "external",
-      "description": "Corporate cash management & funds transfer portal",
-      "descriptionTh": "จัดการกระแสเงินสดและธุรกรรมการเงินธุรกิจ",
-      "iconName": "https://www.google.com/s2/favicons?domain=krungsri.com&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=krungsri.com&sz=128",
-      "badge": "BAY CashLink",
-      "url": "https://www.krungsri.com/th/business/cash-management/cashlink",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": false,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=krungsri.com&sz=128"
-    },
-    {
-      "id": "fin-bot-fx",
-      "name": "Bank of Thailand Foreign Exchange Rates",
-      "nameTh": "ธนาคารแห่งประเทศไทย (BOT FX Rates)",
-      "category": "external",
-      "description": "Official daily reference foreign exchange rates",
-      "descriptionTh": "อัตราแลกเปลี่ยนเงินตราต่างประเทศประจำวัน",
-      "iconName": "https://www.google.com/s2/favicons?domain=bot.or.th&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=bot.or.th&sz=128",
-      "badge": "ธปท. (BOT)",
-      "url": "https://www.bot.or.th/th/statistics/exchange-rate.html",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": true,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=bot.or.th&sz=128"
-    },
-    {
-      "id": "fin-setlink",
-      "name": "SETLink Corporate Portal",
-      "nameTh": "ตลาดหลักทรัพย์ฯ (SETLink Portal)",
-      "category": "external",
-      "description": "Listed corporations information & capital market filings",
-      "descriptionTh": "ระบบบริการข้อมูลองค์กรและตลาดทุน",
-      "iconName": "https://www.google.com/s2/favicons?domain=set.or.th&sz=128",
-      "customIconUrl": "https://www.google.com/s2/favicons?domain=set.or.th&sz=128",
-      "badge": "ตลาดหลักทรัพย์ (SET)",
-      "url": "https://www.setlink.set.or.th",
-      "allowedRoles": [
-        "admin",
-        "user"
-      ],
-      "status": "online",
-      "launchType": "web",
-      "isFrequent": false,
-      "version": "Official Portal",
-      "icon": "https://www.google.com/s2/favicons?domain=set.or.th&sz=128"
     }
   ],
   "deletedAppIds": [
@@ -517,7 +301,17 @@
     "app-mikrotik",
     "app-vpn",
     "app-protrack",
-    "app-1791452975021"
+    "app-1791452975021",
+    "app-1791453362909",
+    "app-1791453410621",
+    "fin-setlink",
+    "bank-ttb",
+    "bank-bay",
+    "fin-bot-fx",
+    "bank-bbl",
+    "bank-scb",
+    "bank-ktb",
+    "bank-kbank"
   ],
   "announcements": [],
   "vendorContacts": [
@@ -538,6 +332,70 @@
     }
   ],
   "activityLogs": [
+    {
+      "id": "log-1791450632424-331uf",
+      "appId": "app-1791453119061",
+      "appName": "ProTrack",
+      "appNameTh": "ระบบติดตามการดำเนินโครงการ AI & IT",
+      "appUrl": "https://script.google.com/macros/s/AKfycbwO2uHhe_A3sqBD9yPCZwv2VBz2v18tuZidyiT9-qbr1eSuk7fFM0edPat_kglftcBz/exec",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454222601,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1791450639925-eunli",
+      "appId": "app-1791450581791",
+      "appName": "Book Cars",
+      "appNameTh": "จองรถ",
+      "appUrl": "https://docs.google.com/spreadsheets/d/1vBSReyBZ9eUEbUS3On9meloo3K5dDAsdkT0_iy1tGnQ/edit?gid=2095312518#gid=2095312518",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454213786,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1791453292222-0fezs",
+      "appId": "app-1791453288133",
+      "appName": "deepseek",
+      "appNameTh": "deepseek",
+      "appUrl": "https://chat.deepseek.com/",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454203187,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1794454173928-27e7z",
+      "appId": "gov-rd-efiling",
+      "appName": "RD New e-Filing Portal",
+      "appNameTh": "กรมสรรพากร (RD New e-Filing)",
+      "appUrl": "https://efiling.rd.go.th",
+      "category": "external",
+      "deviceId": "dev-mwa424fd-lxfkphr",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454173928,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
     {
       "id": "log-1791453692091-y72vn",
       "appId": "app-1791453688198",
@@ -598,38 +456,6 @@
       "userName": "General User",
       "userRole": "user",
       "timestamp": 1792717926169,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
-    },
-    {
-      "id": "log-1791450639925-eunli",
-      "appId": "app-1791450581791",
-      "appName": "Book Cars",
-      "appNameTh": "จองรถ",
-      "appUrl": "https://docs.google.com/spreadsheets/d/1vBSReyBZ9eUEbUS3On9meloo3K5dDAsdkT0_iy1tGnQ/edit?gid=2095312518#gid=2095312518",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "General User",
-      "userRole": "user",
-      "timestamp": 1792141167638,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
-    },
-    {
-      "id": "log-1791450632424-331uf",
-      "appId": "app-1791453119061",
-      "appName": "ProTrack",
-      "appNameTh": "ระบบติดตามการดำเนินโครงการ AI & IT",
-      "appUrl": "https://script.google.com/macros/s/AKfycbwO2uHhe_A3sqBD9yPCZwv2VBz2v18tuZidyiT9-qbr1eSuk7fFM0edPat_kglftcBz/exec",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "System Administrator",
-      "userRole": "admin",
-      "timestamp": 1792136942677,
       "status": "launched",
       "action": "Launched Web Application",
       "deviceId": "dev-mv61tkz1-7cawhe9"
@@ -697,22 +523,6 @@
       "timestamp": 1791858512772,
       "status": "launched",
       "action": "Launched Web Application"
-    },
-    {
-      "id": "log-1791453292222-0fezs",
-      "appId": "app-1791453288133",
-      "appName": "deepseek",
-      "appNameTh": "deepseek",
-      "appUrl": "https://chat.deepseek.com/",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "General User",
-      "userRole": "user",
-      "timestamp": 1791858508879,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
     },
     {
       "id": "log-1791521186105-og93g",
@@ -1027,5 +837,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1794292965677
+  "lastModified": 1794468903645
 }

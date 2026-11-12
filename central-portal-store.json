@@ -539,6 +539,70 @@
   ],
   "activityLogs": [
     {
+      "id": "log-1791450632424-331uf",
+      "appId": "app-1791453119061",
+      "appName": "ProTrack",
+      "appNameTh": "ระบบติดตามการดำเนินโครงการ AI & IT",
+      "appUrl": "https://script.google.com/macros/s/AKfycbwO2uHhe_A3sqBD9yPCZwv2VBz2v18tuZidyiT9-qbr1eSuk7fFM0edPat_kglftcBz/exec",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454222601,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1791450639925-eunli",
+      "appId": "app-1791450581791",
+      "appName": "Book Cars",
+      "appNameTh": "จองรถ",
+      "appUrl": "https://docs.google.com/spreadsheets/d/1vBSReyBZ9eUEbUS3On9meloo3K5dDAsdkT0_iy1tGnQ/edit?gid=2095312518#gid=2095312518",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454213786,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1791453292222-0fezs",
+      "appId": "app-1791453288133",
+      "appName": "deepseek",
+      "appNameTh": "deepseek",
+      "appUrl": "https://chat.deepseek.com/",
+      "category": "it",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454203187,
+      "status": "launched",
+      "action": "Launched Web Application",
+      "deviceId": "dev-mwa424fd-lxfkphr"
+    },
+    {
+      "id": "log-1794454173928-27e7z",
+      "appId": "gov-rd-efiling",
+      "appName": "RD New e-Filing Portal",
+      "appNameTh": "กรมสรรพากร (RD New e-Filing)",
+      "appUrl": "https://efiling.rd.go.th",
+      "category": "external",
+      "deviceId": "dev-mwa424fd-lxfkphr",
+      "clientIp": "192.168.7.122",
+      "workstationHostname": "QISHENG-122",
+      "userName": "General User",
+      "userRole": "user",
+      "timestamp": 1794454173928,
+      "status": "launched",
+      "action": "Launched Web Application"
+    },
+    {
       "id": "log-1791453692091-y72vn",
       "appId": "app-1791453688198",
       "appName": "DataForge OCR",
@@ -598,38 +662,6 @@
       "userName": "General User",
       "userRole": "user",
       "timestamp": 1792717926169,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
-    },
-    {
-      "id": "log-1791450639925-eunli",
-      "appId": "app-1791450581791",
-      "appName": "Book Cars",
-      "appNameTh": "จองรถ",
-      "appUrl": "https://docs.google.com/spreadsheets/d/1vBSReyBZ9eUEbUS3On9meloo3K5dDAsdkT0_iy1tGnQ/edit?gid=2095312518#gid=2095312518",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "General User",
-      "userRole": "user",
-      "timestamp": 1792141167638,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
-    },
-    {
-      "id": "log-1791450632424-331uf",
-      "appId": "app-1791453119061",
-      "appName": "ProTrack",
-      "appNameTh": "ระบบติดตามการดำเนินโครงการ AI & IT",
-      "appUrl": "https://script.google.com/macros/s/AKfycbwO2uHhe_A3sqBD9yPCZwv2VBz2v18tuZidyiT9-qbr1eSuk7fFM0edPat_kglftcBz/exec",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "System Administrator",
-      "userRole": "admin",
-      "timestamp": 1792136942677,
       "status": "launched",
       "action": "Launched Web Application",
       "deviceId": "dev-mv61tkz1-7cawhe9"
@@ -697,22 +729,6 @@
       "timestamp": 1791858512772,
       "status": "launched",
       "action": "Launched Web Application"
-    },
-    {
-      "id": "log-1791453292222-0fezs",
-      "appId": "app-1791453288133",
-      "appName": "deepseek",
-      "appNameTh": "deepseek",
-      "appUrl": "https://chat.deepseek.com/",
-      "category": "it",
-      "clientIp": "192.168.7.122",
-      "workstationHostname": "QISHENG-122",
-      "userName": "General User",
-      "userRole": "user",
-      "timestamp": 1791858508879,
-      "status": "launched",
-      "action": "Launched Web Application",
-      "deviceId": "dev-mv61tkz1-7cawhe9"
     },
     {
       "id": "log-1791521186105-og93g",
@@ -1027,5 +1043,5 @@
       "action": "RouterOS Traffic Check"
     }
   ],
-  "lastModified": 1794292965677
+  "lastModified": 1794454222601
 }
